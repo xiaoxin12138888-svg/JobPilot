@@ -52,3 +52,4 @@ Accepted ADR 不应静默改写其历史结论。若事实变化，应新增 ADR
 - [ADR-003：岗位采集必须由用户主动触发](ADR-003-user-triggered-job-capture.md) — Accepted
 - [ADR-004：早期不引入 Agent Framework](ADR-004-no-early-agent-framework.md) — Accepted
 - [ADR-005：采用 pnpm 与 uv 作为单一包管理工具链](ADR-005-pnpm-uv-toolchains.md) — Accepted
+- [ADR-006：采用托管 OIDC 身份与双通道会话](ADR-006-authentication-strategy.md) — Accepted

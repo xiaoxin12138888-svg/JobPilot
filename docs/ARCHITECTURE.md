@@ -1,6 +1,7 @@
 # JobPilot 总体架构
 
-> 文档状态：Phase 0 已批准的架构基线；Phase 1 工程骨架已实现并验证，等待项目负责人验收。  
+> 文档状态：Phase 0–2A 已批准；Accepted authentication specialization 见 [AUTH_ARCHITECTURE.md](AUTH_ARCHITECTURE.md)。
+>
 > 架构风格：Monorepo + Modular Monolith（模块化单体）  
 > 核心原则：Simple architecture first；数据库是业务事实来源；外部输入一律在边界校验。
 
@@ -21,17 +22,18 @@ JobPilot 是面向求职者的跨招聘平台 AI 求职工作台。招聘平台�
 
 ## 2. 关键架构决策与提案
 
-| 决策 | 结论 | 主要理由 |
-| --- | --- | --- |
-| 仓库形态 | Monorepo | Web、Extension、API、契约和文档可以原子演进，便于作品集展示和端到端测试 |
-| 后端形态 | Modular Monolith | 当前规模不需要分布式复杂度，同时用模块边界避免“大泥球” |
-| API 风格 | `/api/v1` 下的 contract-first REST | Web 与 Extension 共用稳定契约；DTO 不泄漏 ORM 或供应商结构 |
-| 事实来源 | PostgreSQL | 所有持久业务状态由 API 写入数据库；客户端仅保存临时 UI/采集草稿 |
-| 向量检索 | PostgreSQL + pgvector | 在早期数据规模内复用同一数据边界和权限模型 |
-| 文件存储 | S3-compatible `ObjectStore` 端口 | 数据库仅保存对象键和元数据，避免绑定具体云厂商 |
-| AI 集成 | 应用层端口 + Provider Adapter | 核心业务不依赖模型厂商、Prompt 或原始 LLM 响应 |
-| 插件采集 | 平台 Adapter Registry + 三级兜底 | 各平台解析隔离，失败时仍允许用户完成保存 |
-| 异步基础设施 | 暂不选型 | 真正出现长任务后再评估同一单体内的后台任务；不提前引入消息系统 |
+| 决策             | 结论                                                                    | 主要理由                                                                |
+| ---------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| 仓库形态         | Monorepo                                                                | Web、Extension、API、契约和文档可以原子演进，便于作品集展示和端到端测试 |
+| 后端形态         | Modular Monolith                                                        | 当前规模不需要分布式复杂度，同时用模块边界避免“大泥球”                  |
+| API 风格         | `/api/v1` 下的 contract-first REST                                      | Web 与 Extension 共用稳定契约；DTO 不泄漏 ORM 或供应商结构              |
+| 事实来源         | PostgreSQL                                                              | 所有持久业务状态由 API 写入数据库；客户端仅保存临时 UI/采集草稿         |
+| 向量检索         | PostgreSQL + pgvector                                                   | 在早期数据规模内复用同一数据边界和权限模型                              |
+| 文件存储         | S3-compatible `ObjectStore` 端口                                        | 数据库仅保存对象键和元数据，避免绑定具体云厂商                          |
+| AI 集成          | 应用层端口 + Provider Adapter                                           | 核心业务不依赖模型厂商、Prompt 或原始 LLM 响应                          |
+| 插件采集         | 平台 Adapter Registry + 三级兜底                                        | 各平台解析隔离，失败时仍允许用户完成保存                                |
+| 认证（Accepted） | Auth0 managed OIDC；Web opaque HttpOnly session + Extension PKCE bearer | 同一 provider identity 映射本地 User，FastAPI 保持唯一业务授权边界      |
+| 异步基础设施     | 暂不选型                                                                | 真正出现长任务后再评估同一单体内的后台任务；不提前引入消息系统          |
 
 ## 3. 总体架构
 
@@ -174,21 +176,14 @@ infrastructure adapters ----------+------------------------------+
 
 ```ts
 type CaptureInput =
-  | { mode: "automatic"; url: string; page: ReadonlyPageSnapshot }
-  | { mode: "selection"; url: string; selectedText: string }
-  | { mode: "manual"; url?: string; pastedText: string };
+  | { mode: 'automatic'; url: string; page: ReadonlyPageSnapshot }
+  | { mode: 'selection'; url: string; selectedText: string }
+  | { mode: 'manual'; url?: string; pastedText: string };
 
-type JobSource =
-  | "boss"
-  | "nowcoder"
-  | "shixiseng"
-  | "liepin"
-  | "iguopin"
-  | "generic"
-  | "manual";
+type JobSource = 'boss' | 'nowcoder' | 'shixiseng' | 'liepin' | 'iguopin' | 'generic' | 'manual';
 
 interface JobSiteAdapter {
-  readonly id: "boss" | "nowcoder" | "shixiseng" | "liepin" | "iguopin" | "generic" | "manual";
+  readonly id: 'boss' | 'nowcoder' | 'shixiseng' | 'liepin' | 'iguopin' | 'generic' | 'manual';
   canHandle(input: CaptureInput): boolean;
   extractJob(input: CaptureInput): Promise<JobCaptureDraft>;
   validate(draft: JobCaptureDraft): CaptureValidation;
@@ -207,11 +202,11 @@ interface JobCaptureFields {
 
 type JobCaptureDraft =
   | (JobCaptureFields & {
-      captureMethod: "automatic" | "selection";
+      captureMethod: 'automatic' | 'selection';
       sourceUrl: string;
     })
   | (JobCaptureFields & {
-      captureMethod: "manual";
+      captureMethod: 'manual';
       sourceUrl?: string;
     });
 ```
@@ -298,11 +293,11 @@ sequenceDiagram
 
 API application layer 至少保留三个供应商无关端口：
 
-| Port | 输入边界 | 结构化输出 | 不得承担 |
-| --- | --- | --- | --- |
-| `JDAnalyzer` | 已授权的 Job/JD 快照、分析选项 | 要求、技能、职责及可追溯依据 | 保存 Job、修改投递状态 |
-| `ResumeMatcher` | JD 分析结果、指定 ResumeVersion 的版本化提取文本、可选证据上下文 | 匹配维度、缺口、证据引用、建议 | 直接读取不受控文件、生成“可靠录用概率”或直接改写简历 |
-| `InterviewEvaluator` | 面试问题、用户回答、评分规则及可选上下文 | 分项评价、证据、改进建议 | 决定招聘结果或写入未经确认的业务事实 |
+| Port                 | 输入边界                                                         | 结构化输出                     | 不得承担                                             |
+| -------------------- | ---------------------------------------------------------------- | ------------------------------ | ---------------------------------------------------- |
+| `JDAnalyzer`         | 已授权的 Job/JD 快照、分析选项                                   | 要求、技能、职责及可追溯依据   | 保存 Job、修改投递状态                               |
+| `ResumeMatcher`      | JD 分析结果、指定 ResumeVersion 的版本化提取文本、可选证据上下文 | 匹配维度、缺口、证据引用、建议 | 直接读取不受控文件、生成“可靠录用概率”或直接改写简历 |
+| `InterviewEvaluator` | 面试问题、用户回答、评分规则及可选上下文                         | 分项评价、证据、改进建议       | 决定招聘结果或写入未经确认的业务事实                 |
 
 每个端口都使用版本化的输入/输出 schema。ResumeMatcher 依赖 Phase 6 的本地、provider-neutral PDF/DOCX 文本提取结果；提取失败时停止匹配，不把原始文件直接交给某个模型厂商兜底。Provider Adapter 负责 Prompt、模型调用、超时/重试和供应商响应解析；schema 校验通过后，application service 才能接收结果。LLM 原始响应、供应商错误和内部 Prompt 不直接返回客户端。
 
@@ -403,4 +398,4 @@ Phase 7 实施规格必须在真实启用前给出可测试的处理与检索预
 
 ## 14. 当前实施边界
 
-Phase 0 产品规格、API 契约、数据模型、路线图和起始 ADR 已获项目负责人批准。Phase 1 只建立可运行、可测试的工程骨架；“用户主动采集一个岗位并保存”的最小业务纵向切片仍在 Phase 3 实现，不自动扩展到认证、数据库业务、AI、RAG 或五个平台完整适配。
+Phase 0–2A 已获项目负责人批准，ADR-006 与最小 Phase 2B contract 已 Accepted。当前 Phase 2B 只实现认证、User/Identity/session persistence 与统一用户边界；真实 Auth0 tenant/application 配置仍需项目负责人提供，不得猜测。“用户主动采集一个岗位并保存”的最小业务纵向切片仍在 Phase 3，当前不得进入。

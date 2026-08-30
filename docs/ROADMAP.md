@@ -1,7 +1,8 @@
 # JobPilot Roadmap
 
-> 当前状态：Phase 1 — Engineering Skeleton 已实现并验证，等待项目负责人验收。  
-> Phase 0 已获得项目负责人明确批准。本文是实施计划，不表示后续业务功能已经完成。
+> 当前状态：Phase 0–2A 已获得项目负责人明确批准；当前处于 **Phase 2B — Authentication Implementation & User Boundary**，ADR-006 已 Accepted。
+>
+> 本文是实施计划，不表示 Phase 2B 或后续业务功能已经完成。
 
 ## 1. 里程碑边界
 
@@ -29,7 +30,8 @@ V1 在 MVP 稳定基础上完成五个平台 Adapter，并逐步加入结构化 
 
 Phase 0 规格基线  
 → Phase 1 工程基础  
-→ Phase 2 身份与数据边界  
+→ Phase 2A 认证架构门禁<br>
+→ Phase 2B 认证实现与用户边界<br>
 → Phase 3 岗位捕获垂直切片  
 → Phase 4 申请与简历版本（MVP）  
 → Phase 5 五平台覆盖  
@@ -86,7 +88,7 @@ Phase 0 规格基线
 - Extension 的初始权限预算：以 `activeTab`、用户手势和按需注入为默认，不申请无理由的广域常驻 host 权限；
 - apps/api：FastAPI 的应用入口、最小 CORS 配置边界和唯一的 `GET /health` 探针；
 - packages/shared-types 与 packages/api-client：仅加入当前真实需要的稳定共享契约；
-- 根级环境变量示例；PostgreSQL 在 Phase 2 出现首个真实持久化消费者时再建立开发配置；
+- 根级环境变量示例；PostgreSQL 在 Phase 2B 出现首个真实持久化消费者时再建立开发配置；
 - 统一的开发、构建、格式化、静态检查和测试命令；
 - 各应用/共享 package 就地维护的最小行为测试，以及 `AGENTS.md` 中的工程约束。
 
@@ -106,39 +108,84 @@ Phase 0 规格基线
 - 不加入 pgvector、对象存储、Sentry 或 GitHub Actions 的完整生产配置；
 - 不引入 Kubernetes、Kafka、微服务或多套状态管理方案。
 
-## Phase 2 — Authentication & User Boundary
+## Phase 2A — Authentication Architecture Decision Gate
 
 ### Objective
 
-建立最小可用认证闭环和强制用户级数据边界，为所有后续个人求职数据提供统一身份基础。
+在写认证代码前决定 Web、Chrome Extension 与 FastAPI 如何共享同一安全、可维护的用户身份，并冻结最小 Phase 2B contract、session 生命周期、授权、账号删除、数据导出与保留边界。
 
 ### Deliverables
 
-- User 的数据库迁移、领域模型和 API 表达模型；
-- 经评审的身份提供方式、credential 传输、会话生命周期及相应 ADR/安全边界，并据此冻结 auth API 契约；
-- 账号与个人数据生命周期规格：账号删除、数据导出、保留期、会话/凭据清理及后续敏感资源删除责任；
-- 注册、登录、退出和获取当前用户的最小 API 与 Web 流程；
-- Extension 按已批准方案完成最小登录/会话接入，不在本地另造一套身份状态；
-- API 层统一认证依赖和资源所有权检查模式；
-- 认证错误结构、敏感日志脱敏和测试夹具；
-- 单元、集成及最小浏览器认证流程测试。
+- Managed、self-hosted 与 OAuth/OIDC-centric 方案的定性比较矩阵；
+- `ADR-006-authentication-strategy.md`：推荐 Auth0 managed OIDC、双 transport、风险与迁移路径；
+- `AUTH_ARCHITECTURE.md`：Identity Model、Web/Extension sequence diagram、FastAPI boundary、session、revocation、deletion、authorization 与 threats；
+- `DATA_MODEL.md` 中最小 `(identity_issuer, identity_subject) -> User.id` 更新；
+- `API_CONTRACT.md` 中 provider-owned operation 与 Phase 2B JobPilot endpoint 的最小边界；
+- 账号与个人数据生命周期政策：分阶段数据导出、live deletion deadline、backup/log retention、restore ledger 和未来敏感资源删除责任；
+- Phase 2A/2B 路线、任务、README/AGENTS 与 ADR index 同步；
+- 独立架构、安全与契约审查结论。
 
 ### Acceptance Criteria
 
-- 用户可以完成注册、登录、刷新页面后保持预期会话并安全退出；
-- Extension 能通过已批准的交互流程取得认证上下文、调用 `/api/v1/auth/me`，并正确处理过期与退出；
-- 未认证请求访问受保护资源时返回统一错误；
-- 集成测试证明用户 A 无法访问用户 B 的受保护测试资源；
-- 密码或等价凭据不以明文存储，日志不记录凭据和 token；
-- 数据生命周期规格获得评审，且明确哪些能力必须在 Phase 4 收集简历前实现；
-- Router 只处理请求、校验、服务调用和响应，认证业务规则不进入组件或路由大函数。
+- Extension credential 的获取、可信存储、access/refresh lifetime、rotation、reuse、revoke、logout 和 MV3 worker 边界明确；
+- Web 明确采用 opaque HttpOnly session cookie，并记录 XSS、CSRF、CORS、SameSite 与本地开发约束；
+- FastAPI 将 cookie/bearer 统一为本地 User context，且业务查询强制同时使用 resource ID 和 authenticated user ID；
+- 账号 create/login/logout/expire/revoke/delete 和未来 Job/Application/Resume/Interview/Document 删除责任可测试；
+- 数据导出 owner/里程碑明确，生产 backup 最大保留窗口、日志窗口和 restore 前 deletion-ledger 重放规则可测试；
+- ADR 记录 provider 成本、可达性、锁定、迁移与 rejected alternatives；
+- Git diff 只包含 Phase 2A 文档/规划，没有依赖、schema、Auth UI、token code、provider account 或 middleware；
+- 项目负责人明确批准 ADR-006 后，才能进入 Phase 2B。
 
 ### Explicit Non-goals
 
-- 不实现企业组织、RBAC、管理员后台或团队邀请；
-- 不实现所有第三方社交登录；
+- 不安装 auth SDK、ORM 或 Alembic，不创建 migration/User/session table；
+- 不创建 Auth0 tenant/application/API，不写 provider secret 或 production config；
+- 不实现 login/register UI、password/JWT/refresh code、Extension login 或 FastAPI auth middleware；
+- 不设计组织、团队、RBAC、管理员矩阵或自建 OAuth Server；
+- 不进入 Phase 2B。
+
+## Phase 2B — Authentication Implementation & User Boundary
+
+### Objective
+
+在 ADR-006 获批且 Auth0 tenant/config/依赖范围单独批准后，实现最小可用认证闭环和强制用户级数据边界，为后续个人求职数据提供统一身份基础。
+
+### Deliverables
+
+- User 与最小 Web session/revocation state 的数据库迁移、领域模型和 API 表达模型；
+- 独立 dev Auth0 tenant 下的 Web confidential client、Extension public client 与 JobPilot API audience 配置；
+- Auth0 provider-managed email/password、验证/恢复与 Web Universal Login 接入；
+- Web Authorization Code/BFF、opaque HttpOnly cookie、CSRF、session rotation/revocation；
+- Extension `launchWebAuthFlow` + PKCE/state/nonce、signed ID-token nonce validation/discard、exact API/Auth0 host permissions、trusted token storage、single-flight rotating refresh 与 logout；
+- FastAPI cookie/bearer adapters、OIDC/JWT/JWKS 验证和统一 `AuthenticatedUser`；
+- `/api/v1/auth/session`、current-user profile、Web CSRF/logout/revoke-all 与 account deletion 的批准 contract；
+- `resource_id + authenticated_user_id` repository/service ownership pattern 和跨用户负向 fixture；
+- 认证错误、CORS、限流、敏感日志脱敏、本地 fake issuer/JWKS 与 provider outage 测试；
+- 账号删除工作流与当前 auth/User 数据的 write-ahead deletion marker、live deletion、最长 30 天 JobPilot backup、restore quarantine/replay、最长 30 天伪名日志窗口实现和测试；对象/向量删除在 Phase 4/7 收集对应数据前补齐；
+- `/api/v1/auth/me` 提供当前 User profile 的机器可读表达；完整账户导出 contract 在首个业务数据 Phase 冻结并随资源增量扩展；
+
+### Acceptance Criteria
+
+- 用户可以通过 hosted flow 创建/登录账号，Web 刷新后保持批准的会话并安全退出；JobPilot 不保存或接收密码；
+- Extension 通过用户手势和 PKCE 取得同一 identity 的短期 access context，调用 `/api/v1/auth/me`，并正确处理 worker 重启、rotation、reuse、过期与退出；
+- 未认证、错误 issuer/audience/algorithm/signature/time/token type、未验证 email 和撤销会话返回统一安全错误；
+- Web unsafe request 通过 CSRF + Origin 门禁，Web/Extension CORS 只有精确 allowlist；
+- 集成测试证明用户 A 无法读取、更新、引用或删除用户 B 的受保护资源；
+- 日志不记录密码、code、verifier、cookie、token、session secret 或 provider 原始 payload；
+- revoke/logout 明确测试短期 JWT 的残余 `exp` 窗口，不虚报瞬时失效；
+- 所有 Web logout 均有 Origin/Fetch gate；Extension rotation 在 worker termination/不确定结果时 fail closed；unknown `kid` 不能放大 JWKS fetch；
+- account deletion 立即阻止访问且能从部分失败中幂等恢复；
+- deletion write-ahead marker 先于 `202` 和 cleanup；User profile 可机器读取；JobPilot 备份过期、恢复前删除重放和日志保留均受批准时限约束；
+- hard-delete identity mapping 前经过 provider cutoff + max access-token lifetime + clock-skew quarantine，残余 JWT 无法 reprovision；
+- 完成删除后的重新注册创建新 User，不能恢复或重新关联旧账号资源；
+- Router 只处理请求、校验、service 与响应，认证业务规则不进入 React、popup、content script 或路由大函数。
+
+### Explicit Non-goals
+
+- 不实现企业组织、RBAC、管理员后台、团队邀请、MFA 产品或 enterprise SSO；
+- 不同时接入多个身份 provider；Google connection 最多作为后续单独批准的可选入口；
 - 不实现岗位、申请或简历业务；
-- 不把完整生产身份平台能力提前塞入 MVP。
+- 不自建 password database、OAuth authorization server 或通用 IAM 平台。
 
 ## Phase 3 — Job Capture & Job Library Vertical Slice
 
@@ -155,6 +202,7 @@ Phase 0 规格基线
 - 当前页提取、确认/修正、保存和失败兜底的轻交互；
 - `activeTab`/按需注入、optional host permission 及 Extension 消息 sender/tab/frame/schema 校验的实现与安全测试；
 - Web 岗位库的最小可用列表和详情；
+- 机器可读账户导出 contract，以及 User profile 和全部用户自有 Job 的导出；后续资源按所属 Phase 增量纳入；
 - 参考 Adapter 的保存 HTML fixture、契约测试、API 集成测试和主流程浏览器测试；
 - 重复来源链接或重复保存的行为规则及测试。
 
@@ -166,6 +214,7 @@ Phase 0 规格基线
 - 解析输出统一通过 JobCapture 校验，Content Script 不包含持久化或业务决策；
 - Adapter 自动化测试只使用本地 fixture，不访问真实招聘平台；
 - 不同用户的岗位记录严格隔离；
+- 账户导出只包含当前用户的 User/Job 数据，不包含 credential、provider/session 内部字段或其他用户数据；
 - 无法识别或字段缺失时进入可理解的兜底流程，不静默伪造字段。
 
 ### Explicit Non-goals
@@ -192,6 +241,7 @@ Phase 0 规格基线
 - 文件存储采用 S3 兼容抽象；本阶段只实现简历版本所需的最小能力；
 - 对象存储安全与一致性规格：私有对象、服务端 key、流式限长、类型验证、恶意文件隔离策略、配额/并发、失败补偿和孤儿对象回收；
 - 用户隔离、状态转换、对象所有权/内部字段不泄露、上传失败补偿和端到端 MVP 测试；
+- 将 Application、ResumeVersion 元数据和原始文件纳入账户导出；导出产物保持私有、授权访问并按批准的短期 TTL 清理；
 - MVP 操作说明和已知限制。
 
 ### Acceptance Criteria
@@ -204,6 +254,7 @@ Phase 0 规格基线
 - 非法状态转换、跨用户 Job/ResumeVersion 关联及对象所有权违规均被拒绝且返回统一错误；普通 API 响应不泄露 object key、内部 URL 或内容哈希；
 - 对象写入或数据库提交任一失败时不产生可访问的半成品；回收流程能识别并处理孤儿对象；
 - MVP 主流程从登录到岗位保存、申请更新和简历关联通过端到端测试；
+- 删除确认前可取得包含 User、Job、Application、ResumeVersion 元数据和原始文件的完整 MVP 账户导出，且不导出 credential、内部 object key 或安全 ledger；
 - Phase 1–4 文档、实现和测试一致，完成 MVP 阶段评审。
 
 ### Explicit Non-goals
@@ -444,15 +495,15 @@ Phase 0 规格基线
 
 ## 3. 跨阶段风险与控制
 
-| 风险 | 影响阶段 | 控制方式 |
-|---|---|---|
-| 招聘平台 DOM 与访问规则变化 | Phase 3、5 | 独立 Adapter、本地 fixture、人工兜底、上线前合规复核 |
-| 用户数据泄露 | Phase 2–11 | 默认用户隔离、对象授权、日志脱敏、跨用户负向测试 |
-| LLM 结果漂移或不可用 | Phase 6–10 | Provider 抽象、结构校验、版本记录、评估样例、清晰降级 |
-| 过早抽象导致维护负担 | 所有阶段 | 只实现当期契约，第三次稳定重复后再抽象，阶段末简化 |
-| 范围持续膨胀 | 所有阶段 | Explicit Non-goals、阶段审批、MVP/V1 门禁、规格先行 |
-| 文档与实现偏离 | Phase 1–11 | 每阶段文档更新纳入验收，ADR 记录关键取舍 |
+| 风险                        | 影响阶段    | 控制方式                                                       |
+| --------------------------- | ----------- | -------------------------------------------------------------- |
+| 招聘平台 DOM 与访问规则变化 | Phase 3、5  | 独立 Adapter、本地 fixture、人工兜底、上线前合规复核           |
+| 用户数据泄露                | Phase 2A–11 | 认证架构门禁、默认用户隔离、对象授权、日志脱敏、跨用户负向测试 |
+| LLM 结果漂移或不可用        | Phase 6–10  | Provider 抽象、结构校验、版本记录、评估样例、清晰降级          |
+| 过早抽象导致维护负担        | 所有阶段    | 只实现当期契约，第三次稳定重复后再抽象，阶段末简化             |
+| 范围持续膨胀                | 所有阶段    | Explicit Non-goals、阶段审批、MVP/V1 门禁、规格先行            |
+| 文档与实现偏离              | Phase 1–11  | 每阶段文档更新纳入验收，ADR 记录关键取舍                       |
 
 ## 4. 当前下一步
 
-仅完成并评审 Phase 1 工程骨架。未获得项目负责人对 Phase 1 的明确批准前，不进入 Phase 2，不实现认证、用户数据持久化或其他正式业务功能。
+执行并验收 Phase 2B 的最小统一认证闭环。代码、依赖与 schema 实施已获授权；真实 Auth0 tenant/application、IDs、origins、redirects、capabilities 与 secrets 仍需项目负责人提供，不得猜测或擅自创建。Phase 2B 完成评审、简化和文档同步前不得进入 Phase 3。

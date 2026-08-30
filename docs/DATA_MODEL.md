@@ -1,6 +1,7 @@
 # JobPilot MVP 核心数据模型（Phase 1–4）
 
-> 文档状态：Phase 0 概念/逻辑模型（不是 SQL DDL，也不代表数据库已经实现）  
+> 文档状态：Phase 0 已批准的概念/逻辑模型；User 身份边界已按 Phase 2A Accepted architecture 更新（不是 SQL DDL，也不代表数据库已经实现）
+>
 > 展开范围：`User`、`Job`、`Application`、`ResumeVersion` 四个核心实体，以及 `Application` 内部的最小状态事件子记录  
 > 仅预留：`Interview`、`Document`、`Evidence`
 
@@ -14,7 +15,8 @@
 - API DTO 与持久化模型分离；数据库字段、对象存储 key 和内部审计字段不原样暴露。
 - 时间统一保存为带时区的 UTC 时间，展示时使用 User 的时区。
 - 字段命名在数据库使用 `snake_case`，API wire format 使用 `camelCase`。
-- Phase 0 不展开认证凭证、AI 分析结果、向量 chunk 或文件处理表；状态历史只保留 Application 所需的最小追加式子记录，不形成独立业务资源。
+- Auth0 管理密码、验证与恢复；本模型只保存 provider identity 到本地 User 的稳定映射，不保存 provider credential。Web/Extension session 的内部持久化细节由 [AUTH_ARCHITECTURE.md](AUTH_ARCHITECTURE.md) 约束，并留给 Phase 2B schema 规格。
+- 本模型不展开 AI 分析结果、向量 chunk 或文件处理表；状态历史只保留 Application 所需的最小追加式子记录，不形成独立业务资源。
 
 ## 2. 关系总览
 
@@ -37,10 +39,14 @@ erDiagram
 
     USER {
         uuid id PK
+        string identity_issuer
+        string identity_subject
         string email UK
         string display_name "nullable"
-        string locale
-        string time_zone
+        string locale "nullable"
+        string time_zone "nullable"
+        string account_status
+        timestamptz deletion_requested_at "nullable"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -109,23 +115,33 @@ erDiagram
 
 ### 职责
 
-代表 JobPilot 的资源所有者和个性化设置主体。认证凭证是否由本地认证或外部身份提供者管理，留给认证专项规格；凭证不混入本概念模型。
+代表 JobPilot 的资源所有者和个性化设置主体。Auth0 是 V1 Accepted reference identity provider；本地 User 将经过验证的 provider identity 映射为稳定 `id`。密码、密码哈希、authorization code、access/refresh token、Web session secret 和社交 provider token 均不属于 User。
 
 ### 核心字段
 
-| 字段 | 必需 | 语义与约束 |
-| --- | --- | --- |
-| `id` | 是 | 服务端生成的稳定 UUID；公开标识不承载业务含义 |
-| `email` | 是 | 登录/联系标识；写入前规范化；唯一；API 默认不向其他用户展示 |
-| `display_name` | 否 | 用户可修改的显示名称，不作为唯一标识 |
-| `locale` | 是 | 文案和 AI 输出语言偏好，例如 `zh-CN` |
-| `time_zone` | 是 | IANA 时区，例如 `Asia/Shanghai` |
-| `created_at` | 是 | 创建时间 |
-| `updated_at` | 是 | 最近一次可变资料更新时间 |
+| 字段                    | 必需 | 语义与约束                                                                                              |
+| ----------------------- | ---- | ------------------------------------------------------------------------------------------------------- |
+| `id`                    | 是   | 服务端生成的稳定 UUID；公开标识不承载业务含义                                                           |
+| `identity_issuer`       | 是   | 经过校验的 OIDC issuer；V1 只允许环境配置中的精确 Auth0 issuer                                          |
+| `identity_subject`      | 是   | issuer 下稳定、不透明且区分大小写的 `sub`；与 issuer 组成唯一身份映射                                   |
+| `email`                 | 是   | provider 已验证的可变联系/展示属性；写入前规范化；唯一；不是身份主键，也不用于自动合并账号              |
+| `display_name`          | 否   | 用户可修改的显示名称，不作为唯一标识                                                                    |
+| `locale`                | 否   | 用户明确设置的文案和 AI 输出语言偏好，例如 `zh-CN`；首次 identity provisioning 不从未验证客户端输入猜测 |
+| `time_zone`             | 否   | 用户明确设置的 IANA 时区，例如 `Asia/Shanghai`；首次 identity provisioning 保持为空                     |
+| `account_status`        | 是   | `active` 或 `deletion_pending`；认证边界只允许 active User 进入业务服务                                 |
+| `deletion_requested_at` | 否   | 账号进入 deletion workflow 的服务端时间；active 时为空                                                  |
+| `created_at`            | 是   | 创建时间                                                                                                |
+| `updated_at`            | 是   | 最近一次可变资料更新时间                                                                                |
 
 ### 约束
 
-- 账号删除、导出和数据保留策略必须在 Phase 2 形成数据生命周期规格；其中与简历、对象存储有关的删除责任最迟在 Phase 4 上传启用前实现并测试。
+- `(identity_issuer, identity_subject)` 唯一；所有业务表只引用本地 `User.id`，不得引用 Auth0 `sub`。
+- 同一 email 出现在不同 identity 上时停止并要求显式账号绑定/迁移；不得仅凭 email 自动合并。
+- 只有验证后的 email identity 才能激活本地 User。后续 provider claim 变化只能同步 allowlist 中的可变资料，不能覆盖本地授权状态。
+- `display_name`、`locale`、`time_zone` 初始可空，通过受认证的 `PATCH /api/v1/auth/me` 明确设置；API/UI 必须在为空时使用非持久化展示 fallback，而不是写入猜测值。
+- 账号删除按 [AUTH_ARCHITECTURE.md](AUTH_ARCHITECTURE.md#9-account-deletion) 执行：先在普通应用备份之外耐久写入 keyed `HMAC(User.id)` 的 `pending` restore marker，再把 User 事务性标为 `deletion_pending` 并写入 `deletion_requested_at`；两步成功后才返回 `202`，随后阻止访问、撤销会话并幂等删除业务/对象/派生数据。Auth0 identity 删除确认前保留该不可登录 User 和 marker 作为重试锚点；provider cutoff 获确认且 credential quarantine 完成后才硬删除本地 User。与简历、对象存储有关的责任最迟在 Phase 4 上传启用前实现并测试。
+- 数据导出和保留遵循同一生命周期规格：Phase 2B 的 `/auth/me` 覆盖当前 User profile，Phase 3 导出 User/Job，Phase 4 在接受 ResumeVersion 文件前补齐 Application、ResumeVersion 与原始文件；JobPilot-controlled live deletion、backup、restore ledger 和日志窗口以 [AUTH_ARCHITECTURE.md](AUTH_ARCHITECTURE.md#93-data-export-and-retention-policy) 的 Accepted 设计上限为准，Auth0-side retention 另按真实 DPA/tenant disclosure 审批。
+- Provider 确认不再签发 token 后，仍保留 `deletion_pending` mapping 至少一个最大 access-token lifetime + clock skew；残余 JWT 在此期间只能被拒绝，不能 reprovision。Quarantine 完成并硬删除后不保留 `(identity_issuer, identity_subject)` tombstone；以后明确重新注册会生成新 `User.id`，不能按 email、provider identity 或 restore marker 自动连接已删除账号的数据。
 - 其他核心实体必须通过 `user_id` 隔离；API 不允许跨用户引用 Job 或 ResumeVersion。
 
 ## 4. Job
@@ -136,24 +152,24 @@ erDiagram
 
 ### 核心字段
 
-| 字段 | 必需 | 语义与约束 |
-| --- | --- | --- |
-| `id` | 是 | 服务端生成 UUID |
-| `user_id` | 是 | 所有者；所有查询和写入的授权边界 |
-| `source` | 是 | `boss`、`nowcoder`、`shixiseng`、`liepin`、`iguopin`、`generic` 或 `manual` |
-| `source_job_id` | 否 | 页面明确提供时保存的平台岗位 ID；不得调用隐藏接口获取 |
-| `source_url` | 条件必需 | 自动/选区采集时为当前页面 URL；纯手动粘贴允许为空；写入前移除已知跟踪参数并规范化 |
-| `title` | 是 | 用户确认后的岗位名称 |
-| `company` | 是 | 用户确认后的公司名称 |
-| `salary_text` | 否 | 保留来源展示文本；早期不强行推断统一薪资数值 |
-| `location_text` | 否 | 保留来源展示文本；早期不强行推断行政区代码 |
-| `description` | 是 | 用户确认后的 JD 正文；服务端校验长度并安全呈现 |
-| `capture_method` | 是 | `automatic`、`selection` 或 `manual` |
-| `captured_at` | 是 | 客户端发生采集的时间；只作来源元数据，不替代服务端时间 |
-| `saved_at` | 是 | API 成功持久化的服务端时间，即“已收藏”事实 |
-| `archived_at` | 否 | 用户将收藏归档的时间；归档不等于投递关闭 |
-| `created_at` | 是 | 记录创建时间，通常与 `saved_at` 相同 |
-| `updated_at` | 是 | 用户修正快照字段或归档状态的时间 |
+| 字段             | 必需     | 语义与约束                                                                        |
+| ---------------- | -------- | --------------------------------------------------------------------------------- |
+| `id`             | 是       | 服务端生成 UUID                                                                   |
+| `user_id`        | 是       | 所有者；所有查询和写入的授权边界                                                  |
+| `source`         | 是       | `boss`、`nowcoder`、`shixiseng`、`liepin`、`iguopin`、`generic` 或 `manual`       |
+| `source_job_id`  | 否       | 页面明确提供时保存的平台岗位 ID；不得调用隐藏接口获取                             |
+| `source_url`     | 条件必需 | 自动/选区采集时为当前页面 URL；纯手动粘贴允许为空；写入前移除已知跟踪参数并规范化 |
+| `title`          | 是       | 用户确认后的岗位名称                                                              |
+| `company`        | 是       | 用户确认后的公司名称                                                              |
+| `salary_text`    | 否       | 保留来源展示文本；早期不强行推断统一薪资数值                                      |
+| `location_text`  | 否       | 保留来源展示文本；早期不强行推断行政区代码                                        |
+| `description`    | 是       | 用户确认后的 JD 正文；服务端校验长度并安全呈现                                    |
+| `capture_method` | 是       | `automatic`、`selection` 或 `manual`                                              |
+| `captured_at`    | 是       | 客户端发生采集的时间；只作来源元数据，不替代服务端时间                            |
+| `saved_at`       | 是       | API 成功持久化的服务端时间，即“已收藏”事实                                        |
+| `archived_at`    | 否       | 用户将收藏归档的时间；归档不等于投递关闭                                          |
+| `created_at`     | 是       | 记录创建时间，通常与 `saved_at` 相同                                              |
+| `updated_at`     | 是       | 用户修正快照字段或归档状态的时间                                                  |
 
 ### 收藏与去重
 
@@ -179,34 +195,34 @@ erDiagram
 
 ### 核心字段
 
-| 字段 | 必需 | 语义与约束 |
-| --- | --- | --- |
-| `id` | 是 | 服务端生成 UUID |
-| `user_id` | 是 | 所有者；必须与关联 Job、ResumeVersion 的所有者一致 |
-| `job_id` | 是 | 被跟踪的 Job；第一阶段与 `user_id` 组成唯一业务约束 |
-| `resume_version_id` | 否 | 实际投递使用的固定 ResumeVersion；尚未选择或未知时允许为空；离开 `planned` 后按下文规则锁定 |
-| `status` | 是 | 统一的 `ApplicationStatus`，只能取下文九个值 |
-| `status_changed_at` | 是 | 当前状态最近一次写入的服务端时间，等于最后一条事件的 `recorded_at`；不冒充现实流程发生时间 |
-| `applied_at` | 否 | 用户实际提交投递的时间；进入/越过 `applied` 后可补录一次，未知时不猜测；普通更新不能覆盖或清空已知值 |
-| `closed_at` | 否 | 进入 `closed` 时记录的关闭时间；纠正离开 `closed` 时清空；其他结果状态不自动等价为 closed |
-| `note` | 否 | 用户的简短工作流备注；不是面试记录或文档仓库 |
-| `created_at` | 是 | 工作流创建时间 |
-| `updated_at` | 是 | 最近更新时间 |
+| 字段                | 必需 | 语义与约束                                                                                           |
+| ------------------- | ---- | ---------------------------------------------------------------------------------------------------- |
+| `id`                | 是   | 服务端生成 UUID                                                                                      |
+| `user_id`           | 是   | 所有者；必须与关联 Job、ResumeVersion 的所有者一致                                                   |
+| `job_id`            | 是   | 被跟踪的 Job；第一阶段与 `user_id` 组成唯一业务约束                                                  |
+| `resume_version_id` | 否   | 实际投递使用的固定 ResumeVersion；尚未选择或未知时允许为空；离开 `planned` 后按下文规则锁定          |
+| `status`            | 是   | 统一的 `ApplicationStatus`，只能取下文九个值                                                         |
+| `status_changed_at` | 是   | 当前状态最近一次写入的服务端时间，等于最后一条事件的 `recorded_at`；不冒充现实流程发生时间           |
+| `applied_at`        | 否   | 用户实际提交投递的时间；进入/越过 `applied` 后可补录一次，未知时不猜测；普通更新不能覆盖或清空已知值 |
+| `closed_at`         | 否   | 进入 `closed` 时记录的关闭时间；纠正离开 `closed` 时清空；其他结果状态不自动等价为 closed            |
+| `note`              | 否   | 用户的简短工作流备注；不是面试记录或文档仓库                                                         |
+| `created_at`        | 是   | 工作流创建时间                                                                                       |
+| `updated_at`        | 是   | 最近更新时间                                                                                         |
 
 ### ApplicationStatusEvent（内部子记录）
 
 Application 创建时写入首条事件；之后只有状态真实变化时才追加事件。它用于保留 MVP 阶段无法事后重建的流程事实，并为后续阶段耗时和漏斗统计提供来源，但不作为可独立增删改查的业务资源。
 
-| 字段 | 必需 | 语义与约束 |
-| --- | --- | --- |
-| `id` | 是 | 内部稳定 UUID；不进入公共 `ApplicationStatusEventView` |
-| `application_id` | 是 | 所属 Application；授权始终通过 Application 的所有者判断 |
-| `from_status` | 否 | 创建事件为 `null`，其余事件为变更前状态 |
-| `to_status` | 是 | 变更后的合法 `ApplicationStatus` |
-| `change_kind` | 是 | `progress` 表示真实流程进展；`correction` 表示用户修正误录 |
-| `note` | 否 | 本次变更的简短说明；correction 必填 |
-| `occurred_at` | 否 | 用户明确提供的现实流程发生时间；未知时保持为空，不由系统猜测 |
-| `recorded_at` | 是 | 服务端不可伪造的录入时间；用于稳定排序与审计 |
+| 字段             | 必需 | 语义与约束                                                   |
+| ---------------- | ---- | ------------------------------------------------------------ |
+| `id`             | 是   | 内部稳定 UUID；不进入公共 `ApplicationStatusEventView`       |
+| `application_id` | 是   | 所属 Application；授权始终通过 Application 的所有者判断      |
+| `from_status`    | 否   | 创建事件为 `null`，其余事件为变更前状态                      |
+| `to_status`      | 是   | 变更后的合法 `ApplicationStatus`                             |
+| `change_kind`    | 是   | `progress` 表示真实流程进展；`correction` 表示用户修正误录   |
+| `note`           | 否   | 本次变更的简短说明；correction 必填                          |
+| `occurred_at`    | 否   | 用户明确提供的现实流程发生时间；未知时保持为空，不由系统猜测 |
+| `recorded_at`    | 是   | 服务端不可伪造的录入时间；用于稳定排序与审计                 |
 
 `Application.status`、`status_changed_at` 与新增事件必须在同一事务中更新；当前字段是列表查询所需的权威快照，事件是不可原地修改的历史事实。同值更新是 no-op，不追加事件。阶段耗时优先使用相邻事件的 `occurred_at`；任一端缺失时，只能明确标注为基于系统 `recorded_at` 的近似统计。
 
@@ -234,17 +250,17 @@ withdrawn
 closed
 ```
 
-| 状态 | 含义 |
-| --- | --- |
-| `planned` | 用户明确计划投递，但尚未确认已提交 |
-| `applied` | 用户已通过招聘平台或其他渠道正式提交 |
-| `screening` | 简历筛选、招聘方初筛或电话初筛阶段 |
-| `assessment` | 笔试、在线测评、作业、案例或其他非面试考核；取代过窄的 `written_test` |
-| `interviewing` | 一轮或多轮正式面试进行中；轮次由未来 Interview 表达，不扩张状态枚举 |
-| `offer` | 已收到 offer；是否接受可在后续需求明确后建模，当前不猜测 |
-| `rejected` | 招聘方明确拒绝或流程明确失败 |
-| `withdrawn` | 用户主动退出该投递 |
-| `closed` | 用户明确结束/归档该工作流，例如岗位关闭、长期无响应或无需继续跟进；不代表成功或失败 |
+| 状态           | 含义                                                                                |
+| -------------- | ----------------------------------------------------------------------------------- |
+| `planned`      | 用户明确计划投递，但尚未确认已提交                                                  |
+| `applied`      | 用户已通过招聘平台或其他渠道正式提交                                                |
+| `screening`    | 简历筛选、招聘方初筛或电话初筛阶段                                                  |
+| `assessment`   | 笔试、在线测评、作业、案例或其他非面试考核；取代过窄的 `written_test`               |
+| `interviewing` | 一轮或多轮正式面试进行中；轮次由未来 Interview 表达，不扩张状态枚举                 |
+| `offer`        | 已收到 offer；是否接受可在后续需求明确后建模，当前不猜测                            |
+| `rejected`     | 招聘方明确拒绝或流程明确失败                                                        |
+| `withdrawn`    | 用户主动退出该投递                                                                  |
+| `closed`       | 用户明确结束/归档该工作流，例如岗位关闭、长期无响应或无需继续跟进；不代表成功或失败 |
 
 `saved` 被排除，因为它描述 Job 收藏事实而非投递进度。`assessment` 替代 `written_test`，可以覆盖国内平台常见的笔试，也能容纳测评、作业和案例环节而无需继续增加状态。
 
@@ -293,18 +309,18 @@ stateDiagram-v2
 
 ### 核心字段
 
-| 字段 | 必需 | 语义与约束 |
-| --- | --- | --- |
-| `id` | 是 | 服务端生成 UUID |
-| `user_id` | 是 | 所有者；对象读取和 Application 引用均受此边界约束 |
-| `version_number` | 是 | 用户范围内单调递增，与 `user_id` 组成唯一约束 |
-| `label` | 否 | 用户可读标签，例如“产品经理-数据方向” |
-| `original_filename` | 是 | 展示和下载用文件名；不能作为对象 key |
-| `mime_type` | 是 | 经服务端校验的允许类型，不仅信任客户端声明 |
-| `size_bytes` | 是 | 用于上传限制与完整性检查 |
-| `storage_object_key` | 是 | `ObjectStore` 返回的不透明私有 key；不进入普通 API DTO |
-| `content_sha256` | 是 | 完整性和重复上传判断，不作为跨用户共享依据 |
-| `created_at` | 是 | 该版本创建时间；版本内容创建后不可覆盖 |
+| 字段                 | 必需 | 语义与约束                                             |
+| -------------------- | ---- | ------------------------------------------------------ |
+| `id`                 | 是   | 服务端生成 UUID                                        |
+| `user_id`            | 是   | 所有者；对象读取和 Application 引用均受此边界约束      |
+| `version_number`     | 是   | 用户范围内单调递增，与 `user_id` 组成唯一约束          |
+| `label`              | 否   | 用户可读标签，例如“产品经理-数据方向”                  |
+| `original_filename`  | 是   | 展示和下载用文件名；不能作为对象 key                   |
+| `mime_type`          | 是   | 经服务端校验的允许类型，不仅信任客户端声明             |
+| `size_bytes`         | 是   | 用于上传限制与完整性检查                               |
+| `storage_object_key` | 是   | `ObjectStore` 返回的不透明私有 key；不进入普通 API DTO |
+| `content_sha256`     | 是   | 完整性和重复上传判断，不作为跨用户共享依据             |
+| `created_at`         | 是   | 该版本创建时间；版本内容创建后不可覆盖                 |
 
 ### 约束
 
@@ -339,7 +355,7 @@ stateDiagram-v2
 以下仅是进入数据库实现 Phase 时必须验证的候选，不是本轮建表：
 
 - 所有外键都验证同一 `user_id` 所有权；不能仅靠 UI 隐藏越权资源。
-- `User.email` 规范化后唯一。
+- `User(identity_issuer, identity_subject)` 唯一；`User.email` 规范化后唯一但不承担 identity linking。
 - `Application(user_id, job_id)` 第一阶段唯一。
 - `ApplicationStatusEvent(application_id, recorded_at, id)` 提供稳定历史顺序；事件不能绕过所属 Application 单独访问。
 - `ResumeVersion(user_id, version_number)` 唯一。
@@ -349,7 +365,8 @@ stateDiagram-v2
 
 ## 9. 尚待后续规格决定
 
-- 认证提供者、账号合并与用户删除/导出保留期。
+- Auth0 可达性/成本获得负责人批准后的具体 tenant、client、claim、session schema 与密钥管理；provider 迁移和显式账号绑定在出现真实需求时单独设计。
+- Phase 3 实现账户导出前，由项目负责人冻结导出格式、异步状态、下载控制与短期 artifact TTL；不得导出 credential、provider/session 内部字段、object key 或 deletion ledger。
 - Application 状态事件的长期保留和未来系统自动变更 actor 语义，在出现相应需求时再扩展；Phase 4 只记录用户触发的最小历史，并分别保留可空现实发生时间与可靠录入时间。
 - offer 接受/拒绝是否需要独立结果字段，必须以真实产品需求而不是枚举“全面性”驱动。
 - 简历允许的格式、大小、病毒检查、解析失败和重新处理策略。

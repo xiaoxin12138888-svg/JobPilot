@@ -6,13 +6,14 @@ JobPilot 不替代招聘网站，也不建设或批量抓取招聘职位数据�
 
 ## 当前阶段
 
-Phase 0 已完成评审并获得项目负责人明确批准。项目当前严格处于 **Phase 1 — Engineering Skeleton**。
+Phase 0、Phase 1 和 Phase 2A 已完成评审并获得项目负责人明确批准。项目当前严格处于 **Phase 2B — Authentication Implementation & User Boundary**。
 
-- 本阶段只建立可运行、可测试的 Web、浏览器扩展和 API 工程骨架。
-- 不实现认证、数据库业务模型、岗位采集、AI、RAG 或其他正式业务功能。
-- Phase 1 完成验收并获得明确批准前，不进入 Phase 2。
+- 已接受 [ADR-006](docs/DECISIONS/ADR-006-authentication-strategy.md)：Auth0 managed OIDC；Web 使用 FastAPI/BFF 的 opaque HttpOnly session，Extension 使用 Authorization Code + PKCE 的短期 bearer。
+- 本阶段只实现 Web、Chrome Extension、FastAPI 与 PostgreSQL 的最小统一身份闭环，以及 `issuer + subject -> JobPilot User.id` 的用户边界。
+- 自动化实现使用 deterministic fake issuer/JWKS；真实 Auth0 tenant、applications、IDs、origins、redirects 与 secrets 仍是明确的人机配置门禁，不得猜测或擅自创建。
+- 本阶段不实现 Job、Application、Resume、AI、RAG 或其他 Phase 3+ 能力；Phase 2B 验收前不得进入 Phase 3。
 
-## Phase 1 当前实现
+## 已批准的 Phase 1 工程基线
 
 - `apps/web`：React/Vite 开发状态页，显示运行环境与 API 连接状态。
 - `apps/extension`：Manifest V3 Popup，仅在用户打开 Popup 时读取当前标签页 URL，并检查 API 连接。
@@ -20,7 +21,7 @@ Phase 0 已完成评审并获得项目负责人明确批准。项目当前严格
 - `packages/shared-types`：当前仅共享 `ApiHealthResponse`。
 - `packages/api-client`：当前仅封装经响应校验的 `getHealth()`。
 
-本阶段没有 PostgreSQL、ORM、认证、岗位数据、招聘网站解析或 AI/RAG 实现。
+当前仓库仍没有 PostgreSQL 业务 persistence、ORM、认证实现、岗位数据、招聘网站解析或 AI/RAG。Phase 2A 新增内容仅为架构与契约文档。
 
 ## 目标技术栈
 
@@ -132,6 +133,7 @@ pnpm dev:extension
 
 - [产品规格](docs/PRODUCT_SPEC.md)
 - [系统架构](docs/ARCHITECTURE.md)
+- [认证架构（Phase 2A Accepted）](docs/AUTH_ARCHITECTURE.md)
 - [工程原则](docs/ENGINEERING_PRINCIPLES.md)
 - [API 契约](docs/API_CONTRACT.md)
 - [数据模型](docs/DATA_MODEL.md)
