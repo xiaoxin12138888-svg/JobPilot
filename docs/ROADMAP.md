@@ -1,8 +1,8 @@
 # JobPilot Roadmap
 
-> 当前状态：Phase 0–2A 已获得项目负责人明确批准；当前处于 **Phase 2B — Authentication Implementation & User Boundary**，ADR-006 已 Accepted。
+> 当前状态：Phase 0–2A 已获得项目负责人明确批准；当前处于 **Phase 2B — Authentication Implementation & User Boundary**，ADR-006 已 Accepted。Task 6 Web server-backed session 已完成确定性实现并等待负责人验收，Task 7 尚未开始。
 >
-> 本文是实施计划，不表示 Phase 2B 或后续业务功能已经完成。
+> 本文是实施计划；Task 6 的完成不表示整个 Phase 2B 或后续业务功能已经完成。
 
 ## 1. 里程碑边界
 
@@ -158,10 +158,10 @@ Phase 0 规格基线
 - Web Authorization Code/BFF、opaque HttpOnly cookie、CSRF、session rotation/revocation；
 - Extension `launchWebAuthFlow` + PKCE/state/nonce、signed ID-token nonce validation/discard、exact API/Auth0 host permissions、trusted token storage、single-flight rotating refresh 与 logout；
 - FastAPI cookie/bearer adapters、OIDC/JWT/JWKS 验证和统一 `AuthenticatedUser`；
-- `/api/v1/auth/session`、current-user profile、Web CSRF/logout/revoke-all 与 account deletion 的批准 contract；
+- `/api/v1/auth/session`、current-user profile、Web CSRF 与 local logout 的批准 contract；recent reauthentication、revoke-all 与 account deletion 保留 Accepted design，但不在当前最小闭环实现；
 - `resource_id + authenticated_user_id` repository/service ownership pattern 和跨用户负向 fixture；
 - 认证错误、CORS、限流、敏感日志脱敏、本地 fake issuer/JWKS 与 provider outage 测试；
-- 账号删除工作流与当前 auth/User 数据的 write-ahead deletion marker、live deletion、最长 30 天 JobPilot backup、restore quarantine/replay、最长 30 天伪名日志窗口实现和测试；对象/向量删除在 Phase 4/7 收集对应数据前补齐；
+- 账号删除、write-ahead restore marker、backup replay/quarantine 与 provider cutoff policy 继续由认证架构约束，但只在后续单独批准的 account-lifecycle task 实现；当前不发布不安全的缩减版 endpoint；
 - `/api/v1/auth/me` 提供当前 User profile 的机器可读表达；完整账户导出 contract 在首个业务数据 Phase 冻结并随资源增量扩展；
 
 ### Acceptance Criteria
@@ -174,10 +174,7 @@ Phase 0 规格基线
 - 日志不记录密码、code、verifier、cookie、token、session secret 或 provider 原始 payload；
 - revoke/logout 明确测试短期 JWT 的残余 `exp` 窗口，不虚报瞬时失效；
 - 所有 Web logout 均有 Origin/Fetch gate；Extension rotation 在 worker termination/不确定结果时 fail closed；unknown `kid` 不能放大 JWKS fetch；
-- account deletion 立即阻止访问且能从部分失败中幂等恢复；
-- deletion write-ahead marker 先于 `202` 和 cleanup；User profile 可机器读取；JobPilot 备份过期、恢复前删除重放和日志保留均受批准时限约束；
-- hard-delete identity mapping 前经过 provider cutoff + max access-token lifetime + clock-skew quarantine，残余 JWT 无法 reprovision；
-- 完成删除后的重新注册创建新 User，不能恢复或重新关联旧账号资源；
+- 当前 OpenAPI 不暴露 recent reauthentication、revoke-all 或 account deletion 的半实现；其 Accepted lifecycle invariants 留给单独批准的后续 task，不能被当前 local logout 结果替代或虚报；
 - Router 只处理请求、校验、service 与响应，认证业务规则不进入 React、popup、content script 或路由大函数。
 
 ### Explicit Non-goals
@@ -185,6 +182,7 @@ Phase 0 规格基线
 - 不实现企业组织、RBAC、管理员后台、团队邀请、MFA 产品或 enterprise SSO；
 - 不同时接入多个身份 provider；Google connection 最多作为后续单独批准的可选入口；
 - 不实现岗位、申请或简历业务；
+- 不在当前最小 Phase 2B closure 中实现 recent reauthentication、revoke-all、KMS/backup restore ledger 或 account deletion；这些能力必须作为完整 account-lifecycle task 另行批准，不能拆成不安全的部分实现；
 - 不自建 password database、OAuth authorization server 或通用 IAM 平台。
 
 ## Phase 3 — Job Capture & Job Library Vertical Slice

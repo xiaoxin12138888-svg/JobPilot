@@ -98,6 +98,8 @@ Extension bearer
 
 The project owner's current Task 6 instruction supersedes the older Phase-level numbering that split persistence, BFF flow, and Web UI into Tasks 6–8. Current Task 6 is one bounded Web server-backed authentication closure delivered through the following independently tested sub-slices. Recent reauthentication and revoke-all are deferred; Task 7 is Extension Authorization Code + PKCE.
 
+**Current status:** Task 6A–6D implementation and deterministic gates are complete; real Auth0 Web verification remains `BLOCKED / USER ACTION REQUIRED`, and Task 7 has not started.
+
 ### Task 1: Lock the approved dependencies and configuration contract
 
 **Acceptance:** one ORM, one JWT library, one Python HTTP client, one Extension OAuth library; lockfiles update reproducibly; `.env.example` contains placeholders only.
@@ -156,6 +158,8 @@ The project owner's current Task 6 instruction supersedes the older Phase-level 
 
 ### Task 6A: Add Web session persistence migration
 
+**Status:** Complete in `c312949`.
+
 **Acceptance:** WebSession and LoginTransaction tables contain only the minimum opaque-hash/CSRF/expiry/revocation and short-lived OIDC transaction fields; migration upgrades and downgrades cleanly without changing User/Identity semantics.
 
 **Verify:** PostgreSQL migration and persistence tests.
@@ -165,6 +169,8 @@ The project owner's current Task 6 instruction supersedes the older Phase-level 
 **Likely files:** second Alembic revision, database models/repositories, session tests.
 
 ### Task 6B: Add Web BFF login/callback flow
+
+**Status:** Complete in `4fba2a3` and `ea5a297`.
 
 **Acceptance:** authorize creates a 10-minute browser-bound `login|signup` transaction; callback handles success/cancel/timeout/provider-error with exact cleanup, validates nonce and required claims, discards provider tokens, rotates against session fixation, and redirects only to an allowlisted relative path. Recent reauthentication and revoke-all remain absent from OpenAPI.
 
@@ -176,6 +182,8 @@ The project owner's current Task 6 instruction supersedes the older Phase-level 
 
 ### Task 6C: Add cookie current-user, CSRF, and local logout
 
+**Status:** Complete in `ed692ae` and `bfd640f`.
+
 **Acceptance:** Web cookie and Extension bearer converge on `/api/v1/auth/me` while mixed credentials are rejected. Idle/absolute expiry, revocation, malformed/unknown sessions, session-bound CSRF, exact Origin/Fetch gates, idempotent local logout, and store-outage no-cookie-clear behavior pass.
 
 **Verify:** API/PostgreSQL integration tests for cookie `/me`, PATCH, CSRF, logout, expiry, and revocation.
@@ -183,6 +191,8 @@ The project owner's current Task 6 instruction supersedes the older Phase-level 
 **Dependencies:** Tasks 6A and 6B.
 
 ### Task 6D: Add the minimal Web authenticated UI
+
+**Status:** Complete in `df8d76b` and `bad3b37`.
 
 **Acceptance:** signed-out UI offers login; signed-in UI shows display name/email and local User ID; logout clears state; React never receives a bearer/refresh token.
 
@@ -194,9 +204,10 @@ The project owner's current Task 6 instruction supersedes the older Phase-level 
 
 ### Checkpoint B: API and Web closure
 
-- Bearer and Web cookie API tests pass.
-- Web component tests/typecheck/build pass.
-- No provider token reaches React or logs.
+- [x] Bearer and Web cookie API tests pass.
+- [x] Web component tests/typecheck/build and 320px browser runtime verification pass.
+- [x] No provider token reaches React, browser storage, build output, or logs.
+- [x] Real Auth0 Web verification is blocked only on project-owner tenant/application configuration; no live PASS is claimed.
 
 ### Task 7A: Add Extension configuration and login transaction
 

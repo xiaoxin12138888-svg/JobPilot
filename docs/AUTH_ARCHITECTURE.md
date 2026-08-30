@@ -1,14 +1,14 @@
 # JobPilot Authentication Architecture
 
-> **Status**：Phase 2A Accepted architecture; Phase 2B implementation is authorized, while real provider configuration remains a user-action gate.
+> **Status**：Phase 2A Accepted architecture; the deterministic Task 6 Web server-backed session slice is implemented, while Task 7 Extension PKCE and real provider configuration remain pending.
 >
 > **Decision record**：[ADR-006](DECISIONS/ADR-006-authentication-strategy.md)
 >
-> **Implementation gate**：Satisfied for deterministic Phase 2B code, dependencies, and schema. Real Auth0 tenant/application values must still be supplied and approved by the project owner.
+> **Implementation gate**：Satisfied for Task 6 code, tests, Web session schema, API and browser UI. Real Auth0 tenant/application values must still be supplied and approved by the project owner; no live provider verification is claimed.
 
 ## 1. Scope
 
-This document defines how the Web app, Chrome Extension, and FastAPI share one user identity while using transports appropriate to each runtime. It freezes the security and ownership boundaries needed by Phase 2B; it does not implement them.
+This document defines how the Web app, Chrome Extension, and FastAPI share one user identity while using transports appropriate to each runtime. It is both the accepted Phase 2B boundary and the implementation contract: Task 6 now implements the Web/BFF/session portions, while the Extension client lifecycle remains design-only until Task 7.
 
 V1 uses Auth0 as a managed OIDC identity provider. Auth0 owns credentials, email verification, recovery, hosted login, upstream OAuth connections, and provider refresh grants. JobPilot owns its local User, Web sessions, business authorization, account deletion orchestration, PostgreSQL data, and all future private objects. JobPilot-controlled retention limits do not claim control over Auth0's own logs/backups or legally required records; those provider-side terms must be reviewed and disclosed at the Phase 2B entry gate.
 
@@ -155,6 +155,7 @@ React never receives a bearer or refresh token. A bearer in `localStorage`, Inde
 - `SameSite=Lax` supports the top-level OIDC callback while reducing cross-site cookie sending. It is defense in depth, not the only CSRF control.
 - `returnTo` accepts only an allowlisted relative Web path. Arbitrary redirect URLs are rejected.
 - Production Web and API origins must be **schemeful same-site** so the `SameSite=Lax` session cookie is sent on API fetches; they may be cross-origin only with an exact Web-origin CORS allowlist and credentials. Wildcard/reflected origins are forbidden. A cross-site deployment requires reopening this ADR rather than silently changing the cookie to `SameSite=None`.
+- Production static hosting must rewrite `/auth/error` to the Web SPA entry and set a reviewed CSP plus security response headers at the deployment boundary. Task 6 deliberately does not add a permissive meta CSP or guess a hosting-provider configuration.
 
 ## 5. Extension Authentication Flow
 

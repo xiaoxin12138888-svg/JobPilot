@@ -1,6 +1,6 @@
 # JobPilot API Contract
 
-> 状态：Phase 0–2A 已批准；ADR-006 authentication contract 已获准用于 Phase 2B 实现，真实 Auth0 配置仍待用户提供
+> 状态：Phase 0–2A 已批准；Task 6 Web session endpoints 与 client contract 已确定性实现，Task 7 Extension client 和真实 Auth0 配置仍待完成
 >
 > 覆盖范围：Roadmap Phase 1–4  
 > 路径：业务 API 使用 `/api/v1`；基础设施探针使用 `/health`
@@ -37,7 +37,7 @@ Phase 1–4 **不包含** interviews、documents、analytics、RAG、模拟面�
 - `GET /health` 是唯一不位于 `/api/v1` 的 Phase 1 运维端点，不承载业务资源或兼容性语义。
 - JSON 字段与查询参数使用 `camelCase`。
 - ID 是不透明字符串。客户端只能比较和回传，不得解析或假设 UUID/数据库主键格式。
-- 时间使用 RFC 3339 UTC，例如 `2026-08-30T02:15:00Z`。
+- 时间使用 RFC 3339 UTC。服务端规范输出 uppercase `Z`（例如 `2026-08-30T02:15:00Z`）；客户端也接受语义等价的 `+00:00` 与可选小数秒，但拒绝非零 offset 和语义不确定的 `-00:00`。
 - 除文件上传外，请求和响应使用 `application/json`；JSON 文本使用 UTF-8 编码。
 - v1 内允许新增可选字段；删除字段、改变字段类型或语义属于破坏性变更，必须进入新的主版本或先完成废弃迁移。
 
@@ -174,7 +174,7 @@ Web cookie-authenticated unsafe request 必须提供 session-bound `X-CSRF-Token
 
 已签发的 stateless Extension access token 在 refresh revoke/logout 后最多继续有效到短期 `exp`。任何界面和 API 文档不得虚假承诺即时 JWT 失效。
 
-本节与下列 Phase 2B endpoint 已随 ADR-006 获负责人批准，可作为 deterministic Phase 2B 实现依据。真实 tenant/application/ID/origin/redirect/secret 不得猜测，完整边界见 [AUTH_ARCHITECTURE.md](AUTH_ARCHITECTURE.md)。
+本节与下列 Phase 2B endpoint 已随 ADR-006 获负责人批准。Task 6 已实现 Web authorize/callback、cookie `/auth/me`、CSRF 与 local logout；Extension client 的 PKCE/credential lifecycle 留给 Task 7。真实 tenant/application/ID/origin/redirect/secret 不得猜测，完整边界见 [AUTH_ARCHITECTURE.md](AUTH_ARCHITECTURE.md)。
 
 ## 4. 公共模型
 
@@ -284,7 +284,7 @@ JobPilot 不代理用户密码，不把这些路径伪装成 `/api/v1/auth/regis
 }
 ```
 
-`displayName` 可用 `null` 清空；`locale` 必须是支持的 BCP 47 tag，`timeZone` 必须是支持的 IANA time zone。首次 provider provisioning 不猜测这三个值，它们保持 `null` 直到用户明确设置。
+`displayName` 可用 `null` 清空，也允许最长 100 字符的字符串（包括空字符串和纯空白值）；展示层对 `null`、空字符串或纯空白值回退到已验证 email，而不把 fallback 持久化为资料。`locale` 必须是支持的 BCP 47 tag，`timeZone` 必须是支持的 IANA time zone。首次 provider provisioning 不猜测这三个值，它们保持 `null` 直到用户明确设置。
 
 - `200`：`{"data": <UserView>}`。
 - 主要错误：`401 AUTHENTICATION_REQUIRED`、`422 VALIDATION_ERROR`。

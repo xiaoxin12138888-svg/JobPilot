@@ -9,19 +9,21 @@ JobPilot 不替代招聘网站，也不建设或批量抓取招聘职位数据�
 Phase 0、Phase 1 和 Phase 2A 已完成评审并获得项目负责人明确批准。项目当前严格处于 **Phase 2B — Authentication Implementation & User Boundary**。
 
 - 已接受 [ADR-006](docs/DECISIONS/ADR-006-authentication-strategy.md)：Auth0 managed OIDC；Web 使用 FastAPI/BFF 的 opaque HttpOnly session，Extension 使用 Authorization Code + PKCE 的短期 bearer。
-- 本阶段只实现 Web、Chrome Extension、FastAPI 与 PostgreSQL 的最小统一身份闭环，以及 `issuer + subject -> JobPilot User.id` 的用户边界。
+- Task 6 的 Web server-backed authentication session 已完成确定性实现与自动化门禁，等待项目负责人验收；Task 7 Extension PKCE 尚未开始。
+- 当前实现只覆盖 Web、FastAPI、PostgreSQL 的最小认证闭环，以及已由 Task 5 建立的 `issuer + subject -> JobPilot User.id` 服务端边界。
 - 自动化实现使用 deterministic fake issuer/JWKS；真实 Auth0 tenant、applications、IDs、origins、redirects 与 secrets 仍是明确的人机配置门禁，不得猜测或擅自创建。
 - 本阶段不实现 Job、Application、Resume、AI、RAG 或其他 Phase 3+ 能力；Phase 2B 验收前不得进入 Phase 3。
 
-## 已批准的 Phase 1 工程基线
+## 当前实现状态（截至 Task 6）
 
-- `apps/web`：React/Vite 开发状态页，显示运行环境与 API 连接状态。
-- `apps/extension`：Manifest V3 Popup，仅在用户打开 Popup 时读取当前标签页 URL，并检查 API 连接。
-- `apps/api`：FastAPI 进程和唯一的 `GET /health` 基础设施探针。
-- `packages/shared-types`：当前仅共享 `ApiHealthResponse`。
-- `packages/api-client`：当前仅封装经响应校验的 `getHealth()`。
+- `apps/web`：最小认证状态 UI；按 `/api/v1/auth/me` → `/api/v1/auth/csrf` 恢复 server-backed session，提供固定 login navigation、本地 logout、失败与重试状态。React 不处理 OAuth token。
+- `apps/extension`：仍保持 Phase 1 的最小 Manifest V3 Popup；Task 7 的 Authorization Code + PKCE、service worker 与 credential lifecycle 尚未实现。
+- `apps/api`：保留 `GET /health`，并实现 provider-neutral identity boundary、Web OIDC authorize/callback、opaque session、cookie `/auth/me`、CSRF 与本地 logout。
+- PostgreSQL：通过 SQLAlchemy/Alembic 持久化 User、Identity、WebSession 与 LoginTransaction；session/CSRF 只存摘要，不保存 provider token/grant。
+- `packages/shared-types`：共享 health、批准的 `UserView` 与 CSRF response 类型。
+- `packages/api-client`：验证 health 与 Web session response，使用 cookie credentials 调用 `/auth/me`、CSRF 和 logout，并只投影批准的 User 字段。
 
-当前仓库仍没有 PostgreSQL 业务 persistence、ORM、认证实现、岗位数据、招聘网站解析或 AI/RAG。Phase 2A 新增内容仅为架构与契约文档。
+当前仓库仍没有 Job、Application、Resume 等 Phase 3+ 业务 persistence、招聘网站解析、Extension PKCE 或 AI/RAG。真实 Auth0 Web flow 也未验证，必须等待项目负责人提供并批准实际 tenant/application 配置。
 
 ## 目标技术栈
 
@@ -88,7 +90,7 @@ pnpm api:dev
 pnpm dev:web
 ```
 
-打开 `http://localhost:5173`。页面应显示 `API connection status: Connected`；API 探针位于 `http://localhost:8000/health`。
+打开 `http://localhost:5173`。Web 会先检查 `/api/v1/auth/me`，并显示 checking、signed-out、signed-in、callback error 或 unavailable 状态；API 探针位于 `http://localhost:8000/health`。未注入完整 Auth0/数据库运行时配置时，认证端点会 fail closed，不能据此声称真实登录已验证。
 
 ### 构建与加载 Extension
 
@@ -110,9 +112,10 @@ pnpm dev:extension
 
 - Vite 会从仓库根目录的 `.env` 读取 `VITE_API_BASE_URL`。该值是公开客户端配置，不是 secret。
 - Extension 的 API `host_permissions` 从同一个 `VITE_API_BASE_URL` 生成；修改该值后必须重新构建 Extension。
-- FastAPI 不自动读取根 `.env`，而是从 API 进程环境读取 `JOBPILOT_ENVIRONMENT` 和 `JOBPILOT_CORS_ORIGINS`。
+- FastAPI 不自动读取根 `.env`，而是从 API 进程环境读取 `JOBPILOT_*` 数据库、Auth0、Web session 与 CORS 配置；`JOBPILOT_AUTH_WEB_CLIENT_SECRET` 只允许注入服务端，绝不能使用 `VITE_` 前缀。
 - 未设置 API 变量时，开发环境默认精确允许 `http://localhost:5173`。`test` 和 `production` 默认不允许跨域来源。
 - 多个 CORS origin 使用逗号分隔；任何环境都拒绝 `*`。生产环境必须在启动 API 的运行环境中显式注入精确 origin。
+- 生产 Web host 必须把 `/auth/error` rewrite 到 SPA entry，并在部署层配置经评审的 CSP 与安全响应头；仓库不使用宽松的 meta CSP 伪装生产配置。
 
 ### 验证命令
 
@@ -133,7 +136,7 @@ pnpm dev:extension
 
 - [产品规格](docs/PRODUCT_SPEC.md)
 - [系统架构](docs/ARCHITECTURE.md)
-- [认证架构（Phase 2A Accepted）](docs/AUTH_ARCHITECTURE.md)
+- [认证架构（Phase 2A Accepted；Task 6 Web slice implemented）](docs/AUTH_ARCHITECTURE.md)
 - [工程原则](docs/ENGINEERING_PRINCIPLES.md)
 - [API 契约](docs/API_CONTRACT.md)
 - [数据模型](docs/DATA_MODEL.md)

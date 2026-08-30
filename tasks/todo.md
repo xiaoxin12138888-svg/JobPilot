@@ -26,7 +26,7 @@
 - [x] Extend `.env.example` with non-secret database/Auth0/session/Web/Extension configuration.
 - [x] Create exact User/Identity columns, nullability, constraints, and the first Alembic migration.
 - [x] Freeze the minimal hash-only WebSession/LoginTransaction model before migration.
-- [ ] Add WebSession/LoginTransaction in a new migration without rewriting migration `0001`.
+- [x] Add WebSession/LoginTransaction in a new migration without rewriting migration `0001`.
 - [x] Prove clean upgrade -> downgrade -> upgrade against real PostgreSQL.
 - [x] Prove User persistence, identity uniqueness, email conflict, and duplicate-race protection.
 
@@ -48,17 +48,28 @@
 
 ## Web Authentication
 
-- [ ] Implement bounded `login|signup` browser transactions and exact relative `returnTo` validation.
-- [ ] Implement authorize/callback with state, nonce, PKCE, and safe provider-error mapping.
-- [ ] Clean login transaction state on success, cancellation, timeout, mismatch, and provider error.
-- [ ] Store only an opaque HttpOnly session cookie in the browser.
-- [ ] Implement session restore through `/api/v1/auth/me`.
-- [ ] Implement session-bound CSRF plus exact Origin/Fetch Metadata checks.
-- [ ] Implement idempotent local logout and exact cookie deletion.
-- [ ] Prove session fixation rotation, idle/absolute expiry, missing/expired-session logout Origin gate, and store-outage behavior.
-- [ ] Keep recent reauthentication/revoke-all absent from OpenAPI until its later contract and provider capability gate are approved.
-- [ ] Render only signed-out/signed-in User state and logout in React.
-- [ ] Prove expiry behavior and that React never stores provider tokens.
+- [x] Implement bounded `login|signup` browser transactions and exact relative `returnTo` validation.
+- [x] Implement authorize/callback with state, nonce, PKCE, and safe provider-error mapping.
+- [x] Clean login transaction state on success, cancellation, timeout, mismatch, and provider error.
+- [x] Store only an opaque HttpOnly session cookie in the browser.
+- [x] Implement session restore through `/api/v1/auth/me`.
+- [x] Implement session-bound CSRF plus exact Origin/Fetch Metadata checks.
+- [x] Implement idempotent local logout and exact cookie deletion.
+- [x] Prove session fixation rotation, idle/absolute expiry, missing/expired-session logout Origin gate, and store-outage behavior.
+- [x] Keep recent reauthentication/revoke-all absent from OpenAPI until its later contract and provider capability gate are approved.
+- [x] Render only signed-out/signed-in User state and logout in React.
+- [x] Prove expiry behavior and that React never stores provider tokens.
+
+## Task 6 Review and Acceptance
+
+- [x] Run independent correctness, readability, architecture, security, performance, and dependency review.
+- [x] Resolve every Task 6 Critical and Required finding; final result is Critical 0 / Required 0.
+- [x] Run `code-simplification`; remove the unused shared response type and completed TDD reflection scaffolding.
+- [x] Pass 452 Pytest and 41 TypeScript tests, with no skipped Task 6 database coverage.
+- [x] Pass Ruff, ESLint, Prettier, typecheck, Web build, Extension regression build, API import/startup, and exact OpenAPI surface checks.
+- [x] Pass PostgreSQL upgrade -> downgrade -> upgrade, frozen pnpm install, locked uv sync, dependency audit, secret/token/storage/layer/scope/bundle scans, and Git diff checks.
+- [x] Keep real Auth0 Web verification marked `BLOCKED / USER ACTION REQUIRED` until the project owner supplies exact tenant/application values.
+- [x] Stop after Task 6; do not start Task 7 or Phase 3 without explicit project-owner approval.
 
 ## Extension Authentication
 
@@ -78,18 +89,19 @@
 
 ## Integration, Authorization, and Security
 
-- [ ] Prove Web session and Extension bearer for the same identity return the same JobPilot User ID.
-- [ ] Prove different subjects map to different User IDs.
+- [x] Prove Web session and Extension bearer for the same identity return the same JobPilot User ID.
+- [x] Prove different subjects map to different User IDs.
 - [ ] Prove a test-only repository/temporary-table fixture uses both resource ID and authenticated User ID; add no production Job-like schema or router.
-- [ ] Prove production CORS never permits `*` and only exact configured origins.
-- [ ] Prove production cookie flags and development loopback exception.
-- [ ] Fail production startup when Web/API are not HTTPS schemeful same-site; test the rejection path.
-- [ ] Prove unauthorized responses and provider failures reveal no user/credential/provider internals.
-- [ ] Scan tracked files and captured logs for secrets/tokens.
-- [ ] Confirm no Phase 3 Job/Application/Resume/AI/RAG implementation entered the diff.
+- [x] Prove production CORS never permits `*` and only exact configured origins.
+- [x] Prove production cookie flags and development loopback exception.
+- [x] Fail production startup when Web/API are not HTTPS schemeful same-site; test the rejection path.
+- [x] Prove unauthorized responses and provider failures reveal no user/credential/provider internals.
+- [x] Scan tracked files and captured logs for secrets/tokens.
+- [x] Confirm no Phase 3 Job/Application/Resume/AI/RAG implementation entered the diff.
 - [ ] Build/test Extension with deterministic `.invalid` configuration, require real production values at runtime/build, and never claim that fake config is live Auth0 verification.
+- [ ] Configure the production Web host to rewrite `/auth/error` to the SPA entry and set reviewed CSP/security response headers; this deployment-specific gate is not a permissive meta tag.
 
-## Review and Acceptance
+## Phase 2B Final Review and Acceptance
 
 - [ ] Run `code-review-and-quality` across correctness, readability, architecture, security, performance, and dependency health.
 - [ ] Resolve every Critical and Required finding.

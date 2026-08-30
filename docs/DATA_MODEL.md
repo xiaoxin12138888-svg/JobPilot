@@ -1,6 +1,6 @@
 # JobPilot MVP 核心数据模型（Phase 1–4）
 
-> 文档状态：Phase 0 已批准的概念/逻辑模型；User/Identity 已在 Phase 2B 实现，Task 6 冻结最小 Web session schema（本文仍不是迁移文件或公共 API DTO）
+> 文档状态：Phase 0 已批准的概念/逻辑模型；User/Identity 与 Task 6 最小 WebSession/LoginTransaction schema 已在 Phase 2B 实现（本文仍不是迁移文件或公共 API DTO）
 >
 > 展开范围：`User`、`Job`、`Application`、`ResumeVersion` 四个核心实体，以及 `Application` 内部的最小状态事件子记录  
 > 仅预留：`Interview`、`Document`、`Evidence`
@@ -397,7 +397,7 @@ stateDiagram-v2
 
 ## 8. 完整性与索引候选
 
-以下仅是进入数据库实现 Phase 时必须验证的候选，不是本轮建表：
+以下约束随各模型进入数据库时验证。User、Identity、WebSession 与 LoginTransaction 已由 Phase 2B migrations/integration tests 覆盖；其余仍是后续业务 Phase 的候选：
 
 - 所有外键都验证同一 `user_id` 所有权；不能仅靠 UI 隐藏越权资源。
 - `Identity(issuer, subject)` 唯一；`User.email` 规范化后唯一但不承担 identity linking。
