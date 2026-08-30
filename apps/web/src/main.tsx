@@ -12,6 +12,9 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <App environment={import.meta.env.MODE} healthCheck={apiClient.getHealth} />
+    <App
+      apiClient={apiClient}
+      hasAuthenticationError={window.location.pathname === '/auth/error'}
+    />
   </StrictMode>,
 );
