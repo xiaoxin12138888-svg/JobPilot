@@ -22,6 +22,7 @@ from jobpilot_api.main import create_app
 
 ISSUER = "https://tenant.example.invalid/"
 JWKS_URL = "https://tenant.example.invalid/.well-known/jwks.json"
+AUTHORIZE_URL = "https://tenant.example.invalid/authorize"
 TOKEN_URL = "https://tenant.example.invalid/oauth/token"
 AUDIENCE = "https://api.jobpilot.example.invalid"
 EXTENSION_CLIENT_ID = "extension-client-id"
@@ -77,9 +78,14 @@ def _settings(database_url: str) -> ApiSettings:
         auth=AuthSettings(
             issuer=ISSUER,
             jwks_url=JWKS_URL,
+            authorize_url=AUTHORIZE_URL,
             token_url=TOKEN_URL,
             audience=AUDIENCE,
             extension_client_id=EXTENSION_CLIENT_ID,
+            web_client_id="web-client-id",
+            web_client_secret="web-client-secret",
+            web_origin="https://api.jobpilot.example.invalid",
+            web_callback_url=("https://api.jobpilot.example.invalid/api/v1/auth/web/callback"),
             access_token_email_claim=EMAIL_CLAIM,
             access_token_email_verified_claim=EMAIL_VERIFIED_CLAIM,
         ),

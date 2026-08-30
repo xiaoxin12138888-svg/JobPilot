@@ -16,9 +16,14 @@ def _configured_settings() -> ApiSettings:
         auth=AuthSettings(
             issuer="https://tenant.example.invalid/",
             jwks_url="https://tenant.example.invalid/.well-known/jwks.json",
+            authorize_url="https://tenant.example.invalid/authorize",
             token_url="https://tenant.example.invalid/oauth/token",
             audience="https://api.jobpilot.example.invalid",
             extension_client_id="extension-client-id",
+            web_client_id="web-client-id",
+            web_client_secret="web-client-secret",
+            web_origin="https://api.jobpilot.example.invalid",
+            web_callback_url=("https://api.jobpilot.example.invalid/api/v1/auth/web/callback"),
             access_token_email_claim="https://jobpilot.example.invalid/claims/email",
             access_token_email_verified_claim=(
                 "https://jobpilot.example.invalid/claims/email_verified"
