@@ -33,14 +33,15 @@
 
 - [x] Define the provider-neutral `VerifiedProviderIdentity` type.
 - [ ] Define the provider-neutral `AuthenticatedUser` type.
-- [ ] Keep JWT/OIDC/provider code inside infrastructure/auth.
-- [ ] Implement deterministic fixed-issuer/JWKS validation with mature crypto.
+- [x] Keep JWT/OIDC/provider code inside infrastructure/auth.
+- [x] Implement deterministic fixed-issuer/JWKS validation with mature crypto.
 - [x] Implement idempotent Identity -> User mapping in an application service.
 - [ ] Implement `POST /api/v1/auth/session` for Extension provisioning.
 - [ ] Implement `GET /api/v1/auth/me` without provider/session leakage.
 - [ ] Implement `PATCH /api/v1/auth/me` for display name, locale, and time zone.
 - [ ] Reject missing, malformed, expired, wrong-issuer, wrong-audience, wrong-signature/algorithm/`azp`, future-`nbf`, wrong-token-type, ID-token-as-bearer, query-token, and unverified-email credentials.
-- [ ] Bound unknown-`kid` refresh to the fixed issuer/JWKS without advanced distributed caching.
+- [x] Bound unknown-`kid` refresh to the fixed issuer/JWKS without advanced distributed caching.
+- [ ] Before exposing bearer routes, construct one process-scoped validator and HTTP client in the application lifespan and prove requests reuse the JWKS cache.
 - [ ] Reject cookie+bearer ambiguity, unknown identity on normal endpoints, and deletion-pending reprovision.
 - [ ] Keep routers free of JWT parsing, provider calls, and User creation logic.
 
