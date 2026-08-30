@@ -88,6 +88,27 @@ describe('createApiClient', () => {
     });
   });
 
+  it('accepts an empty display name allowed by the UserView contract', async () => {
+    const payload = {
+      data: {
+        ...currentUserPayload.data,
+        displayName: '',
+      },
+    };
+    const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    const client = createApiClient({
+      baseUrl: 'http://localhost:8000',
+      fetchImplementation,
+    });
+
+    await expect(client.getCurrentUser()).resolves.toEqual(payload.data);
+  });
+
   it('maps a rejected session to a bounded machine-readable client error', async () => {
     const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(

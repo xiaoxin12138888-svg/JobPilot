@@ -199,8 +199,8 @@ function parseUserResponse(value: unknown): UserView | undefined {
     isBoundedString(user.id, 200) &&
     isBoundedString(user.email, 254) &&
     isNullableBoundedString(user.displayName, 100) &&
-    isNullableBoundedString(user.locale, 35) &&
-    isNullableBoundedString(user.timeZone, 100) &&
+    isNullableNonEmptyBoundedString(user.locale, 35) &&
+    isNullableNonEmptyBoundedString(user.timeZone, 100) &&
     isTimestamp(user.createdAt) &&
     isTimestamp(user.updatedAt)
   ) {
@@ -243,6 +243,13 @@ function isBoundedString(value: unknown, maximumLength: number): value is string
 }
 
 function isNullableBoundedString(value: unknown, maximumLength: number): value is string | null {
+  return value === null || (typeof value === 'string' && value.length <= maximumLength);
+}
+
+function isNullableNonEmptyBoundedString(
+  value: unknown,
+  maximumLength: number,
+): value is string | null {
   return value === null || isBoundedString(value, maximumLength);
 }
 

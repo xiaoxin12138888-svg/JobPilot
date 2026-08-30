@@ -137,6 +137,19 @@ describe('App', () => {
     expect(await screen.findByText('欢迎，lin@example.com')).toBeInTheDocument();
   });
 
+  it('falls back to verified email when displayName is empty', async () => {
+    const apiClient = createAuthClient({
+      getCurrentUser: vi.fn<ApiClient['getCurrentUser']>().mockResolvedValue({
+        ...currentUser,
+        displayName: '',
+      }),
+    });
+
+    render(<App apiClient={apiClient} />);
+
+    expect(await screen.findByText('欢迎，lin@example.com')).toBeInTheDocument();
+  });
+
   it('keeps the visible user and reports uncertainty when logout fails', async () => {
     const apiClient = createAuthClient({
       logoutWebSession: vi
