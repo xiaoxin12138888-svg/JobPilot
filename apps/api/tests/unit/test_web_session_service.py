@@ -8,10 +8,11 @@ from uuid import uuid4
 
 import pytest
 
-import jobpilot_api.application.web_session_service as web_session_module
 from jobpilot_api.application.web_session_service import (
     CSRF_DERIVATION_CONTEXT,
     InvalidSessionSecretError,
+    WebSessionAuthenticationRequiredError,
+    WebSessionCsrfRejectedError,
     WebSessionPersistenceError,
     WebSessionService,
     WebSessionStoreUnavailableError,
@@ -142,14 +143,6 @@ def _active_session(
         absolute_expires_at=absolute_expires_at or now + timedelta(days=5),
         revoked_at=None,
     )
-
-
-def _expected_error_type(name: str) -> type[Exception]:
-    error_type = getattr(web_session_module, name, None)
-    assert isinstance(error_type, type) and issubclass(error_type, Exception), (
-        f"web session application boundary must define {name}"
-    )
-    return error_type
 
 
 def test_issue_derives_session_bound_csrf_and_persists_only_hashes() -> None:
@@ -284,9 +277,7 @@ def test_authenticate_rejects_malformed_secret_before_opening_store(
         return RecordingWebSessionUnitOfWork(RecordingWebSessionRepository())
 
     service = WebSessionService(open_unit_of_work)
-    authentication_required = _expected_error_type("WebSessionAuthenticationRequiredError")
-
-    with pytest.raises(authentication_required):
+    with pytest.raises(WebSessionAuthenticationRequiredError):
         service.authenticate(malformed_secret)
 
     assert unit_of_work_opened is False
@@ -297,9 +288,7 @@ def test_authenticate_rejects_unknown_canonical_session_without_touching() -> No
     repository = RecordingWebSessionRepository(active_session=None)
     unit_of_work = RecordingWebSessionUnitOfWork(repository)
     service = WebSessionService(lambda: unit_of_work, clock=lambda: now)
-    authentication_required = _expected_error_type("WebSessionAuthenticationRequiredError")
-
-    with pytest.raises(authentication_required):
+    with pytest.raises(WebSessionAuthenticationRequiredError):
         service.authenticate(SESSION_SECRET)
 
     assert repository.lock_calls == [
@@ -388,9 +377,7 @@ def test_authenticate_with_csrf_failure_does_not_touch_or_commit(
     repository = RecordingWebSessionRepository(active_session=active)
     unit_of_work = RecordingWebSessionUnitOfWork(repository)
     service = WebSessionService(lambda: unit_of_work, clock=lambda: now)
-    csrf_rejected = _expected_error_type("WebSessionCsrfRejectedError")
-
-    with pytest.raises(csrf_rejected):
+    with pytest.raises(WebSessionCsrfRejectedError):
         service.authenticate_with_csrf(SESSION_SECRET, presented_csrf)
 
     assert repository.touch_calls == []
@@ -468,9 +455,7 @@ def test_logout_active_session_rejects_csrf_before_revoke_or_commit(
     repository = RecordingWebSessionRepository(active_session=_active_session(now=now))
     unit_of_work = RecordingWebSessionUnitOfWork(repository)
     service = WebSessionService(lambda: unit_of_work, clock=lambda: now)
-    csrf_rejected = _expected_error_type("WebSessionCsrfRejectedError")
-
-    with pytest.raises(csrf_rejected):
+    with pytest.raises(WebSessionCsrfRejectedError):
         service.logout(SESSION_SECRET, presented_csrf)
 
     assert repository.touch_calls == []

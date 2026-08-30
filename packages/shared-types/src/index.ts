@@ -13,10 +13,6 @@ export interface UserView {
   updatedAt: string;
 }
 
-export interface UserResponse {
-  data: UserView;
-}
-
 export interface CsrfTokenResponse {
   data: {
     csrfToken: string;
