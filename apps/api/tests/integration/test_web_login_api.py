@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -112,6 +113,7 @@ class FakeAuth0:
         self.email = "Person@Example.COM"
         self.email_verified = True
         self.token_status = 200
+        self.token_exception: Exception | None = None
         self.raw_id_tokens: list[str] = []
         self.raw_access_tokens: list[str] = []
 
@@ -121,6 +123,8 @@ class FakeAuth0:
         if request.method == "GET" and request_url == JWKS_URL:
             return httpx2.Response(200, json=self._jwks)
         if request.method == "POST" and request_url == TOKEN_URL:
+            if self.token_exception is not None:
+                raise self.token_exception
             if self.token_status != 200:
                 return httpx2.Response(
                     self.token_status,
@@ -728,6 +732,48 @@ def test_web_callback_post_exchange_failures_share_the_sanitized_redirect(
             *context.provider.raw_access_tokens,
         ):
             assert sensitive_value not in rendered
+
+
+def test_web_callback_unexpected_failure_uses_the_sanitized_redirect(
+    database_url: str,
+    migrated_engine: Engine,
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    private_detail = "private-provider-runtime-detail"
+    logger_name = "jobpilot_api.api.web_auth_router"
+    error_logger = logging.getLogger(logger_name)
+    monkeypatch.setattr(error_logger, "disabled", False)
+    caplog.set_level(logging.ERROR, logger=logger_name)
+
+    with _running_api(database_url, migrated_engine) as context:
+        context.provider.token_exception = RuntimeError(private_detail)
+        started = _begin_login(context)
+
+        response = _complete_login(context, started)
+
+        assert response.status_code == 303
+        assert response.headers["location"] == f"{PRODUCTION.web_origin}/auth/error"
+        _assert_transaction_cookie_cleared(response, PRODUCTION)
+        assert PRODUCTION.session_cookie not in response.headers.get("set-cookie", "")
+        assert _record_counts(migrated_engine) == (0, 0, 0, 0)
+        rendered = f"{response.headers!r}\n{response.text}\n{caplog.text}"
+        for sensitive_value in (
+            AUTHORIZATION_CODE,
+            started.state,
+            private_detail,
+        ):
+            assert sensitive_value not in rendered
+
+        records = [
+            record
+            for record in caplog.records
+            if getattr(record, "event", None) == "auth.web_callback_unexpected_error"
+        ]
+        assert len(records) == 1
+        assert records[0].event == "auth.web_callback_unexpected_error"
+        assert records[0].request_id == response.headers["X-Request-Id"]
+        assert records[0].exception_type == "RuntimeError"
 
 
 def test_web_callback_replay_cannot_create_a_second_session(

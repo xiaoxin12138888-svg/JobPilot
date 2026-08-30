@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse
 
@@ -11,6 +13,8 @@ from jobpilot_api.application.web_auth_service import (
 
 from .auth_dependencies import AuthRuntimeDependency, WebAuthRuntime
 from .errors import ApiError, ErrorResponse
+
+LOGGER = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/api/v1/auth/web",
@@ -121,12 +125,10 @@ def complete_web_login(
             provider_error=error is not None or duplicate_code or duplicate_state,
         )
     except (WebLoginRejectedError, WebLoginUnavailableError):
-        response = _navigation_redirect(
-            f"{runtime.web.web_origin}/auth/error",
-            status_code=303,
-        )
-        _delete_transaction_cookie(response, runtime.web)
-        return response
+        return _callback_failure_response(runtime.web)
+    except Exception as error:
+        _log_callback_unexpected_error(request, error)
+        return _callback_failure_response(runtime.web)
 
     response = _navigation_redirect(
         f"{runtime.web.web_origin}{completed.return_to}",
@@ -173,6 +175,32 @@ def _delete_transaction_cookie(
         secure=runtime.cookie_secure,
         samesite="lax",
         path="/",
+    )
+
+
+def _callback_failure_response(runtime: WebAuthRuntime) -> RedirectResponse:
+    response = _navigation_redirect(
+        f"{runtime.web_origin}/auth/error",
+        status_code=303,
+    )
+    _delete_transaction_cookie(response, runtime)
+    return response
+
+
+def _log_callback_unexpected_error(request: Request, error: Exception) -> None:
+    event = "auth.web_callback_unexpected_error"
+    request_id = request.state.request_id
+    exception_type = type(error).__name__
+    LOGGER.error(
+        "%s request_id=%s exception_type=%s",
+        event,
+        request_id,
+        exception_type,
+        extra={
+            "event": event,
+            "request_id": request_id,
+            "exception_type": exception_type,
+        },
     )
 
 
