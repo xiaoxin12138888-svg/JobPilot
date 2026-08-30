@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from uuid import UUID
 
+from jobpilot_api.domain.identity import AuthenticatedUser
+
 
 @dataclass(frozen=True, slots=True)
 class WebSession:
@@ -36,4 +38,10 @@ class LoginTransaction:
 class IssuedWebSession:
     session: WebSession
     session_secret: str = field(repr=False)
+    csrf_token: str = field(repr=False)
+
+
+@dataclass(frozen=True, slots=True)
+class AuthenticatedWebSession:
+    authenticated_user: AuthenticatedUser
     csrf_token: str = field(repr=False)

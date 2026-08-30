@@ -74,38 +74,52 @@ class SqlAlchemyWebSessionRepository:
         now: datetime,
     ) -> WebSession | None:
         row = self._session.execute(
-            select(
-                WebSessionRecord,
-                IdentityRecord.issuer,
-                IdentityRecord.subject,
-            )
-            .join(
-                IdentityRecord,
-                and_(
-                    IdentityRecord.id == WebSessionRecord.identity_id,
-                    IdentityRecord.user_id == WebSessionRecord.user_id,
-                ),
-            )
-            .join(UserRecord, UserRecord.id == WebSessionRecord.user_id)
-            .where(
-                WebSessionRecord.session_token_hash == session_token_hash,
-                WebSessionRecord.revoked_at.is_(None),
-                WebSessionRecord.idle_expires_at > now,
-                WebSessionRecord.absolute_expires_at > now,
-                UserRecord.account_status == "active",
-            )
+            _active_session_query(session_token_hash, now=now)
         ).one_or_none()
         if row is None:
             return None
         record, identity_issuer, identity_subject = row
         return _to_web_session(record, identity_issuer, identity_subject)
 
+    def lock_active_by_token_hash(
+        self,
+        session_token_hash: bytes,
+        *,
+        now: datetime,
+    ) -> WebSession | None:
+        row = self._session.execute(
+            _active_session_query(session_token_hash, now=now).with_for_update(of=WebSessionRecord)
+        ).one_or_none()
+        if row is None:
+            return None
+        record, identity_issuer, identity_subject = row
+        return _to_web_session(record, identity_issuer, identity_subject)
+
+    def touch(
+        self,
+        session_id: UUID,
+        *,
+        last_used_at: datetime,
+        idle_expires_at: datetime,
+    ) -> None:
+        record = self._session.scalar(
+            select(WebSessionRecord).where(WebSessionRecord.id == session_id).with_for_update()
+        )
+        if record is None:
+            raise WebSessionPersistenceError
+        record.last_used_at = max(record.last_used_at, last_used_at)
+        record.idle_expires_at = min(
+            max(record.idle_expires_at, idle_expires_at),
+            record.absolute_expires_at,
+        )
+        self._session.flush()
+
     def revoke(self, session_id: UUID, *, revoked_at: datetime) -> None:
         record = self._session.scalar(
             select(WebSessionRecord).where(WebSessionRecord.id == session_id).with_for_update()
         )
         if record is not None and record.revoked_at is None:
-            record.revoked_at = revoked_at
+            record.revoked_at = max(revoked_at, record.last_used_at)
             self._session.flush()
 
 
@@ -255,6 +269,31 @@ def _to_web_session(
         idle_expires_at=record.idle_expires_at,
         absolute_expires_at=record.absolute_expires_at,
         revoked_at=record.revoked_at,
+    )
+
+
+def _active_session_query(session_token_hash: bytes, *, now: datetime):
+    return (
+        select(
+            WebSessionRecord,
+            IdentityRecord.issuer,
+            IdentityRecord.subject,
+        )
+        .join(
+            IdentityRecord,
+            and_(
+                IdentityRecord.id == WebSessionRecord.identity_id,
+                IdentityRecord.user_id == WebSessionRecord.user_id,
+            ),
+        )
+        .join(UserRecord, UserRecord.id == WebSessionRecord.user_id)
+        .where(
+            WebSessionRecord.session_token_hash == session_token_hash,
+            WebSessionRecord.revoked_at.is_(None),
+            WebSessionRecord.idle_expires_at > now,
+            WebSessionRecord.absolute_expires_at > now,
+            UserRecord.account_status == "active",
+        )
     )
 
 

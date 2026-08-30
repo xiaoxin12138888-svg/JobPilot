@@ -7,7 +7,8 @@ from threading import Barrier
 from uuid import UUID
 
 import pytest
-from sqlalchemy import Engine, func, select
+from sqlalchemy import Engine, func, select, text, update
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from jobpilot_api.application.identity_service import IdentityService
@@ -205,6 +206,35 @@ def test_active_web_session_resolves_the_bound_local_identity(
     assert active.revoked_at is None
 
 
+def test_active_web_session_lookup_holds_a_database_row_lock(
+    migrated_engine: Engine,
+) -> None:
+    now = datetime(2026, 8, 30, 9, 0, tzinfo=UTC)
+    session_id = _create_session(
+        migrated_engine,
+        created_at=now,
+        idle_expires_at=now + timedelta(days=7),
+        absolute_expires_at=now + timedelta(days=30),
+    )
+
+    with SqlAlchemyWebSessionUnitOfWork(migrated_engine) as unit_of_work:
+        active = unit_of_work.sessions.lock_active_by_token_hash(
+            _digest(SESSION_SECRET),
+            now=now + timedelta(minutes=1),
+        )
+        assert active is not None
+        assert active.id == session_id
+
+        with Session(migrated_engine) as contender:
+            contender.execute(text("SET LOCAL lock_timeout = '100ms'"))
+            with pytest.raises(OperationalError):
+                contender.execute(
+                    update(WebSessionRecord)
+                    .where(WebSessionRecord.id == session_id)
+                    .values(revoked_at=now + timedelta(minutes=2))
+                )
+
+
 @pytest.mark.parametrize(
     ("created_at", "idle_expires_at", "absolute_expires_at"),
     [
@@ -244,6 +274,123 @@ def test_expired_web_session_fails_closed(
     assert active is None
 
 
+@pytest.mark.parametrize(
+    ("created_at", "idle_expires_at", "absolute_expires_at"),
+    [
+        (
+            datetime(2026, 8, 29, 9, 0, tzinfo=UTC),
+            datetime(2026, 8, 30, 9, 0, tzinfo=UTC),
+            datetime(2026, 9, 1, 9, 0, tzinfo=UTC),
+        ),
+        (
+            datetime(2026, 7, 31, 9, 0, tzinfo=UTC),
+            datetime(2026, 8, 30, 9, 0, tzinfo=UTC),
+            datetime(2026, 8, 30, 9, 0, tzinfo=UTC),
+        ),
+    ],
+    ids=["exact-idle-boundary", "exact-absolute-boundary"],
+)
+def test_web_session_is_inactive_at_exact_expiry_boundary(
+    migrated_engine: Engine,
+    created_at: datetime,
+    idle_expires_at: datetime,
+    absolute_expires_at: datetime,
+) -> None:
+    boundary = datetime(2026, 8, 30, 9, 0, tzinfo=UTC)
+    _create_session(
+        migrated_engine,
+        created_at=created_at,
+        idle_expires_at=idle_expires_at,
+        absolute_expires_at=absolute_expires_at,
+    )
+
+    with SqlAlchemyWebSessionUnitOfWork(migrated_engine) as unit_of_work:
+        active = unit_of_work.sessions.lock_active_by_token_hash(
+            _digest(SESSION_SECRET),
+            now=boundary,
+        )
+
+    assert active is None
+
+
+def test_web_session_touch_can_reach_absolute_boundary_without_crossing_it(
+    migrated_engine: Engine,
+) -> None:
+    created_at = datetime(2026, 8, 1, 9, 0, tzinfo=UTC)
+    absolute_expires_at = datetime(2026, 8, 31, 9, 0, tzinfo=UTC)
+    session_id = _create_session(
+        migrated_engine,
+        created_at=created_at,
+        idle_expires_at=created_at + timedelta(days=7),
+        absolute_expires_at=absolute_expires_at,
+    )
+    last_use = absolute_expires_at - timedelta(minutes=1)
+
+    with SqlAlchemyWebSessionUnitOfWork(migrated_engine) as unit_of_work:
+        unit_of_work.sessions.touch(
+            session_id,
+            last_used_at=last_use,
+            idle_expires_at=absolute_expires_at,
+        )
+        unit_of_work.commit()
+
+    with Session(migrated_engine) as session:
+        stored = session.get(WebSessionRecord, session_id)
+        assert stored is not None
+        assert stored.last_used_at == last_use
+        assert stored.idle_expires_at == absolute_expires_at
+        assert stored.absolute_expires_at == absolute_expires_at
+
+    with SqlAlchemyWebSessionUnitOfWork(migrated_engine) as unit_of_work:
+        before_boundary = unit_of_work.sessions.find_active_by_token_hash(
+            _digest(SESSION_SECRET),
+            now=absolute_expires_at - timedelta(microseconds=1),
+        )
+        at_boundary = unit_of_work.sessions.find_active_by_token_hash(
+            _digest(SESSION_SECRET),
+            now=absolute_expires_at,
+        )
+
+    assert before_boundary is not None
+    assert at_boundary is None
+
+
+def test_web_session_touch_never_regresses_last_use_or_idle_expiry(
+    migrated_engine: Engine,
+) -> None:
+    created_at = datetime(2026, 8, 1, 9, 0, tzinfo=UTC)
+    session_id = _create_session(
+        migrated_engine,
+        created_at=created_at,
+        idle_expires_at=created_at + timedelta(days=7),
+        absolute_expires_at=created_at + timedelta(days=30),
+    )
+    later_use = created_at + timedelta(days=2)
+    later_idle_expiry = created_at + timedelta(days=9)
+
+    with SqlAlchemyWebSessionUnitOfWork(migrated_engine) as unit_of_work:
+        unit_of_work.sessions.touch(
+            session_id,
+            last_used_at=later_use,
+            idle_expires_at=later_idle_expiry,
+        )
+        unit_of_work.commit()
+
+    with SqlAlchemyWebSessionUnitOfWork(migrated_engine) as unit_of_work:
+        unit_of_work.sessions.touch(
+            session_id,
+            last_used_at=created_at + timedelta(days=1),
+            idle_expires_at=created_at + timedelta(days=8),
+        )
+        unit_of_work.commit()
+
+    with Session(migrated_engine) as session:
+        stored = session.get(WebSessionRecord, session_id)
+        assert stored is not None
+        assert stored.last_used_at == later_use
+        assert stored.idle_expires_at == later_idle_expiry
+
+
 def test_revoked_web_session_fails_closed(migrated_engine: Engine) -> None:
     now = datetime(2026, 8, 30, 9, 0, tzinfo=UTC)
     session_id = _create_session(
@@ -268,6 +415,39 @@ def test_revoked_web_session_fails_closed(migrated_engine: Engine) -> None:
         stored = session.get(WebSessionRecord, session_id)
         assert stored is not None
         assert stored.revoked_at == revoked_at
+
+
+def test_web_session_revoke_never_records_a_timestamp_before_last_use(
+    migrated_engine: Engine,
+) -> None:
+    created_at = datetime(2026, 8, 1, 9, 0, tzinfo=UTC)
+    session_id = _create_session(
+        migrated_engine,
+        created_at=created_at,
+        idle_expires_at=created_at + timedelta(days=7),
+        absolute_expires_at=created_at + timedelta(days=30),
+    )
+    last_use = created_at + timedelta(days=2)
+    with SqlAlchemyWebSessionUnitOfWork(migrated_engine) as unit_of_work:
+        unit_of_work.sessions.touch(
+            session_id,
+            last_used_at=last_use,
+            idle_expires_at=created_at + timedelta(days=9),
+        )
+        unit_of_work.commit()
+
+    with SqlAlchemyWebSessionUnitOfWork(migrated_engine) as unit_of_work:
+        unit_of_work.sessions.revoke(
+            session_id,
+            revoked_at=created_at + timedelta(days=1),
+        )
+        unit_of_work.commit()
+
+    with Session(migrated_engine) as session:
+        stored = session.get(WebSessionRecord, session_id)
+        assert stored is not None
+        assert stored.last_used_at == last_use
+        assert stored.revoked_at == last_use
 
 
 def test_unknown_web_session_hash_fails_closed(migrated_engine: Engine) -> None:
