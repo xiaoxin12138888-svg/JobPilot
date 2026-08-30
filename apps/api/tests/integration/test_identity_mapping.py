@@ -16,7 +16,12 @@ from jobpilot_api.application.identity_service import (
     IdentityRepository,
     IdentityService,
 )
-from jobpilot_api.domain.identity import LocalUser, VerifiedProviderIdentity
+from jobpilot_api.domain.identity import (
+    AuthenticatedUser,
+    LocalUser,
+    SessionKind,
+    VerifiedProviderIdentity,
+)
 from jobpilot_api.infrastructure.database.identity_repository import (
     SqlAlchemyIdentityUnitOfWork,
 )
@@ -39,6 +44,16 @@ def _identity(
 
 def _service(engine: Engine) -> IdentityService:
     return IdentityService(lambda: SqlAlchemyIdentityUnitOfWork(engine))
+
+
+def _authenticated_user(user: LocalUser) -> AuthenticatedUser:
+    return AuthenticatedUser(
+        user_id=user.id,
+        identity_issuer="https://tenant.example.invalid/",
+        identity_subject="auth0|subject-1",
+        session_kind=SessionKind.EXTENSION,
+        session_id=None,
+    )
 
 
 def test_first_verified_identity_creates_minimal_user_and_mapping(
@@ -67,6 +82,27 @@ def test_repeat_identity_returns_same_user_without_duplicate_rows(
     with Session(migrated_engine) as session:
         assert session.scalar(select(func.count()).select_from(UserRecord)) == 1
         assert session.scalar(select(func.count()).select_from(IdentityRecord)) == 1
+
+
+def test_profile_update_persists_only_explicit_local_user_fields(
+    migrated_engine: Engine,
+) -> None:
+    service = _service(migrated_engine)
+    created = service.provision(_identity())
+
+    first_update = service.update_profile(
+        _authenticated_user(created),
+        display_name="Lin",
+        locale="zh-CN",
+        time_zone="Asia/Shanghai",
+    )
+    second_update = service.update_profile(_authenticated_user(first_update), display_name=None)
+
+    persisted = service.get_active_user(_authenticated_user(created))
+    assert second_update.display_name is None
+    assert persisted.display_name is None
+    assert persisted.locale == "zh-CN"
+    assert persisted.time_zone == "Asia/Shanghai"
 
 
 def test_different_subjects_create_different_users(migrated_engine: Engine) -> None:
@@ -206,6 +242,12 @@ class BarrierIdentityRepository:
     def find_by_email(self, normalized_email: str) -> LocalUser | None:
         return self._delegate.find_by_email(normalized_email)
 
+    def find_by_user_id(self, user_id: UUID) -> LocalUser | None:
+        return self._delegate.find_by_user_id(user_id)
+
+    def lock_by_user_id(self, user_id: UUID) -> LocalUser | None:
+        return self._delegate.lock_by_user_id(user_id)
+
     def create(
         self,
         identity: VerifiedProviderIdentity,
@@ -215,6 +257,21 @@ class BarrierIdentityRepository:
 
     def update_email(self, user_id: UUID, normalized_email: str) -> LocalUser:
         return self._delegate.update_email(user_id, normalized_email)
+
+    def update_profile(
+        self,
+        user_id: UUID,
+        *,
+        display_name: str | None,
+        locale: str | None,
+        time_zone: str | None,
+    ) -> LocalUser:
+        return self._delegate.update_profile(
+            user_id,
+            display_name=display_name,
+            locale=locale,
+            time_zone=time_zone,
+        )
 
 
 class BarrierUnitOfWork:

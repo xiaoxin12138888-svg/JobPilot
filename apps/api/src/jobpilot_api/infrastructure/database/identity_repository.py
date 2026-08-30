@@ -33,6 +33,12 @@ class SqlAlchemyIdentityRepository:
         )
         return _to_local_user(record) if record is not None else None
 
+    def find_by_user_id(self, user_id: UUID) -> LocalUser | None:
+        return self._find_by_user_id(user_id, lock=False)
+
+    def lock_by_user_id(self, user_id: UUID) -> LocalUser | None:
+        return self._find_by_user_id(user_id, lock=True)
+
     def create(
         self,
         identity: VerifiedProviderIdentity,
@@ -61,6 +67,24 @@ class SqlAlchemyIdentityRepository:
         self._session.refresh(user)
         return _to_local_user(user)
 
+    def update_profile(
+        self,
+        user_id: UUID,
+        *,
+        display_name: str | None,
+        locale: str | None,
+        time_zone: str | None,
+    ) -> LocalUser:
+        user = self._session.get(UserRecord, user_id)
+        if user is None:
+            raise IdentityPersistenceError
+        user.display_name = display_name
+        user.locale = locale
+        user.time_zone = time_zone
+        self._session.flush()
+        self._session.refresh(user)
+        return _to_local_user(user)
+
     def _find_by_identity(
         self,
         issuer: str,
@@ -73,6 +97,13 @@ class SqlAlchemyIdentityRepository:
             .join(IdentityRecord, IdentityRecord.user_id == UserRecord.id)
             .where(IdentityRecord.issuer == issuer, IdentityRecord.subject == subject)
         )
+        if lock:
+            statement = statement.with_for_update()
+        record = self._session.scalar(statement)
+        return _to_local_user(record) if record is not None else None
+
+    def _find_by_user_id(self, user_id: UUID, *, lock: bool) -> LocalUser | None:
+        statement = select(UserRecord).where(UserRecord.id == user_id)
         if lock:
             statement = statement.with_for_update()
         record = self._session.scalar(statement)

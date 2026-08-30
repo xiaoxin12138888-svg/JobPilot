@@ -11,6 +11,25 @@ class AccountStatus(StrEnum):
     DELETION_PENDING = "deletion_pending"
 
 
+class SessionKind(StrEnum):
+    WEB = "web"
+    EXTENSION = "extension"
+
+
+@dataclass(frozen=True, slots=True)
+class AuthenticatedUser:
+    user_id: UUID
+    identity_issuer: str
+    identity_subject: str
+    session_kind: SessionKind
+    session_id: UUID | None
+
+    def __post_init__(self) -> None:
+        for field_name in ("identity_issuer", "identity_subject"):
+            if not getattr(self, field_name).strip():
+                raise ValueError(f"{field_name} must not be empty")
+
+
 @dataclass(frozen=True, slots=True)
 class VerifiedProviderIdentity:
     issuer: str
