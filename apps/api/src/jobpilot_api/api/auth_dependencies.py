@@ -12,6 +12,7 @@ from jobpilot_api.application.identity_service import (
     InvalidProfileUpdateError,
     InvalidVerifiedIdentityError,
 )
+from jobpilot_api.application.web_auth_service import WebAuthService
 from jobpilot_api.domain.identity import AuthenticatedUser, SessionKind, VerifiedProviderIdentity
 from jobpilot_api.infrastructure.auth.access_token_validator import (
     EmailVerificationRequiredError,
@@ -21,14 +22,27 @@ from jobpilot_api.infrastructure.auth.access_token_validator import (
 )
 
 from .errors import ApiError
+from .login_rate_limit import WebLoginRateLimiter
 
 WEB_SESSION_COOKIE_NAMES = frozenset({"__Host-jobpilot_session", "jobpilot_dev_session"})
+
+
+@dataclass(frozen=True, slots=True)
+class WebAuthRuntime:
+    service: WebAuthService
+    login_rate_limiter: WebLoginRateLimiter
+    web_origin: str
+    transaction_cookie_name: str
+    session_cookie_name: str
+    cookie_secure: bool
+    session_max_age: int
 
 
 @dataclass(frozen=True, slots=True)
 class AuthRuntime:
     access_token_validator: ExtensionAccessTokenValidator
     identity_service: IdentityService
+    web: WebAuthRuntime
 
 
 def get_auth_runtime(request: Request) -> AuthRuntime:

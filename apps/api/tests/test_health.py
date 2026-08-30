@@ -22,6 +22,8 @@ def test_openapi_exposes_health_and_the_current_extension_auth_boundary() -> Non
         "/health",
         "/api/v1/auth/session",
         "/api/v1/auth/me",
+        "/api/v1/auth/web/authorize",
+        "/api/v1/auth/web/callback",
     }
 
 
@@ -60,6 +62,40 @@ def test_openapi_documents_auth_security_and_public_error_envelopes() -> None:
     assert "format" not in user_id_schema
 
 
+def test_openapi_keeps_web_navigation_routes_outside_extension_bearer_security() -> None:
+    schema = app.openapi()
+
+    for path in (
+        "/api/v1/auth/web/authorize",
+        "/api/v1/auth/web/callback",
+    ):
+        operation = schema["paths"][path]["get"]
+        assert operation["security"] == []
+
+
+def test_openapi_documents_the_required_bounded_web_login_intent() -> None:
+    schema = app.openapi()
+    operation = schema["paths"]["/api/v1/auth/web/authorize"]["get"]
+    parameters = {parameter["name"]: parameter for parameter in operation["parameters"]}
+
+    assert parameters["intent"]["required"] is True
+    assert parameters["intent"]["schema"]["enum"] == ["login", "signup"]
+    assert parameters["returnTo"]["required"] is False
+    assert "422" not in operation["responses"]
+    assert "429" in operation["responses"]
+    assert operation["responses"]["429"]["headers"]["Retry-After"]["schema"] == {
+        "type": "integer",
+        "minimum": 1,
+    }
+
+
+def test_openapi_callback_has_no_automatic_validation_error_contract() -> None:
+    operation = app.openapi()["paths"]["/api/v1/auth/web/callback"]["get"]
+
+    assert "422" not in operation["responses"]
+    assert "503" in operation["responses"]
+
+
 def test_unconfigured_auth_boundary_fails_closed_without_breaking_health() -> None:
     auth_response = client.get("/api/v1/auth/me")
     health_response = client.get("/health")
@@ -67,6 +103,21 @@ def test_unconfigured_auth_boundary_fails_closed_without_breaking_health() -> No
     assert auth_response.status_code == 503
     assert auth_response.json()["error"]["code"] == "SERVICE_NOT_READY"
     assert health_response.status_code == 200
+
+
+def test_unconfigured_web_callback_has_a_sanitized_bootstrap_failure() -> None:
+    response = client.get(
+        "/api/v1/auth/web/callback",
+        params={"code": "private-code", "state": "private-state"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "SERVICE_NOT_READY"
+    assert "location" not in response.headers
+    assert "set-cookie" not in response.headers
+    assert "private-code" not in response.text
+    assert "private-state" not in response.text
 
 
 @pytest.mark.parametrize(

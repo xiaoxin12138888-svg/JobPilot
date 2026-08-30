@@ -18,6 +18,7 @@ def test_development_cors_allows_the_configured_web_origin() -> None:
     )
 
     assert response.headers["access-control-allow-origin"] == "http://localhost:5173"
+    assert response.headers["access-control-allow-credentials"] == "true"
     assert "x-request-id" in response.headers["access-control-expose-headers"].lower()
 
 
@@ -55,6 +56,39 @@ def test_configured_origin_can_preflight_extension_bearer_profile_updates() -> N
     )
     assert "authorization" in response.headers["access-control-allow-headers"].lower()
     assert response.headers["X-Request-Id"].startswith("req_")
+
+
+def test_configured_web_origin_can_preflight_credentialed_csrf_requests() -> None:
+    origin = "http://localhost:5173"
+    client = TestClient(create_app(ApiSettings(environment="development", cors_origins=(origin,))))
+
+    response = client.options(
+        "/api/v1/auth/me",
+        headers={
+            "Origin": origin,
+            "Access-Control-Request-Method": "PATCH",
+            "Access-Control-Request-Headers": "Content-Type, X-CSRF-Token",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == origin
+    assert response.headers["access-control-allow-credentials"] == "true"
+    assert "x-csrf-token" in response.headers["access-control-allow-headers"].lower()
+
+
+def test_unlisted_origin_receives_no_cors_authorization() -> None:
+    allowed_origin = "http://localhost:5173"
+    client = TestClient(
+        create_app(ApiSettings(environment="development", cors_origins=(allowed_origin,)))
+    )
+
+    response = client.get(
+        "/health",
+        headers={"Origin": "http://attacker.localhost:5173"},
+    )
+
+    assert "access-control-allow-origin" not in response.headers
 
 
 def test_configured_origin_can_read_request_id_validation_errors() -> None:

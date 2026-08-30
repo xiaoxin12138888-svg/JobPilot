@@ -25,6 +25,7 @@ from jobpilot_api.infrastructure.database.models import (
     WebSessionRecord,
 )
 from jobpilot_api.infrastructure.database.web_session_repository import (
+    LOGIN_TRANSACTION_PRUNE_BATCH,
     SqlAlchemyWebSessionUnitOfWork,
 )
 
@@ -362,6 +363,61 @@ def test_login_transaction_is_consumed_once_and_replay_fails_closed(
     assert replayed is None
     with Session(migrated_engine) as session:
         assert session.scalar(select(func.count()).select_from(LoginTransactionRecord)) == 0
+
+
+def test_expired_abandoned_login_transactions_are_pruned_without_deleting_live_ones(
+    migrated_engine: Engine,
+) -> None:
+    now = datetime(2026, 8, 30, 9, 0, tzinfo=UTC)
+    expired_id = _create_login_transaction(
+        migrated_engine,
+        browser_handle="expired-browser-handle",
+        state="expired-state",
+        created_at=now - timedelta(minutes=10),
+        expires_at=now,
+    )
+    live_id = _create_login_transaction(
+        migrated_engine,
+        browser_handle="live-browser-handle",
+        state="live-state",
+        created_at=now,
+        expires_at=now + timedelta(minutes=10),
+    )
+
+    with SqlAlchemyWebSessionUnitOfWork(migrated_engine) as unit_of_work:
+        unit_of_work.login_transactions.delete_expired(now=now)
+        unit_of_work.commit()
+
+    with Session(migrated_engine) as session:
+        assert session.get(LoginTransactionRecord, expired_id) is None
+        assert session.get(LoginTransactionRecord, live_id) is not None
+
+
+def test_expired_login_transaction_pruning_is_bounded_per_authorize_attempt(
+    migrated_engine: Engine,
+) -> None:
+    now = datetime(2026, 8, 30, 9, 0, tzinfo=UTC)
+    with SqlAlchemyWebSessionUnitOfWork(migrated_engine) as unit_of_work:
+        for index in range(LOGIN_TRANSACTION_PRUNE_BATCH + 1):
+            unit_of_work.login_transactions.create(
+                browser_handle_hash=_digest(f"expired-browser-{index}"),
+                state_hash=_digest(f"expired-state-{index}"),
+                nonce_hash=_digest(f"expired-nonce-{index}"),
+                pkce_verifier="v" * 64,
+                intent="login",
+                return_to="/",
+                created_at=now - timedelta(minutes=10),
+                expires_at=now,
+            )
+        unit_of_work.commit()
+
+    with SqlAlchemyWebSessionUnitOfWork(migrated_engine) as unit_of_work:
+        unit_of_work.login_transactions.delete_expired(now=now)
+        unit_of_work.commit()
+
+    with Session(migrated_engine) as session:
+        remaining = session.scalar(select(func.count()).select_from(LoginTransactionRecord))
+        assert remaining == 1
 
 
 def test_concurrent_login_transaction_consumers_release_verifier_once(

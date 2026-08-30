@@ -242,7 +242,8 @@ JobPilot 不代理用户密码，不把这些路径伪装成 `/api/v1/auth/regis
 - Query：`intent=login|signup`，以及可选 `returnTo`。`returnTo` 只能是 allowlist 中的相对 Web 路径，不能是完整 URL、protocol-relative URL 或任意调用方 origin。
 - `intent=login` 使用 `prompt=login`，因此 JobPilot local logout 后，即使 Auth0 SSO cookie 仍在，也不能静默恢复原用户；`signup` 只增加明确的 provider signup hint，注册页面和凭据仍由 Universal Login 所有。
 - 语义：创建最长 10 分钟的一次性 server-side login transaction（intent、state、nonce、PKCE、过期时间）及其随机 browser handle hash；生产设置 host-only `__Host-jobpilot_login_tx`（`HttpOnly; Secure; SameSite=Lax; Path=/; no Domain; Max-Age=600`），显式 loopback development 使用 `jobpilot_dev_login_tx`（同属性但不设 `Secure`），然后 `302` 到精确 Auth0 authorize URL。
-- 主要错误：`400 BAD_REQUEST`、`429 RATE_LIMITED`、`503 IDENTITY_PROVIDER_UNAVAILABLE`。
+- 限流：应用基线按可信连接 IP 使用每 60 秒最多 10 次 login-start 的有界滚动窗口；超过时返回 `429 RATE_LIMITED` 与 `Retry-After`。多实例生产入口必须在可信边缘实施相同或更严格的聚合策略，应用不自行信任调用方提供的转发 IP header。
+- 主要错误：`400 BAD_REQUEST`、`429 RATE_LIMITED`、`503 DEPENDENCY_UNAVAILABLE`。
 
 ### `GET /api/v1/auth/web/callback`
 
@@ -251,6 +252,7 @@ JobPilot 不代理用户密码，不把这些路径伪装成 `/api/v1/auth/regis
 - 语义：验证 browser-bound transaction，交换 code，验证 OIDC identity，生成 `VerifiedProviderIdentity`。Login/signup 解析或创建本地 User、丢弃所有 provider token，并建立全新的 opaque Web session。
 - 成功：以创建时完全一致的属性删除 login-transaction cookie，`303` 到已保存的 allowlisted Web path，并设置生产 `__Host-jobpilot_session` 或仅限 loopback development 的 `jobpilot_dev_session` HttpOnly cookie。credential 不进入 redirect URL。
 - 失败：无论 state/cookie 是否匹配，都使可识别 transaction 失效并用完全匹配属性删除 login-transaction cookie，再 `303` 到配置中固定、同站点且不携带 provider 参数的 `/auth/error` 页面；不得透传 provider 原始错误，也不按错误类型改变 redirect target。`INVALID_CREDENTIALS`、`EMAIL_VERIFICATION_REQUIRED`、`IDENTITY_CONFLICT`、rate limit 与 provider outage 是内部安全分类，不改变浏览器可观察的 callback redirect。
+- 启动例外：若 Auth/数据库 runtime 根本未配置，服务无法验证任何先前 transaction、确定部署 cookie policy 或构造固定 Web error origin；此 bootstrap 故障返回通用 `503 SERVICE_NOT_READY` JSON。已配置 runtime 内的 callback 失败仍必须遵守上面的固定 `303` 语义。
 
 ### `POST /api/v1/auth/session`
 

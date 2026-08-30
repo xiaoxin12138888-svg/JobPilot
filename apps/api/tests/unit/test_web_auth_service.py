@@ -10,6 +10,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
+import jobpilot_api.application.web_auth_service as web_auth_service_module
 from jobpilot_api.application.identity_service import (
     AuthenticationRequiredError,
     IdentityConflictError,
@@ -65,6 +66,17 @@ def _assert_application_rejection(
     return captured.value
 
 
+def test_oversized_opaque_value_is_rejected_before_base64_decode(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def unexpected_decode(*args: object, **kwargs: object) -> bytes:
+        raise AssertionError("oversized untrusted input reached the Base64 decoder")
+
+    monkeypatch.setattr(web_auth_service_module.base64, "b64decode", unexpected_decode)
+
+    assert web_auth_service_module._is_canonical_opaque_value("A" * 10_000) is False
+
+
 class DeterministicTokenFactory:
     def __init__(self) -> None:
         self._values = [bytes([value]) * 32 for value in range(1, 5)]
@@ -90,9 +102,13 @@ class RecordingLoginTransactionRepository:
     def __init__(self, events: list[str]) -> None:
         self._events = events
         self.create_call: dict[str, object] | None = None
+        self.delete_expired_calls: list[datetime] = []
         self.consume_calls: list[dict[str, object]] = []
         self.transaction: LoginTransaction | None = None
         self.consumed = False
+
+    def delete_expired(self, *, now: datetime) -> None:
+        self.delete_expired_calls.append(now)
 
     def create(
         self,
@@ -381,6 +397,7 @@ def test_begin_uses_four_independent_256_bit_values_and_persists_only_hashes() -
     assert 0 < started.transaction_max_age <= 600
     assert scenario.token_factory.call_count == 4
     assert scenario.unit_of_work.commit_count == 1
+    assert scenario.repository.delete_expired_calls == [scenario.clock.now]
 
     authorization = scenario.provider.authorization_calls[0]
     browser_handle = started.browser_handle

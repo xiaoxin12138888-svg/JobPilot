@@ -26,6 +26,7 @@ from jobpilot_api.domain.web_session import IssuedWebSession, LoginTransaction
 
 WEB_LOGIN_TRANSACTION_MAX_AGE = 600
 WEB_LOGIN_ENTROPY_BYTES = 32
+WEB_LOGIN_OPAQUE_LENGTH = 43
 WEB_LOGIN_INTENTS = frozenset({"login", "signup"})
 
 
@@ -111,7 +112,7 @@ class WebAuthService:
         self._clock = clock
         self._allowed_return_paths = frozen_paths
 
-    def begin(self, intent: str, return_to: str | None) -> WebLoginStart:
+    def begin(self, intent: str | None, return_to: str | None) -> WebLoginStart:
         if not isinstance(intent, str) or intent not in WEB_LOGIN_INTENTS:
             raise InvalidWebLoginRequestError
         resolved_return_to = "/" if return_to is None else return_to
@@ -136,6 +137,7 @@ class WebAuthService:
 
         try:
             with self._unit_of_work_factory() as unit_of_work:
+                unit_of_work.login_transactions.delete_expired(now=now)
                 unit_of_work.login_transactions.create(
                     browser_handle_hash=_hash_opaque_value(browser_handle),
                     state_hash=_hash_opaque_value(state),
@@ -248,6 +250,8 @@ def _hash_opaque_value(value: str) -> bytes:
 
 
 def _is_canonical_opaque_value(value: str) -> bool:
+    if len(value) != WEB_LOGIN_OPAQUE_LENGTH:
+        return False
     try:
         encoded = value.encode("ascii")
         padding = b"=" * (-len(encoded) % 4)

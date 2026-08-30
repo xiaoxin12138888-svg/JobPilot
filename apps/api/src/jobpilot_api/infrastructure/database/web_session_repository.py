@@ -4,7 +4,7 @@ from datetime import datetime
 from types import TracebackType
 from uuid import UUID
 
-from sqlalchemy import Engine, and_, or_, select
+from sqlalchemy import Engine, and_, delete, or_, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -19,6 +19,8 @@ from jobpilot_api.infrastructure.database.models import (
     UserRecord,
     WebSessionRecord,
 )
+
+LOGIN_TRANSACTION_PRUNE_BATCH = 100
 
 
 class SqlAlchemyWebSessionRepository:
@@ -110,6 +112,21 @@ class SqlAlchemyWebSessionRepository:
 class SqlAlchemyLoginTransactionRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
+
+    def delete_expired(self, *, now: datetime) -> None:
+        expired_ids = tuple(
+            self._session.scalars(
+                select(LoginTransactionRecord.id)
+                .where(LoginTransactionRecord.expires_at <= now)
+                .order_by(LoginTransactionRecord.expires_at, LoginTransactionRecord.id)
+                .limit(LOGIN_TRANSACTION_PRUNE_BATCH)
+                .with_for_update(skip_locked=True)
+            )
+        )
+        if expired_ids:
+            self._session.execute(
+                delete(LoginTransactionRecord).where(LoginTransactionRecord.id.in_(expired_ids))
+            )
 
     def create(
         self,

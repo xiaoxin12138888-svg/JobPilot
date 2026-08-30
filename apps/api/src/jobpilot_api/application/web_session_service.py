@@ -60,6 +60,8 @@ class WebSessionRepository(Protocol):
 
 
 class LoginTransactionRepository(Protocol):
+    def delete_expired(self, *, now: datetime) -> None: ...
+
     def create(
         self,
         *,

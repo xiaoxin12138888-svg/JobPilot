@@ -385,7 +385,7 @@ Phase 2B is not accepted until tests prove at least:
 - exact CORS behavior for Web and stable Extension origins, with no wildcard;
 - unverified email, deleted account, expired/revoked session, provider outage, and JWKS rotation behavior;
 - user A cannot read, update, reference, or delete user B resources;
-- logs and error bodies contain no credential, code, verifier, cookie, raw provider payload, or sensitive claims;
+- application/Uvicorn access logs and error bodies contain no credential, code, verifier, cookie, raw provider payload, or sensitive claims; production reverse proxies must also drop or redact query strings before access logging;
 - account deletion write-ahead marker gates `202`, blocks restore resurrection even before local cleanup, and is idempotently recoverable from each partial-failure point;
 - a backup restore cannot resurrect a deletion, pseudonymous log data expires within 30 days, and the export includes every resource implemented through the current Phase.
 - a residual access token presented before hard deletion resolves only to `deletion_pending` and cannot reprovision; hard deletion waits for provider cutoff plus maximum token lifetime and clock skew;
