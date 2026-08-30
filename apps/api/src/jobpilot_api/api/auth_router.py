@@ -5,7 +5,7 @@ from typing import Annotated, Literal
 from zoneinfo import available_timezones
 
 from fastapi import APIRouter, Depends
-from fastapi.security import HTTPBearer
+from fastapi.security import APIKeyCookie, HTTPBearer
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.json_schema import SkipJsonSchema
 
@@ -75,6 +75,12 @@ class UpdateCurrentUserRequest(BaseModel):
 
 
 EXTENSION_BEARER = HTTPBearer(auto_error=False, scheme_name="ExtensionBearer")
+WEB_SESSION_COOKIE = APIKeyCookie(
+    auto_error=False,
+    name="__Host-jobpilot_session",
+    scheme_name="WebSessionCookie",
+    description=("Production Web session cookie. Loopback development uses jobpilot_dev_session."),
+)
 COMMON_AUTH_ERROR_RESPONSES = {
     400: {"model": ErrorResponse},
     401: {"model": ErrorResponse},
@@ -86,7 +92,6 @@ COMMON_AUTH_ERROR_RESPONSES = {
 router = APIRouter(
     prefix="/api/v1/auth",
     tags=["authentication"],
-    dependencies=[Depends(EXTENSION_BEARER)],
     responses=COMMON_AUTH_ERROR_RESPONSES,
 )
 
@@ -94,7 +99,7 @@ router = APIRouter(
 @router.post(
     "/session",
     response_model=UserResponse,
-    dependencies=[Depends(require_empty_body)],
+    dependencies=[Depends(EXTENSION_BEARER), Depends(require_empty_body)],
     responses={
         409: {"model": ErrorResponse},
         422: {"model": ErrorResponse},
@@ -119,7 +124,11 @@ def establish_extension_identity(
     return _user_response(user)
 
 
-@router.get("/me", response_model=UserResponse)
+@router.get(
+    "/me",
+    response_model=UserResponse,
+    dependencies=[Depends(WEB_SESSION_COOKIE), Depends(EXTENSION_BEARER)],
+)
 def get_current_user_profile(
     current_user: CurrentUserDependency,
     runtime: AuthRuntimeDependency,
@@ -134,6 +143,7 @@ def get_current_user_profile(
 @router.patch(
     "/me",
     response_model=UserResponse,
+    dependencies=[Depends(WEB_SESSION_COOKIE), Depends(EXTENSION_BEARER)],
     responses={422: {"model": ErrorResponse}},
 )
 def update_current_user_profile(

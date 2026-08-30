@@ -17,11 +17,13 @@ def test_health_returns_service_status() -> None:
     assert response.headers["X-Request-Id"].startswith("req_")
 
 
-def test_openapi_exposes_health_and_the_current_extension_auth_boundary() -> None:
+def test_openapi_exposes_health_and_the_current_auth_boundary() -> None:
     assert set(app.openapi()["paths"]) == {
         "/health",
         "/api/v1/auth/session",
         "/api/v1/auth/me",
+        "/api/v1/auth/csrf",
+        "/api/v1/auth/logout",
         "/api/v1/auth/web/authorize",
         "/api/v1/auth/web/callback",
     }
@@ -33,16 +35,36 @@ def test_openapi_documents_auth_security_and_public_error_envelopes() -> None:
         "type": "http",
         "scheme": "bearer",
     }
+    web_cookie = schema["components"]["securitySchemes"]["WebSessionCookie"]
+    assert web_cookie["type"] == "apiKey"
+    assert web_cookie["in"] == "cookie"
+    assert web_cookie["name"] == "__Host-jobpilot_session"
+    assert "jobpilot_dev_session" in web_cookie["description"]
     expected_error_statuses = {
         ("/api/v1/auth/session", "post"): {400, 401, 403, 409, 422, 500, 503},
         ("/api/v1/auth/me", "get"): {400, 401, 403, 500, 503},
         ("/api/v1/auth/me", "patch"): {400, 401, 403, 422, 500, 503},
+        ("/api/v1/auth/csrf", "get"): {400, 401, 500, 503},
+        ("/api/v1/auth/logout", "post"): {400, 403, 422, 500, 503},
+    }
+    expected_security = {
+        ("/api/v1/auth/session", "post"): [{"ExtensionBearer": []}],
+        ("/api/v1/auth/me", "get"): [
+            {"WebSessionCookie": []},
+            {"ExtensionBearer": []},
+        ],
+        ("/api/v1/auth/me", "patch"): [
+            {"WebSessionCookie": []},
+            {"ExtensionBearer": []},
+        ],
+        ("/api/v1/auth/csrf", "get"): [{"WebSessionCookie": []}],
+        ("/api/v1/auth/logout", "post"): [{}, {"WebSessionCookie": []}],
     }
     error_schema = {"$ref": "#/components/schemas/ErrorResponse"}
 
     for (path, method), statuses in expected_error_statuses.items():
         operation = schema["paths"][path][method]
-        assert operation["security"] == [{"ExtensionBearer": []}]
+        assert operation["security"] == expected_security[(path, method)]
         for status in statuses:
             documented_schema = operation["responses"][str(status)]["content"]["application/json"][
                 "schema"

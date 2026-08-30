@@ -13,7 +13,14 @@ from jobpilot_api.application.identity_service import (
     InvalidVerifiedIdentityError,
 )
 from jobpilot_api.application.web_auth_service import WebAuthService
+from jobpilot_api.application.web_session_service import (
+    WebSessionAuthenticationRequiredError,
+    WebSessionCsrfRejectedError,
+    WebSessionService,
+    WebSessionStoreUnavailableError,
+)
 from jobpilot_api.domain.identity import AuthenticatedUser, SessionKind, VerifiedProviderIdentity
+from jobpilot_api.domain.web_session import AuthenticatedWebSession
 from jobpilot_api.infrastructure.auth.access_token_validator import (
     EmailVerificationRequiredError,
     ExtensionAccessTokenValidator,
@@ -30,6 +37,7 @@ WEB_SESSION_COOKIE_NAMES = frozenset({"__Host-jobpilot_session", "jobpilot_dev_s
 @dataclass(frozen=True, slots=True)
 class WebAuthRuntime:
     service: WebAuthService
+    session_service: WebSessionService
     login_rate_limiter: WebLoginRateLimiter
     web_origin: str
     transaction_cookie_name: str
@@ -83,8 +91,43 @@ VerifiedIdentityDependency = Annotated[
 
 
 def get_current_user(
-    identity: VerifiedIdentityDependency,
+    request: Request,
     runtime: AuthRuntimeDependency,
+) -> AuthenticatedUser:
+    _reject_query_credentials(request)
+    authorization_values = request.headers.getlist("authorization")
+    web_credentials = _reserved_web_cookie_credentials(request)
+    _reject_ambiguous_credentials(authorization_values, web_credentials)
+
+    if authorization_values:
+        identity = get_verified_extension_identity(request, runtime)
+        return _authenticate_extension_identity(identity, runtime)
+
+    session_secret = _current_web_session_secret(web_credentials, runtime.web)
+    if session_secret is None:
+        raise _authentication_required()
+
+    try:
+        if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+            require_web_origin_and_fetch(request, runtime)
+            resolved = runtime.web.session_service.authenticate_with_csrf(
+                session_secret,
+                _single_header(request, "x-csrf-token"),
+            )
+        else:
+            resolved = runtime.web.session_service.authenticate(session_secret)
+    except WebSessionAuthenticationRequiredError:
+        raise _authentication_required() from None
+    except WebSessionCsrfRejectedError:
+        raise _forbidden() from None
+    except WebSessionStoreUnavailableError:
+        raise _dependency_unavailable() from None
+    return resolved.authenticated_user
+
+
+def _authenticate_extension_identity(
+    identity: VerifiedProviderIdentity,
+    runtime: AuthRuntime,
 ) -> AuthenticatedUser:
     try:
         return runtime.identity_service.authenticate_existing(
@@ -98,6 +141,60 @@ def get_current_user(
 
 
 CurrentUserDependency = Annotated[AuthenticatedUser, Depends(get_current_user)]
+
+
+def get_current_web_session(
+    request: Request,
+    runtime: AuthRuntimeDependency,
+) -> AuthenticatedWebSession:
+    _reject_query_credentials(request)
+    authorization_values = request.headers.getlist("authorization")
+    web_credentials = _reserved_web_cookie_credentials(request)
+    _reject_ambiguous_credentials(authorization_values, web_credentials)
+    if authorization_values:
+        raise _authentication_required(include_bearer_challenge=False)
+
+    session_secret = _current_web_session_secret(web_credentials, runtime.web)
+    if session_secret is None:
+        raise _authentication_required(include_bearer_challenge=False)
+    try:
+        return runtime.web.session_service.authenticate(session_secret)
+    except WebSessionAuthenticationRequiredError:
+        raise _authentication_required(include_bearer_challenge=False) from None
+    except WebSessionStoreUnavailableError:
+        raise _dependency_unavailable() from None
+
+
+CurrentWebSessionDependency = Annotated[AuthenticatedWebSession, Depends(get_current_web_session)]
+
+
+def require_web_origin_and_fetch(
+    request: Request,
+    runtime: AuthRuntimeDependency,
+) -> None:
+    origins = request.headers.getlist("origin")
+    fetch_sites = request.headers.getlist("sec-fetch-site")
+    if origins != [runtime.web.web_origin] or fetch_sites not in [
+        ["same-origin"],
+        ["same-site"],
+    ]:
+        raise _forbidden()
+
+
+def resolve_web_logout_credentials(
+    request: Request,
+    runtime: AuthRuntime,
+) -> tuple[str | None, str | None]:
+    _reject_query_credentials(request)
+    authorization_values = request.headers.getlist("authorization")
+    web_credentials = _reserved_web_cookie_credentials(request)
+    _reject_ambiguous_credentials(authorization_values, web_credentials)
+    if authorization_values:
+        raise ApiError(400, "BAD_REQUEST", "Bearer credentials are not accepted")
+    return (
+        _current_web_session_secret(web_credentials, runtime.web),
+        _single_header(request, "x-csrf-token"),
+    )
 
 
 async def require_empty_body(request: Request) -> None:
@@ -120,11 +217,10 @@ def map_identity_service_error(error: Exception) -> ApiError:
 
 
 def _extract_bearer_token(request: Request) -> str:
-    if "access_token" in request.query_params:
-        raise ApiError(400, "BAD_REQUEST", "Query credentials are not allowed")
+    _reject_query_credentials(request)
 
     authorization_values = request.headers.getlist("authorization")
-    has_web_session = any(name in request.cookies for name in WEB_SESSION_COOKIE_NAMES)
+    has_web_session = bool(_reserved_web_cookie_credentials(request))
     if authorization_values and has_web_session:
         raise ApiError(
             400,
@@ -146,12 +242,13 @@ def _extract_bearer_token(request: Request) -> str:
     return raw_token
 
 
-def _authentication_required() -> ApiError:
+def _authentication_required(*, include_bearer_challenge: bool = True) -> ApiError:
+    headers = {"WWW-Authenticate": "Bearer"} if include_bearer_challenge else None
     return ApiError(
         401,
         "AUTHENTICATION_REQUIRED",
         "Authentication is required",
-        headers={"WWW-Authenticate": "Bearer"},
+        headers=headers,
     )
 
 
@@ -161,3 +258,48 @@ def _dependency_unavailable() -> ApiError:
         "DEPENDENCY_UNAVAILABLE",
         "A required dependency is temporarily unavailable",
     )
+
+
+def _forbidden() -> ApiError:
+    return ApiError(403, "FORBIDDEN", "Request is not permitted")
+
+
+def _reserved_web_cookie_credentials(request: Request) -> list[tuple[str, str]]:
+    credentials: list[tuple[str, str]] = []
+    for raw_cookie_header in request.headers.getlist("cookie"):
+        for raw_pair in raw_cookie_header.split(";"):
+            name, separator, value = raw_pair.strip().partition("=")
+            if separator and name in WEB_SESSION_COOKIE_NAMES:
+                credentials.append((name, value))
+    return credentials
+
+
+def _reject_ambiguous_credentials(
+    authorization_values: list[str],
+    web_credentials: list[tuple[str, str]],
+) -> None:
+    if (authorization_values and web_credentials) or len(web_credentials) > 1:
+        raise ApiError(
+            400,
+            "AMBIGUOUS_CREDENTIALS",
+            "Multiple authentication credentials are not allowed",
+        )
+
+
+def _current_web_session_secret(
+    credentials: list[tuple[str, str]],
+    runtime: WebAuthRuntime,
+) -> str | None:
+    if len(credentials) != 1 or credentials[0][0] != runtime.session_cookie_name:
+        return None
+    return credentials[0][1]
+
+
+def _single_header(request: Request, name: str) -> str | None:
+    values = request.headers.getlist(name)
+    return values[0] if len(values) == 1 else None
+
+
+def _reject_query_credentials(request: Request) -> None:
+    if "access_token" in request.query_params:
+        raise ApiError(400, "BAD_REQUEST", "Query credentials are not allowed")

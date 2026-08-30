@@ -22,6 +22,7 @@ from jobpilot_api.api.errors import (
 )
 from jobpilot_api.api.login_rate_limit import WebLoginRateLimiter
 from jobpilot_api.api.web_auth_router import router as web_auth_router
+from jobpilot_api.api.web_session_router import router as web_session_router
 from jobpilot_api.application.identity_service import IdentityService
 from jobpilot_api.application.web_auth_service import (
     WEB_LOGIN_ENTROPY_BYTES,
@@ -98,6 +99,7 @@ def create_app(
                         token_factory=lambda: secrets.token_bytes(WEB_LOGIN_ENTROPY_BYTES),
                         clock=lambda: datetime.now(UTC),
                     ),
+                    session_service=web_session_service,
                     login_rate_limiter=WebLoginRateLimiter(),
                     web_origin=auth_settings.web_origin,
                     transaction_cookie_name=(
@@ -143,6 +145,7 @@ def create_app(
 
     application.include_router(auth_router)
     application.include_router(web_auth_router)
+    application.include_router(web_session_router)
 
     return application
 
