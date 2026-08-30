@@ -101,6 +101,9 @@ def install_error_handlers(application: FastAPI) -> None:
         if error.status_code == 404:
             code = "RESOURCE_NOT_FOUND"
             message = "Resource was not found"
+        elif error.status_code == 405:
+            code = "METHOD_NOT_ALLOWED"
+            message = "Request method is not allowed"
         else:
             code = "BAD_REQUEST"
             message = "Request could not be processed"

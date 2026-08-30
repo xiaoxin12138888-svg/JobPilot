@@ -73,7 +73,7 @@ def test_unconfigured_auth_boundary_fails_closed_without_breaking_health() -> No
     ("method", "path", "status_code", "error_code"),
     [
         ("get", "/not-a-route", 404, "RESOURCE_NOT_FOUND"),
-        ("post", "/health", 405, "BAD_REQUEST"),
+        ("post", "/health", 405, "METHOD_NOT_ALLOWED"),
     ],
 )
 def test_framework_http_errors_use_the_public_error_envelope(
