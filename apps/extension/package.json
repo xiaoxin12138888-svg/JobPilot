@@ -10,6 +10,7 @@
     "typecheck": "tsc --project tsconfig.json"
   },
   "dependencies": {
-    "@jobpilot/api-client": "workspace:*"
+    "@jobpilot/api-client": "workspace:*",
+    "oauth4webapi": "3.8.7"
   }
 }

@@ -22,8 +22,8 @@
 
 ## Dependency and Database Foundation
 
-- [ ] Lock only approved runtime/development dependencies and document their purposes.
-- [ ] Extend `.env.example` with non-secret database/Auth0/session/Web/Extension configuration.
+- [x] Lock only approved runtime/development dependencies and document their purposes.
+- [x] Extend `.env.example` with non-secret database/Auth0/session/Web/Extension configuration.
 - [ ] Create exact User/Identity columns, nullability, constraints, and the first Alembic migration.
 - [ ] Add WebSession/LoginTransaction only in the later Web-session migration.
 - [ ] Prove clean upgrade -> downgrade -> upgrade against real PostgreSQL.

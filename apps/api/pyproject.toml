@@ -1,16 +1,20 @@
 [project]
 name = "jobpilot-api"
 version = "0.1.0"
-description = "JobPilot Phase 1 FastAPI engineering skeleton"
+description = "JobPilot FastAPI modular monolith"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+  "alembic>=1.19.1,<2",
   "fastapi>=0.141.1,<0.142",
+  "httpx2>=2.12.0,<3",
+  "psycopg[binary]>=3.3.4,<4",
+  "pyjwt[crypto]>=2.13.0,<3",
+  "sqlalchemy>=2.0.52,<2.1",
   "uvicorn>=0.52.4,<0.53",
 ]
 
 [dependency-groups]
 dev = [
-  "httpx2>=2.12.0,<3",
   "pytest>=9.1.1,<10",
   "ruff>=0.16.5,<0.17",
 ]
