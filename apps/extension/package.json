@@ -1,0 +1,15 @@
+{
+  "name": "@jobpilot/extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite build --watch --mode development",
+    "build": "vite build",
+    "test": "vitest run",
+    "typecheck": "tsc --project tsconfig.json"
+  },
+  "dependencies": {
+    "@jobpilot/api-client": "workspace:*"
+  }
+}

@@ -1,0 +1,31 @@
+[project]
+name = "jobpilot-api"
+version = "0.1.0"
+description = "JobPilot Phase 1 FastAPI engineering skeleton"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "fastapi>=0.141.1,<0.142",
+  "uvicorn>=0.52.4,<0.53",
+]
+
+[dependency-groups]
+dev = [
+  "httpx2>=2.12.0,<3",
+  "pytest>=9.1.1,<10",
+  "ruff>=0.16.5,<0.17",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP"]

@@ -1,0 +1,49 @@
+{
+  "name": "jobpilot",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.19.0",
+  "engines": {
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
+  },
+  "scripts": {
+    "dev:web": "pnpm --filter @jobpilot/web dev",
+    "build:web": "pnpm --filter @jobpilot/web build",
+    "test:web": "pnpm --filter @jobpilot/web test",
+    "dev:extension": "pnpm --filter @jobpilot/extension dev",
+    "build:extension": "pnpm --filter @jobpilot/extension build",
+    "test:extension": "pnpm --filter @jobpilot/extension test",
+    "test:api-client": "pnpm --filter @jobpilot/api-client test",
+    "test": "pnpm -r --if-present test",
+    "lint": "eslint .",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "api:dev": "uv run --project apps/api uvicorn jobpilot_api.main:app --app-dir apps/api/src --reload",
+    "api:test": "uv run --project apps/api pytest apps/api/tests",
+    "api:import:check": "uv run --project apps/api python -c \"import sys; sys.path.insert(0, 'apps/api/src'); import jobpilot_api.main\"",
+    "api:lint": "uv run --project apps/api ruff check apps/api",
+    "api:format": "uv run --project apps/api ruff format apps/api",
+    "api:format:check": "uv run --project apps/api ruff format --check apps/api"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@testing-library/dom": "10.4.1",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.3",
+    "@types/chrome": "0.2.7",
+    "@types/node": "26.4.0",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.5",
+    "@vitejs/plugin-react": "6.1.1",
+    "eslint": "10.9.1",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.11.0",
+    "jsdom": "30.0.1",
+    "prettier": "3.9.6",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.68.0",
+    "vite": "8.2.2",
+    "vitest": "4.1.11"
+  }
+}
