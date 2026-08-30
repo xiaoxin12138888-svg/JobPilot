@@ -31,10 +31,11 @@
 
 ## FastAPI Boundary
 
-- [ ] Define provider-neutral `VerifiedProviderIdentity` and `AuthenticatedUser` types.
+- [x] Define the provider-neutral `VerifiedProviderIdentity` type.
+- [ ] Define the provider-neutral `AuthenticatedUser` type.
 - [ ] Keep JWT/OIDC/provider code inside infrastructure/auth.
 - [ ] Implement deterministic fixed-issuer/JWKS validation with mature crypto.
-- [ ] Implement idempotent Identity -> User mapping in an application service.
+- [x] Implement idempotent Identity -> User mapping in an application service.
 - [ ] Implement `POST /api/v1/auth/session` for Extension provisioning.
 - [ ] Implement `GET /api/v1/auth/me` without provider/session leakage.
 - [ ] Implement `PATCH /api/v1/auth/me` for display name, locale, and time zone.

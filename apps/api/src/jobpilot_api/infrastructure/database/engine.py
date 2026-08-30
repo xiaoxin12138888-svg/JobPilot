@@ -12,4 +12,8 @@ def parse_postgresql_url(database_url: str) -> URL:
 
 
 def create_database_engine(database_url: str) -> Engine:
-    return create_engine(parse_postgresql_url(database_url), pool_pre_ping=True)
+    return create_engine(
+        parse_postgresql_url(database_url),
+        hide_parameters=True,
+        pool_pre_ping=True,
+    )
