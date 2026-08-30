@@ -1,6 +1,6 @@
 # JobPilot MVP 核心数据模型（Phase 1–4）
 
-> 文档状态：Phase 0 已批准的概念/逻辑模型；User 身份边界已按 Phase 2A Accepted architecture 更新（不是 SQL DDL，也不代表数据库已经实现）
+> 文档状态：Phase 0 已批准的概念/逻辑模型；User/Identity 已在 Phase 2B 实现，Task 6 冻结最小 Web session schema（本文仍不是迁移文件或公共 API DTO）
 >
 > 展开范围：`User`、`Job`、`Application`、`ResumeVersion` 四个核心实体，以及 `Application` 内部的最小状态事件子记录  
 > 仅预留：`Interview`、`Document`、`Evidence`
@@ -15,13 +15,16 @@
 - API DTO 与持久化模型分离；数据库字段、对象存储 key 和内部审计字段不原样暴露。
 - 时间统一保存为带时区的 UTC 时间，展示时使用 User 的时区。
 - 字段命名在数据库使用 `snake_case`，API wire format 使用 `camelCase`。
-- Auth0 管理密码、验证与恢复；本模型只保存 provider identity 到本地 User 的稳定映射，不保存 provider credential。Web/Extension session 的内部持久化细节由 [AUTH_ARCHITECTURE.md](AUTH_ARCHITECTURE.md) 约束，并留给 Phase 2B schema 规格。
+- Auth0 管理密码、验证与恢复；独立 `Identity` 保存 provider identity 到本地 User 的稳定映射，不保存 provider credential。Task 6 的 Web session 只保存 opaque secret/CSRF 的摘要、所有者、identity、时间与撤销状态；provider token/grant 不进入 session。
 - 本模型不展开 AI 分析结果、向量 chunk 或文件处理表；状态历史只保留 Application 所需的最小追加式子记录，不形成独立业务资源。
 
 ## 2. 关系总览
 
 ```mermaid
 erDiagram
+    USER ||--o{ IDENTITY : has
+    USER ||--o{ WEB_SESSION : authenticates
+    IDENTITY ||--o{ WEB_SESSION : proves
     USER ||--o{ JOB : saves
     USER ||--o{ APPLICATION : owns
     USER ||--o{ RESUME_VERSION : creates
@@ -39,8 +42,6 @@ erDiagram
 
     USER {
         uuid id PK
-        string identity_issuer
-        string identity_subject
         string email UK
         string display_name "nullable"
         string locale "nullable"
@@ -49,6 +50,40 @@ erDiagram
         timestamptz deletion_requested_at "nullable"
         timestamptz created_at
         timestamptz updated_at
+    }
+
+    IDENTITY {
+        uuid id PK
+        uuid user_id FK
+        string issuer
+        string subject
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    WEB_SESSION {
+        uuid id PK
+        uuid user_id FK
+        uuid identity_id FK
+        bytes session_token_hash UK
+        bytes csrf_token_hash
+        timestamptz created_at
+        timestamptz last_used_at
+        timestamptz idle_expires_at
+        timestamptz absolute_expires_at
+        timestamptz revoked_at "nullable"
+    }
+
+    LOGIN_TRANSACTION {
+        uuid id PK
+        bytes browser_handle_hash UK
+        bytes state_hash UK
+        bytes nonce_hash
+        string pkce_verifier
+        string intent
+        string return_to
+        timestamptz created_at
+        timestamptz expires_at
     }
 
     JOB {
@@ -122,8 +157,6 @@ erDiagram
 | 字段                    | 必需 | 语义与约束                                                                                              |
 | ----------------------- | ---- | ------------------------------------------------------------------------------------------------------- |
 | `id`                    | 是   | 服务端生成的稳定 UUID；公开标识不承载业务含义                                                           |
-| `identity_issuer`       | 是   | 经过校验的 OIDC issuer；V1 只允许环境配置中的精确 Auth0 issuer                                          |
-| `identity_subject`      | 是   | issuer 下稳定、不透明且区分大小写的 `sub`；与 issuer 组成唯一身份映射                                   |
 | `email`                 | 是   | provider 已验证的可变联系/展示属性；写入前规范化；唯一；不是身份主键，也不用于自动合并账号              |
 | `display_name`          | 否   | 用户可修改的显示名称，不作为唯一标识                                                                    |
 | `locale`                | 否   | 用户明确设置的文案和 AI 输出语言偏好，例如 `zh-CN`；首次 identity provisioning 不从未验证客户端输入猜测 |
@@ -135,7 +168,7 @@ erDiagram
 
 ### 约束
 
-- `(identity_issuer, identity_subject)` 唯一；所有业务表只引用本地 `User.id`，不得引用 Auth0 `sub`。
+- 独立 `Identity(issuer, subject)` 唯一并映射到 `User.id`；所有业务表只引用本地 `User.id`，不得引用 Auth0 `sub`。
 - 同一 email 出现在不同 identity 上时停止并要求显式账号绑定/迁移；不得仅凭 email 自动合并。
 - 只有验证后的 email identity 才能激活本地 User。后续 provider claim 变化只能同步 allowlist 中的可变资料，不能覆盖本地授权状态。
 - `display_name`、`locale`、`time_zone` 初始可空，通过受认证的 `PATCH /api/v1/auth/me` 明确设置；API/UI 必须在为空时使用非持久化展示 fallback，而不是写入猜测值。
@@ -143,6 +176,18 @@ erDiagram
 - 数据导出和保留遵循同一生命周期规格：Phase 2B 的 `/auth/me` 覆盖当前 User profile，Phase 3 导出 User/Job，Phase 4 在接受 ResumeVersion 文件前补齐 Application、ResumeVersion 与原始文件；JobPilot-controlled live deletion、backup、restore ledger 和日志窗口以 [AUTH_ARCHITECTURE.md](AUTH_ARCHITECTURE.md#93-data-export-and-retention-policy) 的 Accepted 设计上限为准，Auth0-side retention 另按真实 DPA/tenant disclosure 审批。
 - Provider 确认不再签发 token 后，仍保留 `deletion_pending` mapping 至少一个最大 access-token lifetime + clock skew；残余 JWT 在此期间只能被拒绝，不能 reprovision。Quarantine 完成并硬删除后不保留 `(identity_issuer, identity_subject)` tombstone；以后明确重新注册会生成新 `User.id`，不能按 email、provider identity 或 restore marker 自动连接已删除账号的数据。
 - 其他核心实体必须通过 `user_id` 隔离；API 不允许跨用户引用 Job 或 ResumeVersion。
+
+### Provider Identity
+
+`Identity` 是 provider 边界，不是第二个业务用户。它只保存 `id`、`user_id`、经过验证的精确 `issuer`、区分大小写的 opaque `subject` 与创建/更新时间。`(issuer, subject)` 唯一；同一 User 未来可以在显式重新认证/绑定流程后拥有多个 Identity，但当前不实现自动 linking。`Identity` 删除随 User 级联，任何 provider token、claim payload、授权码或 refresh grant 都不保存。
+
+### Task 6 Web session records
+
+`WebSession` 保存 `id`、`user_id`、`identity_id`、32-byte `session_token_hash`、32-byte `csrf_token_hash`、`created_at`、`last_used_at`、`idle_expires_at`、`absolute_expires_at` 与可空 `revoked_at`。浏览器 cookie 是独立的 256-bit opaque secret；数据库永不保存其明文。`identity_id + user_id` 必须通过组合外键指向同一个 Identity/User，删除 User/Identity 时 session 级联删除。
+
+时间约束固定为：`created_at <= last_used_at < idle_expires_at <= absolute_expires_at`；撤销、未知、畸形、idle 过期或 absolute 过期对外都只是 `401 AUTHENTICATION_REQUIRED`。Task 6 不保存 IP、User-Agent、设备、位置、风险分数、provider token/grant、raw claims 或 `reauthenticated_at`。
+
+`LoginTransaction` 是最长 600 秒的一次性 Web OIDC 记录：`id`、32-byte `browser_handle_hash`、32-byte `state_hash`、32-byte `nonce_hash`、服务端 `pkce_verifier`、`intent`（`login | signup`）、allowlisted relative `return_to`、`created_at` 与 `expires_at`。成功、取消、provider 错误、超时、state/cookie mismatch 都原子删除所有可识别 transaction；不保存 authorization code、provider token/error、email 或 callback URL。Recent reauthentication 所需的 session/User binding 留给明确的后续 contract，不在 Task 6 预建。
 
 ## 4. Job
 
@@ -355,7 +400,9 @@ stateDiagram-v2
 以下仅是进入数据库实现 Phase 时必须验证的候选，不是本轮建表：
 
 - 所有外键都验证同一 `user_id` 所有权；不能仅靠 UI 隐藏越权资源。
-- `User(identity_issuer, identity_subject)` 唯一；`User.email` 规范化后唯一但不承担 identity linking。
+- `Identity(issuer, subject)` 唯一；`User.email` 规范化后唯一但不承担 identity linking。
+- `WebSession.session_token_hash` 唯一且两个 hash 都固定 32 bytes；`identity_id + user_id` 必须引用同一个 Identity。
+- `LoginTransaction.browser_handle_hash` 与 `state_hash` 分别唯一；transaction 在任一终态删除，不能 replay。
 - `Application(user_id, job_id)` 第一阶段唯一。
 - `ApplicationStatusEvent(application_id, recorded_at, id)` 提供稳定历史顺序；事件不能绕过所属 Application 单独访问。
 - `ResumeVersion(user_id, version_number)` 唯一。
@@ -365,7 +412,7 @@ stateDiagram-v2
 
 ## 9. 尚待后续规格决定
 
-- Auth0 可达性/成本获得负责人批准后的具体 tenant、client、claim、session schema 与密钥管理；provider 迁移和显式账号绑定在出现真实需求时单独设计。
+- Auth0 可达性/成本获得负责人批准后的具体 tenant、client、claim 与 secret 管理；Task 6 session schema 已冻结，provider 迁移、recent reauthentication、revoke-all 和显式账号绑定在出现明确后续 contract 时单独设计。
 - Phase 3 实现账户导出前，由项目负责人冻结导出格式、异步状态、下载控制与短期 artifact TTL；不得导出 credential、provider/session 内部字段、object key 或 deletion ledger。
 - Application 状态事件的长期保留和未来系统自动变更 actor 语义，在出现相应需求时再扩展；Phase 4 只记录用户触发的最小历史，并分别保留可空现实发生时间与可靠录入时间。
 - offer 接受/拒绝是否需要独立结果字段，必须以真实产品需求而不是枚举“全面性”驱动。

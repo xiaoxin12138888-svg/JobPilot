@@ -18,14 +18,15 @@
 - [x] Separate provider Identity rows from business User rows while preserving `(issuer, subject) -> User.id`.
 - [x] Keep advanced distributed/KMS/enterprise controls as future documented design, not Phase 2B over-engineering.
 - [x] Freeze Web scopes to `openid profile email`; do not request/store a Web refresh grant and discard provider tokens after callback validation.
-- [x] Implement `PATCH /auth/me` and `revoke-all`; explicitly defer the full account-deletion endpoint rather than ship an unsafe ledger-less variant.
+- [x] Implement `PATCH /auth/me`; explicitly defer recent reauthentication, `revoke-all`, and the full account-deletion endpoint rather than ship unsafe partial variants.
 
 ## Dependency and Database Foundation
 
 - [x] Lock only approved runtime/development dependencies and document their purposes.
 - [x] Extend `.env.example` with non-secret database/Auth0/session/Web/Extension configuration.
 - [x] Create exact User/Identity columns, nullability, constraints, and the first Alembic migration.
-- [ ] Add WebSession/LoginTransaction only in the later Web-session migration.
+- [x] Freeze the minimal hash-only WebSession/LoginTransaction model before migration.
+- [ ] Add WebSession/LoginTransaction in a new migration without rewriting migration `0001`.
 - [x] Prove clean upgrade -> downgrade -> upgrade against real PostgreSQL.
 - [x] Prove User persistence, identity uniqueness, email conflict, and duplicate-race protection.
 
@@ -47,7 +48,7 @@
 
 ## Web Authentication
 
-- [ ] Implement bounded browser login transactions and exact relative `returnTo` validation.
+- [ ] Implement bounded `login|signup` browser transactions and exact relative `returnTo` validation.
 - [ ] Implement authorize/callback with state, nonce, PKCE, and safe provider-error mapping.
 - [ ] Clean login transaction state on success, cancellation, timeout, mismatch, and provider error.
 - [ ] Store only an opaque HttpOnly session cookie in the browser.
@@ -55,7 +56,7 @@
 - [ ] Implement session-bound CSRF plus exact Origin/Fetch Metadata checks.
 - [ ] Implement idempotent local logout and exact cookie deletion.
 - [ ] Prove session fixation rotation, idle/absolute expiry, missing/expired-session logout Origin gate, and store-outage behavior.
-- [ ] Implement recent-authenticated revoke-all with truthful provider failure semantics.
+- [ ] Keep recent reauthentication/revoke-all absent from OpenAPI until its later contract and provider capability gate are approved.
 - [ ] Render only signed-out/signed-in User state and logout in React.
 - [ ] Prove expiry behavior and that React never stores provider tokens.
 

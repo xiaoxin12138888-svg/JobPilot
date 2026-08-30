@@ -115,6 +115,7 @@ Phase 1–4 **不包含** interviews、documents、analytics、RAG、模拟面�
 | 401  | `AUTHENTICATION_REQUIRED`、`INVALID_CREDENTIALS`                               | 未认证或凭据无效                          |
 | 403  | `FORBIDDEN`、`EMAIL_VERIFICATION_REQUIRED`、`RECENT_AUTHENTICATION_REQUIRED`   | 已认证但账号/当前会话不满足操作要求       |
 | 404  | `RESOURCE_NOT_FOUND`                                                           | 当前用户范围内资源不存在                  |
+| 405  | `METHOD_NOT_ALLOWED`                                                           | 路径存在但 HTTP method 不受支持           |
 | 409  | `CONFLICT`、`IDENTITY_CONFLICT`、`IDEMPOTENCY_KEY_REUSED`、`QUOTA_EXCEEDED`    | 唯一性、identity 映射、幂等或资源配额冲突 |
 | 413  | `PAYLOAD_TOO_LARGE`                                                            | 上传超限                                  |
 | 415  | `UNSUPPORTED_MEDIA_TYPE`                                                       | 文件类型不支持                            |
@@ -237,10 +238,9 @@ JobPilot 不代理用户密码，不把这些路径伪装成 `/api/v1/auth/regis
 
 ### `GET /api/v1/auth/web/authorize`
 
-- Auth：`intent=login|signup` 不需要现有会话；`intent=reauth` 必须持有有效 Web session。该路径仅供顶层浏览器导航，不作为 fetch JSON API。
-- Query：`intent=login|signup|reauth`，以及可选 `returnTo`。`returnTo` 只能是 allowlist 中的相对 Web 路径，不能是完整 URL、protocol-relative URL 或任意调用方 origin。
-- `intent=reauth`：要求当前有效 Web session，将 transaction 绑定该 session/User，并向 Auth0 发送 `prompt=login`、`max_age=0`。Callback 必须验证 signed `auth_time` 满足 recent-auth window，且返回的 `(issuer, subject)` 与当前 User 完全相同；不得借 reauth 切换账号。
-- `intent=login`：同样使用 `prompt=login`，因此 JobPilot local logout 后，即使 Auth0 SSO cookie 仍在，也不能静默恢复原用户。`signup` 使用明确的 provider signup hint。
+- Auth：不需要现有会话。该路径仅供顶层浏览器导航，不作为 fetch JSON API。
+- Query：`intent=login|signup`，以及可选 `returnTo`。`returnTo` 只能是 allowlist 中的相对 Web 路径，不能是完整 URL、protocol-relative URL 或任意调用方 origin。
+- `intent=login` 使用 `prompt=login`，因此 JobPilot local logout 后，即使 Auth0 SSO cookie 仍在，也不能静默恢复原用户；`signup` 只增加明确的 provider signup hint，注册页面和凭据仍由 Universal Login 所有。
 - 语义：创建最长 10 分钟的一次性 server-side login transaction（intent、state、nonce、PKCE、过期时间）及其随机 browser handle hash；生产设置 host-only `__Host-jobpilot_login_tx`（`HttpOnly; Secure; SameSite=Lax; Path=/; no Domain; Max-Age=600`），显式 loopback development 使用 `jobpilot_dev_login_tx`（同属性但不设 `Secure`），然后 `302` 到精确 Auth0 authorize URL。
 - 主要错误：`400 BAD_REQUEST`、`429 RATE_LIMITED`、`503 IDENTITY_PROVIDER_UNAVAILABLE`。
 
@@ -248,10 +248,9 @@ JobPilot 不代理用户密码，不把这些路径伪装成 `/api/v1/auth/regis
 
 - Auth：不需要；只接受 state、server-side transaction 与发起浏览器的一次性 login-transaction cookie 三者同时匹配的 provider callback。
 - Query：Auth0 返回的 `code`、`state` 或标准错误字段；所有值都视为不可信。
-- 语义：验证 browser-bound transaction，交换 code，验证 OIDC identity，生成 `VerifiedProviderIdentity`。Login/signup 解析或创建本地 User 并建立 session；reauth 只在 identity 与原 User 相同且 `auth_time` 足够新时升级/旋转当前 session 的 `reauthenticatedAt`。
+- 语义：验证 browser-bound transaction，交换 code，验证 OIDC identity，生成 `VerifiedProviderIdentity`。Login/signup 解析或创建本地 User、丢弃所有 provider token，并建立全新的 opaque Web session。
 - 成功：以创建时完全一致的属性删除 login-transaction cookie，`303` 到已保存的 allowlisted Web path，并设置生产 `__Host-jobpilot_session` 或仅限 loopback development 的 `jobpilot_dev_session` HttpOnly cookie。credential 不进入 redirect URL。
-- 失败：无论 state/cookie 是否匹配，都使可识别 transaction 失效并用完全匹配属性删除 login-transaction cookie，再 `303` 到配置中固定、同站点且不携带 provider 参数的 `/auth/error` 页面；不得透传 provider 原始错误，也不按错误类型改变 redirect target。
-- 主要错误：`401 INVALID_CREDENTIALS`、`403 EMAIL_VERIFICATION_REQUIRED`、`409 IDENTITY_CONFLICT`、`429 RATE_LIMITED`、`503 IDENTITY_PROVIDER_UNAVAILABLE`。
+- 失败：无论 state/cookie 是否匹配，都使可识别 transaction 失效并用完全匹配属性删除 login-transaction cookie，再 `303` 到配置中固定、同站点且不携带 provider 参数的 `/auth/error` 页面；不得透传 provider 原始错误，也不按错误类型改变 redirect target。`INVALID_CREDENTIALS`、`EMAIL_VERIFICATION_REQUIRED`、`IDENTITY_CONFLICT`、rate limit 与 provider outage 是内部安全分类，不改变浏览器可观察的 callback redirect。
 
 ### `POST /api/v1/auth/session`
 
@@ -302,12 +301,14 @@ JobPilot 不代理用户密码，不把这些路径伪装成 `/api/v1/auth/regis
 - 有效 session：在通用 Origin/Fetch 门禁之外，还必须提供有效 `X-CSRF-Token`，然后撤销 session。CSRF 失败返回 `403`，不清除有效 session。
 - 缺失、过期、未知或已撤销 session：通过通用 Origin/Fetch 门禁后不要求 CSRF，仍使用与创建时完全一致的 cookie attributes 发送清理 cookie 并幂等返回 `204`。Session store 不可用时返回 `503` 且不修改 cookie。
 - Request：无业务 body。
-- 语义：幂等撤销当前 Web server session、尝试撤销该 session 持有的 provider grant，并清 session cookie。V1 这是 **JobPilot local logout**，不宣称清除 Auth0 SSO cookie；下一次 login 强制 `prompt=login`，避免静默恢复共享设备上的旧账号。
+- 语义：幂等撤销当前 JobPilot Web server session并清 session cookie。Web callback 只请求 `openid profile email`，不保存 provider grant，所有 ID/access token 在验证后丢弃；因此 V1 这是明确的 **JobPilot local logout**，不宣称清除 Auth0 SSO cookie。下一次 login 强制 `prompt=login`，避免静默恢复共享设备上的旧账号。
 - `204`：无 body；不可把 session 是否曾存在或 provider revoke 细节泄露给客户端。
 
 Extension logout 不向 JobPilot 上传 refresh token：trusted worker 先尝试调用 Auth0 revoke，再清除 `chrome.storage.session`/trusted `chrome.storage.local`，并丢弃 popup profile。若网络或 provider 故障使撤销无法确认，本地退出仍完成，但 UI 必须明确提示远端 grant 状态未知；被复制的 refresh token 在 provider 撤销或自身过期前仍可能续期。恢复网络后，用户应从 Web 完成 recent reauthentication 并调用 revoke-all。由于 JobPilot 从未取得该 refresh token，本流程不虚构服务端自动重试。已签发 access token 最多存活到短期 `exp`。
 
-### `POST /api/v1/auth/sessions/revoke-all`
+### Deferred — `POST /api/v1/auth/sessions/revoke-all`
+
+该 endpoint 不属于 Task 6 当前公开实现。它需要 recent reauthentication、session/User binding 与经真实 Auth0 capability 审批的 provider grant 撤销边界；这些条件冻结前，OpenAPI 不得暴露半实现路由。以下保留为后续 Phase 2B contract 草案：
 
 - Auth：required；只允许完成 recent reauthentication 的 Web session。
 - CSRF：required。
@@ -316,7 +317,9 @@ Extension logout 不向 JobPilot 上传 refresh token：trusted worker 先尝试
 - `204`：无 body，并清当前 Web cookies。
 - 主要错误：`403 RECENT_AUTHENTICATION_REQUIRED`、`503 IDENTITY_PROVIDER_UNAVAILABLE`。部分失败进入可重试安全状态，不能虚报完全成功。
 
-### `DELETE /api/v1/auth/account`
+### Deferred — `DELETE /api/v1/auth/account`
+
+该 endpoint 不属于 Task 6 当前公开实现；在 restore-control durable store/KMS 与完整生命周期基础设施获批前，不发布不安全的缩减版本。以下保留为后续 contract：
 
 - Auth：required；仅允许完成 recent provider reauthentication 的 Web session。
 - CSRF：required；还需要显式不可逆确认，但确认文本/交互不属于 API credential。
