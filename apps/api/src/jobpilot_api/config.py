@@ -1,6 +1,6 @@
 import os
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from urllib.parse import SplitResult, urlsplit
 
 DEVELOPMENT_WEB_ORIGIN = "http://localhost:5173"
@@ -69,12 +69,15 @@ class ApiSettings:
     environment: str
     cors_origins: tuple[str, ...]
     auth: AuthSettings | None = None
+    database_url: str | None = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         if self.environment not in VALID_ENVIRONMENTS:
             raise ValueError(f"Unsupported JOBPILOT_ENVIRONMENT: {self.environment}")
         if "*" in self.cors_origins:
             raise ValueError("Wildcard CORS origins are not allowed")
+        if self.database_url is not None:
+            _validate_nonempty_exact_value("database_url", self.database_url)
 
     @classmethod
     def from_environment(cls, environment: Mapping[str, str] | None = None) -> "ApiSettings":
@@ -93,6 +96,7 @@ class ApiSettings:
             environment=name,
             cors_origins=origins,
             auth=_load_auth_settings(values),
+            database_url=_load_database_url(values),
         )
 
 
@@ -130,6 +134,13 @@ def _load_auth_settings(values: Mapping[str, str]) -> AuthSettings | None:
         jwks_cache_seconds=jwks_cache_seconds,
         jwks_timeout_seconds=jwks_timeout_seconds,
     )
+
+
+def _load_database_url(values: Mapping[str, str]) -> str | None:
+    configured_url = values.get("JOBPILOT_DATABASE_URL")
+    if configured_url is None or not configured_url.strip():
+        return None
+    return configured_url.strip()
 
 
 def _validate_https_url(field_name: str, value: str) -> SplitResult:

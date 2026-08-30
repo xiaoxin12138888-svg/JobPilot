@@ -8,6 +8,9 @@ from jobpilot_api.config import ApiSettings, AuthSettings
 def _auth_environment() -> dict[str, str]:
     return {
         "JOBPILOT_ENVIRONMENT": "test",
+        "JOBPILOT_DATABASE_URL": (
+            "postgresql+psycopg://jobpilot:database-secret@localhost:5432/jobpilot_test"
+        ),
         "JOBPILOT_AUTH_ISSUER": "https://tenant.example.invalid/",
         "JOBPILOT_AUTH_JWKS_URL": "https://tenant.example.invalid/.well-known/jwks.json",
         "JOBPILOT_AUTH_TOKEN_URL": "https://tenant.example.invalid/oauth/token",
@@ -40,12 +43,22 @@ def test_api_settings_loads_typed_bearer_auth_configuration() -> None:
         jwks_cache_seconds=240,
         jwks_timeout_seconds=4.5,
     )
+    assert settings.database_url == (
+        "postgresql+psycopg://jobpilot:database-secret@localhost:5432/jobpilot_test"
+    )
+    assert "database-secret" not in repr(settings)
 
 
 def test_api_settings_without_auth_environment_keeps_auth_disabled() -> None:
     settings = ApiSettings.from_environment({"JOBPILOT_ENVIRONMENT": "development"})
 
     assert settings.auth is None
+    assert settings.database_url is None
+
+
+def test_database_url_must_be_an_exact_nonempty_value_when_provided() -> None:
+    with pytest.raises(ValueError, match="database_url"):
+        ApiSettings(environment="test", cors_origins=(), database_url=" postgresql://db ")
 
 
 def test_partial_auth_environment_fails_closed() -> None:

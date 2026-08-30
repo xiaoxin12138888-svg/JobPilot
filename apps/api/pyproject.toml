@@ -10,6 +10,7 @@ dependencies = [
   "psycopg[binary]>=3.3.4,<4",
   "pyjwt[crypto]>=2.13.0,<3",
   "sqlalchemy>=2.0.52,<2.1",
+  "tzdata>=2026.3,<2027",
   "uvicorn>=0.52.4,<0.53",
 ]
 
