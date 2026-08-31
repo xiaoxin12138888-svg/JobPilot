@@ -1,5 +1,11 @@
-import { createApiClient } from '@jobpilot/api-client';
+import { createApiClient, createExtensionBearerApiClient } from '@jobpilot/api-client';
+
+const baseUrl = import.meta.env.VITE_API_BASE_URL;
 
 export const apiClient = createApiClient({
-  baseUrl: import.meta.env.VITE_API_BASE_URL,
+  baseUrl,
+});
+
+export const extensionBearerApiClient = createExtensionBearerApiClient({
+  baseUrl,
 });
