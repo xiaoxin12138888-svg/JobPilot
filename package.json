@@ -12,6 +12,7 @@
     "test:web": "pnpm --filter @jobpilot/web test",
     "dev:extension": "pnpm --filter @jobpilot/extension dev",
     "build:extension": "pnpm --filter @jobpilot/extension build",
+    "build:extension:test": "pnpm --filter @jobpilot/extension build:test",
     "test:extension": "pnpm --filter @jobpilot/extension test",
     "test:api-client": "pnpm --filter @jobpilot/api-client test",
     "test": "pnpm -r --if-present test",

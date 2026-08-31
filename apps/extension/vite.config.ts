@@ -4,12 +4,13 @@ import { loadEnv, type Plugin } from 'vite';
 import { defineConfig } from 'vitest/config';
 
 import { createManifest } from './manifest.ts';
+import { loadExtensionConfig, type ExtensionConfig } from './src/auth/config.ts';
 
 const projectDirectory = fileURLToPath(new URL('.', import.meta.url));
 const repositoryDirectory = fileURLToPath(new URL('../..', import.meta.url));
 
-function emitManifest(apiBaseUrl: string): Plugin {
-  const manifest = createManifest(apiBaseUrl);
+function emitManifest(config: ExtensionConfig): Plugin {
+  const manifest = createManifest(config);
 
   return {
     name: 'jobpilot-extension-manifest',
@@ -25,15 +26,23 @@ function emitManifest(apiBaseUrl: string): Plugin {
 
 export default defineConfig(({ command, mode }) => {
   const environment = loadEnv(mode, repositoryDirectory, 'VITE_');
+  const plugins = command === 'build' ? [emitManifest(loadExtensionConfig(environment))] : [];
 
   return {
     envDir: repositoryDirectory,
-    plugins: command === 'build' ? [emitManifest(environment.VITE_API_BASE_URL ?? '')] : [],
+    plugins,
     build: {
       outDir: fileURLToPath(new URL('./dist', import.meta.url)),
       emptyOutDir: true,
       rollupOptions: {
-        input: fileURLToPath(new URL('./popup.html', import.meta.url)),
+        input: {
+          background: fileURLToPath(new URL('./src/background.ts', import.meta.url)),
+          popup: fileURLToPath(new URL('./popup.html', import.meta.url)),
+        },
+        output: {
+          entryFileNames: (chunk) =>
+            chunk.name === 'background' ? 'background.js' : 'assets/[name]-[hash].js',
+        },
       },
     },
     root: projectDirectory,

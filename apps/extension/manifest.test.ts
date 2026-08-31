@@ -2,26 +2,46 @@ import { describe, expect, it } from 'vitest';
 
 import { createManifest } from './manifest';
 
+const config = {
+  apiBaseUrl: 'http://localhost:8000/api',
+  auth: {
+    issuer: 'https://tenant.example.invalid/',
+    authorizationEndpoint: 'https://tenant.example.invalid/authorize',
+    tokenEndpoint: 'https://tenant.example.invalid/oauth/token',
+    jwksUri: 'https://tenant.example.invalid/.well-known/jwks.json',
+    revocationEndpoint: 'https://tenant.example.invalid/oauth/revoke',
+    audience: 'https://api.jobpilot.example.invalid',
+    clientId: 'public-extension-client-id',
+  },
+  webAppUrl: 'http://localhost:5173/',
+};
+
 describe('createManifest', () => {
-  it('uses activeTab and only the configured API origin', () => {
-    const manifest = createManifest('http://localhost:8000/api');
+  it('uses only the trusted authentication permissions and exact origins', () => {
+    const manifest = createManifest(config);
 
     expect(manifest.manifest_version).toBe(3);
-    expect(manifest.permissions).toEqual(['activeTab']);
-    expect(manifest.host_permissions).toEqual(['http://localhost:8000/*']);
-    expect(manifest).not.toHaveProperty('background');
+    expect(manifest.permissions).toEqual(['identity', 'storage']);
+    expect(manifest.host_permissions).toEqual([
+      'http://localhost:8000/*',
+      'https://tenant.example.invalid/*',
+    ]);
+    expect(manifest.background).toEqual({
+      service_worker: 'background.js',
+      type: 'module',
+    });
+    expect(manifest.content_security_policy).toEqual({
+      extension_pages: "script-src 'self'; object-src 'self'",
+    });
     expect(manifest).not.toHaveProperty('content_scripts');
   });
 
-  it('rejects a non-HTTP API origin', () => {
-    expect(() => createManifest('file:///tmp/jobpilot')).toThrow(
-      'API base URL must use HTTP or HTTPS',
-    );
-  });
-
-  it('rejects credentials in the public API base URL', () => {
-    expect(() => createManifest('https://user:secret@example.com')).toThrow(
-      'API base URL must not include credentials',
-    );
+  it('deduplicates host permissions when API and provider share an origin', () => {
+    expect(
+      createManifest({
+        ...config,
+        apiBaseUrl: 'https://tenant.example.invalid/api',
+      }).host_permissions,
+    ).toEqual(['https://tenant.example.invalid/*']);
   });
 });
