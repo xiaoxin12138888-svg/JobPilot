@@ -21,7 +21,7 @@ The cleanup starts from clean branch `phase/2-authentication` at `9a3e79a7e13414
 
 ### Slice 0 — Decision, checkpoint and executable cleanup plan
 
-**Status:** In progress.
+**Status:** Complete.
 
 **Acceptance:** ADR-008 records the local-first decision; the checkpoint tag resolves to the clean pre-cleanup HEAD; AGENTS and task files constrain all subsequent work.
 
@@ -37,7 +37,7 @@ The cleanup starts from clean branch `phase/2-authentication` at `9a3e79a7e13414
 
 ### Slice 2 — Reduce shared contracts and Web to local health
 
-**Acceptance:** add a loopback-only health client and migrate Web to it; Web has no login/logout/account/auth-error state and directly renders local API checking/ready/unavailable/retry states. Temporarily retain only the auth exports still consumed by the not-yet-migrated Extension so this increment remains buildable. Web dev server binds loopback and build needs no provider config.
+**Acceptance:** add a loopback-only health client and migrate Web to it; Web has no login/logout/account/auth-error state and directly renders local API `checking / ready / unavailable` with retry as an unavailable-state action. Temporarily retain only the auth exports still consumed by the not-yet-migrated Extension so this increment remains buildable. Web dev server binds loopback and build needs no provider config.
 
 **TDD:** replace auth tests with health pending/success/failure/retry/stale-result and loopback URL tests; confirm RED before implementation.
 
@@ -47,7 +47,7 @@ The cleanup starts from clean branch `phase/2-authentication` at `9a3e79a7e13414
 
 **Acceptance:** delete OAuth/PKCE/token/storage/background/message code and tests; remove `oauth4webapi`; Popup directly uses the bundled local health client. In the same atomic increment, delete the now-last auth exports (`UserView`, CSRF, Web session/login/logout and Extension bearer contracts/tests) from shared-types/api-client. Manifest has no permissions, background, content script, remote host, telemetry or proxy capability; its only host permission and `connect-src` are the exact loopback API origin.
 
-**TDD:** first rewrite manifest/config/Popup tests for local-only behavior and confirm RED; then implement checking/available/unavailable/retry and rebuild. Inspect unpacked artifacts for no provider/auth/remote executable code.
+**TDD:** first rewrite manifest/config/Popup tests for local-only behavior and confirm RED; then implement `checking / available / unavailable` with retry as an unavailable-state action and rebuild. Inspect unpacked artifacts for no provider/auth/remote executable code.
 
 **Dependencies:** Slice 2 health client.
 

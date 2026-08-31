@@ -1,57 +1,36 @@
 # Architecture Decision Records
 
-本目录保存 JobPilot 的 Architecture Decision Record（ADR），用于记录会长期影响架构、公共契约、数据、安全或开发方式的关键取舍。ADR 解释“为什么这样决定”，不替代产品规格、API 契约或实施文档。
+本目录保存会长期影响架构、公共契约、数据、安全或开发方式的决策。ADR 解释“为什么”，不替代产品规格、API contract 或实施计划。
 
-## 何时创建 ADR
+## When to create an ADR
 
-以下变更在实现前必须新增或更新 ADR：
+以下变更必须在实现前新增 ADR：
 
-- 改变应用、模块或部署边界；
-- 改变数据库、对象存储、AI Provider 或关键基础设施策略；
-- 引入核心依赖、Agent Framework 或跨语言代码生成；
-- 对公共 API、认证、安全或数据保留作出长期承诺；
-- 推翻已经 Accepted 的架构决定。
+- 改变应用、模块、数据或部署边界；
+- 改变本地优先、loopback、single-user 或 no-proxy 约束；
+- 引入核心 runtime dependency、远程服务或数据出站；
+- 改变公共 API、持久化或长期安全承诺；
+- 推翻已经 Accepted 的决定。
 
-普通 bug 修复、局部实现细节和不影响长期边界的小重构不需要 ADR。
+## Numbering and status
 
-## 编号与状态
+- 文件名使用 `ADR-NNN-short-kebab-title.md`，编号只增不复用；
+- `Proposed`：正在评审，不能作为实现依据；
+- `Accepted`：已批准，后续实现必须遵守；
+- `Superseded`：已被后续 ADR 取代；
+- `Deprecated`：决定不再适用且没有直接替代。
 
-- 文件名：`ADR-NNN-short-kebab-title.md`，编号只增不复用。
-- `Proposed`：正在评审，不能作为已批准实现依据。
-- `Accepted`：已批准，后续实现必须遵守。
-- `Superseded`：已被新 ADR 取代；旧文件保留并链接新编号。
-- `Deprecated`：决定不再适用，但没有直接替代方案。
+## Historical checkpoint
 
-Accepted ADR 不应静默改写其历史结论。若事实变化，应新增 ADR，并把旧记录标为 Superseded。项目负责人可以在创建明确 checkpoint 后，显式批准从活跃工作树删除已经完全失效且会误导当前产品的历史 ADR；Git history 保留原始记录。
+ADR-008 完全取代了旧远程身份方向。ADR-006、ADR-007 及其实现/验证材料已按项目负责人指令从 active working tree 删除，避免误导当前产品；原始文件完整保存在 annotated tag `pre-local-first-cleanup`（commit `9a3e79a7e134142d800bf94a78ecafcad0cf9302`）。
 
-## 最小模板
+缺少 006/007 文件是有意的，不表示编号可复用。Git history 是历史证据，当前目录只列仍有用的决定。
 
-```markdown
-# ADR-NNN：标题
-
-- **Status**：Proposed
-- **Date**：YYYY-MM-DD
-
-## Context
-
-需要解决的问题、约束和证据。
-
-## Decision
-
-选择的方案及明确边界。
-
-## Consequences
-
-正面影响、成本、风险和重新评估条件。
-```
-
-## 当前记录
+## Current records
 
 - [ADR-001：采用 Monorepo 与模块化单体](ADR-001-monorepo.md) — Accepted
-- [ADR-002：采用 FastAPI 与 PostgreSQL 作为后端基础](ADR-002-fastapi-postgresql.md) — Accepted
+- [ADR-002：采用 FastAPI 与 PostgreSQL 作为后端基础](ADR-002-fastapi-postgresql.md) — Accepted（含 ADR-008 local-first amendment）
 - [ADR-003：岗位采集必须由用户主动触发](ADR-003-user-triggered-job-capture.md) — Accepted
 - [ADR-004：早期不引入 Agent Framework](ADR-004-no-early-agent-framework.md) — Accepted
 - [ADR-005：采用 pnpm 与 uv 作为单一包管理工具链](ADR-005-pnpm-uv-toolchains.md) — Accepted
-- [ADR-006：采用托管 OIDC 身份与双通道会话](ADR-006-authentication-strategy.md) — Superseded by ADR-008; pending active-tree cleanup
-- [ADR-007：以中国大陆普通网络可用性重选生产身份供应商](ADR-007-mainland-china-identity-provider.md) — Superseded by ADR-008; pending active-tree cleanup
 - [ADR-008：采用 Local-first Single-user 无认证架构](ADR-008-local-first-single-user-no-authentication.md) — Accepted

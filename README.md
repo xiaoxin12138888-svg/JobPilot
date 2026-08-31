@@ -1,77 +1,71 @@
 # JobPilot
 
-JobPilot 是一个面向求职者的跨招聘平台 AI 求职工作台。它将用户在不同招聘平台上主动浏览并收藏的岗位汇总到一个工作空间，逐步支持岗位管理、简历匹配、投递跟踪、面试准备与求职结果复盘。
+JobPilot 是面向个人求职者的本地优先求职工作台。它计划把用户在招聘网站上主动查看并确认的信息整理到一个本机 workspace，逐步支持岗位管理、申请跟踪和简历版本关联。
 
-JobPilot 不替代招聘网站，也不建设或批量抓取招聘职位数据库。岗位发现、HR 沟通和正式投递仍在原招聘平台完成。
+JobPilot 不替代招聘网站，不建设职位数据库，也不代表用户自动搜索、抓取或投递。
 
-## 当前阶段
+## 当前状态
 
-Phase 0、Phase 1 和 Phase 2A 已完成评审并获得项目负责人明确批准。项目当前严格处于 **Phase 2B — Authentication Implementation & User Boundary** 的 `Logto Verification Slice — Protocol & Mainland MVP Gate`。
+项目正在完成 **Local-first Single-user Repository Cleanup**。当前基线只有：
 
-- [ADR-006](docs/DECISIONS/ADR-006-authentication-strategy.md) 的 provider-neutral 认证边界继续 Accepted；[ADR-007](docs/DECISIONS/ADR-007-mainland-china-identity-provider.md) 已是 `Accepted — Provider Direction`。
-- 新增硬约束：**Core JobPilot workflow must operate without VPN/proxy in Mainland China.**
-- Task 6 已获项目负责人批准；Task 7A–7G 的 Extension Authorization Code + PKCE 确定性实现及 Task 7H 自动化、审查、简化和文档门禁均已完成。Task 8 的真实 provider 配置和联调现已暂停。
-- 当前实现覆盖 Web 与 Extension 两种认证 transport、FastAPI/PostgreSQL 的最小认证闭环，以及由 Task 5 建立的 `issuer + subject -> JobPilot User.id` 服务端边界。
-- Self-hosted Logto OSS 已批准为 V1 首选 provider 方向，但尚未证明 MVP compatibility 或 production readiness；Auth0 不再是生产默认，现有 adapter/fixtures 保留。
-- 当前只允许创建隔离开发 Logto、独立 Identity DB、Web confidential app、Extension public app 与 JobPilot API resource；不允许生产/收费资源、迁移、社交登录、MFA、RBAC 或短信。
-- 自动化继续使用 deterministic fake issuer/JWKS；Chrome Load unpacked、真实 provider flow 和中国大陆普通网络可用性均为 `NOT VERIFIED / BLOCKED`。
-- 本阶段不实现 Job、Application、Resume、AI、RAG 或其他 Phase 3+ 能力；Phase 2B 验收前不得进入 Phase 3。
+- React Web：显示本机 API 的 `checking / ready / unavailable` 状态；`unavailable` 提供 retry 动作；
+- Chrome Extension：无 privileged Chrome API permission、无后台进程的本地健康 Popup；唯一 host permission 是 `http://127.0.0.1:8000/*`；
+- FastAPI：只公开 `GET /health`，默认绑定 `127.0.0.1`；
+- PostgreSQL、SQLAlchemy 与 Alembic：保留空工程骨架，当前没有业务表或 revision；`/health` 启动不创建数据库连接；
+- `packages/shared-types` 与 `packages/api-client`：只提供严格校验的 health contract。
 
-## 当前实现状态（截至 Task 7）
+Phase 3 尚未开始。仓库中没有 Job、Application、ResumeVersion、招聘网站 Adapter、content script、AI、RAG 或上传功能。
 
-- `apps/web`：最小认证状态 UI；按 `/api/v1/auth/me` → `/api/v1/auth/csrf` 恢复 server-backed session，提供固定 login navigation、本地 logout、失败与重试状态。React 不处理 OAuth token。
-- `apps/extension`：Manifest V3 trusted service worker 负责用户触发的 Authorization Code + PKCE S256、callback/state/nonce 验证、public-client code exchange、按需 single-flight refresh、`/auth/session` identity establishment、`/auth/me` 与真实语义的 logout；Popup 只发送精确 typed intents 并显示 credential-free 用户状态。
-- `apps/api`：保留 `GET /health`，并实现 provider-neutral identity boundary、Web OIDC authorize/callback、opaque session、cookie `/auth/me`、CSRF 与本地 logout。
-- PostgreSQL：通过 SQLAlchemy/Alembic 持久化 User、Identity、WebSession 与 LoginTransaction；session/CSRF 只存摘要，不保存 provider token/grant。
-- `packages/shared-types`：共享 health、批准的 `UserView` 与 CSRF response 类型。
-- `packages/api-client`：分别封装 Web cookie transport 与 Extension bearer transport；Extension 首次登录依次调用 `/auth/session` 和 `/auth/me`，请求固定使用 `credentials: omit`，并只投影批准的 User 字段。
+## 本地优先意味着什么
 
-当前仓库仍没有 Job、Application、Resume 等 Phase 3+ 业务 persistence、招聘网站解析或 AI/RAG。当前 Auth0-compatible deterministic implementation 保留不变；本轮只验证真实 Logto 协议并记录最小 adapter 影响，不实施迁移。
+- 一个安装实例就是一个本地 workspace；没有 JobPilot 账号、登录、云租户或多用户权限体系。
+- 正常使用不需要 JobPilot 云服务器，不需要注册云账号，也不依赖 “JobPilot Cloud”。
+- 已安装后的核心运行不需要 VPN、代理或特殊 DNS。
+- 未来业务数据保存在用户自己的电脑，由操作系统账户和文件权限保护。
+- Web 与 Extension 只访问 loopback FastAPI；不支持公网、局域网或远端 API。
+- 招聘网站流量由用户自己的浏览器直接访问，不经过 JobPilot API 或 JobPilot 服务器。
 
-## 目标技术栈
+## P0 no-proxy runtime
 
-| 区域       | 技术选择                                               |
-| ---------- | ------------------------------------------------------ |
-| Web        | React、TypeScript、Vite                                |
-| 浏览器扩展 | Chrome Extension、Manifest V3、TypeScript              |
-| API        | Python、FastAPI                                        |
-| 数据库     | PostgreSQL；需要 RAG 时启用 pgvector                   |
-| AI         | LLM API、Structured Output、服务抽象                   |
-| 文件存储   | S3-compatible object storage abstraction               |
-| 基础设施   | Docker、Git、GitHub；GitHub Actions 在后续阶段按需加入 |
-| 可观测性   | 结构化日志；后续按需加入 Sentry                        |
+已安装核心必须在中国大陆普通网络、关闭 VPN/系统代理/浏览器代理/特殊 DNS 时工作。该要求覆盖 JobPilot Web、FastAPI、Extension Popup、未来 content script、岗位识别/保存/本地读写，以及 BOSS 直聘、牛客、实习僧、猎聘和国聘的后续 Adapter。
 
-## 目标架构速览
+Auth0、Logto Cloud、Google APIs、Google reCAPTCHA、Cloudflare Turnstile、GitHub API/raw content、jsDelivr、unpkg、cdnjs、远程字体/JavaScript、境外 AI API、境外 telemetry/analytics 或境外 update API 永远不能成为核心 runtime dependency。未来可选远程能力即使经单独 ADR/批准，也必须显式启用、可降级，并且不阻塞本地核心。
 
-JobPilot 采用 **monorepo + modular monolith**：
+当前 supported recruitment adapters：`none`。BOSS 直聘、牛客、实习僧、猎聘和国聘均为 `NOT STARTED / NOT SUPPORTED`，必须等对应 Phase 实现并通过以下 Gate 后才能改变状态。
 
-- `apps/web`：在后续阶段负责 Web 交互和呈现，通过统一 API 访问业务能力。
-- `apps/extension`：在 Phase 3 起只解析用户当前主动打开的岗位页面、提供确认交互，并通过统一 API 保存岗位。
-- `apps/api`：在相应阶段逐步承担认证、业务规则、数据持久化、AI/RAG 编排和对象存储抽象。
-- `packages/shared-types`：仅容纳 Web 与 Extension 真正共享且稳定的 TypeScript 契约。
-- `packages/api-client`：为两个 TypeScript 客户端提供统一 API 调用边界。
-- PostgreSQL 是业务事实来源；前端和扩展不得各自定义业务状态。
+Extension 必须满足：
 
-以上是分阶段目标责任。Phase 1 只创建了当前有真实消费者的应用和 package，没有预建未来业务模块。
+- 所有 JavaScript 与样式随 bundle 分发，不执行远程代码；
+- 不下载 CDN 资源，不修改或创建代理/VPN，不发送 telemetry；
+- 当前只有精确 loopback API host permission，没有后台、content script 或招聘网站权限；
+- 未来每个 Adapter 必须另行批准精确 host，由用户主动触发，并且只读取当前已打开页面的已呈现 DOM；
+- 每个 Adapter 都要在无代理真实网络上分别记录：招聘平台页面、Extension Popup、页面识别、岗位解析、保存到 JobPilot、JobPilot 岗位库的 `PASS / FAIL`；任一步依赖代理就不能标为支持。
 
-## Development Setup
+依赖镜像、pnpm registry、PyPI 和 GitHub release 只属于开发或安装阶段，不得变成已安装运行时依赖。
 
-### 前置条件
+## Runtime architecture
 
-| 工具            | 要求                                      |
-| --------------- | ----------------------------------------- |
-| Git             | 当前稳定版                                |
-| Node.js         | `^22.22.2`、`^24.15.0` 或 `>=26.0.0`      |
-| pnpm            | `11.19.0`（仓库 `packageManager` 已固定） |
-| Python          | `>=3.12,<3.13`                            |
-| uv              | `0.12.7` 或兼容版本                       |
-| Chrome/Chromium | 用于加载 unpacked Extension               |
+```text
+React Web ---------\
+                    > exact loopback HTTP -> FastAPI -> GET /health
+Chrome Extension --/
 
-安装 pnpm 或 uv 后如果当前终端仍找不到命令，请重新打开终端，再用 `pnpm --version` 和 `uv --version` 确认。
+Future local business services -> local PostgreSQL
+User's browser -> recruitment website (never proxied by JobPilot)
+```
 
-### 配置与安装
+## Development setup
 
-在仓库根目录执行：
+### Prerequisites
+
+- Git
+- Node.js `^22.22.2`、`^24.15.0` 或 `>=26.0.0`
+- pnpm `11.19.0`
+- Python `>=3.12,<3.13`
+- uv `0.12.7` 或兼容版本
+- Chrome/Chromium（用于加载 unpacked Extension）
+
+### Install
 
 ```powershell
 Copy-Item .env.example .env
@@ -79,11 +73,11 @@ pnpm install --frozen-lockfile
 uv sync --project apps/api --locked
 ```
 
-Bash 中复制环境文件可使用 `cp .env.example .env`。`.env` 已被 Git 忽略，不得在其中放入需要提交的真实 secret。
+`.env` 仅用于本机配置并已被 Git 忽略。不得提交本机密码、Extension ID 或其他 secret。
 
-### 启动 API 与 Web
+### Start API and Web
 
-分别在两个终端中执行：
+分别在两个终端执行：
 
 ```powershell
 pnpm api:dev
@@ -93,70 +87,51 @@ pnpm api:dev
 pnpm dev:web
 ```
 
-打开 `http://localhost:5173`。Web 会先检查 `/api/v1/auth/me`，并显示 checking、signed-out、signed-in、callback error 或 unavailable 状态；API 探针位于 `http://localhost:8000/health`。未注入完整 Auth0/数据库运行时配置时，认证端点会 fail closed，不能据此声称真实登录已验证。
+打开 `http://127.0.0.1:5173`。API 探针位于 `http://127.0.0.1:8000/health`。
 
-### 构建与加载 Extension
-
-单次构建：
+### Build and load Extension
 
 ```powershell
 pnpm build:extension
 ```
 
-只验证确定性构建产物（使用已跟踪的 `.invalid` public-client 配置，不能登录真实 provider）：
+在 Chrome/Chromium 扩展管理页开启 Developer mode，选择 **Load unpacked**，并指向 `apps/extension/dist`。Popup 只检查精确的 `http://127.0.0.1:8000/health`。
+
+若要从真实 Extension Popup 读取 health，需把实际的 `chrome-extension://<32-character-id>` 追加到 `JOBPILOT_CORS_ORIGINS`。必须使用精确 ID，不能使用 wildcard。
+
+## Local configuration
+
+- `VITE_API_BASE_URL`：Web 与 Extension 共用的 build-time loopback API base；同时构建 Extension 时必须保持精确 `http://127.0.0.1:8000`，Web 单独运行才可接受 `localhost` 或 `[::1]`；
+- `JOBPILOT_API_BIND_HOST`：API 监听地址，只接受 IP-literal loopback；
+- `JOBPILOT_CORS_ORIGINS`：逗号分隔的精确 Web/Extension origins；
+- `JOBPILOT_DATABASE_URL`：仅供本地 Alembic/数据库工具使用；
+- `JOBPILOT_TEST_DATABASE_URL`：仅供 PostgreSQL integration tests 使用。
+
+当前 health-only API 不读取数据库 URL。远端 PostgreSQL URL 会被拒绝。旧认证 revision 对应的预发布开发/测试数据库必须重建，不支持原地迁移。
+
+## Verification
 
 ```powershell
-pnpm build:extension:test
+pnpm test
+pnpm lint
+pnpm format:check
+pnpm typecheck
+pnpm build:web
+pnpm build:extension
+pnpm api:test
+pnpm api:lint
+pnpm api:format:check
+pnpm api:import:check
 ```
 
-或在开发期间持续构建：
-
-```powershell
-pnpm dev:extension
-```
-
-在 Chrome/Chromium 扩展管理页开启 Developer mode，选择 **Load unpacked**，并指向 `apps/extension/dist`。调试时保持 API 运行；watch 构建后需在扩展管理页重新加载扩展。
-
-### 环境变量与 CORS
-
-- Vite 会从仓库根目录的 `.env` 读取 `VITE_API_BASE_URL`、`VITE_WEB_APP_URL`、`VITE_AUTH_ISSUER`、`VITE_AUTH_AUTHORIZE_URL`、`VITE_AUTH_TOKEN_URL`、`VITE_AUTH_JWKS_URL`、`VITE_AUTH_REVOKE_URL`、`VITE_AUTH_AUDIENCE` 与 `VITE_AUTH_EXTENSION_CLIENT_ID`。这些都是 public-client 配置，不是 secret；Extension 没有也不得新增 client-secret 输入。
-- Auth issuer 必须是带结尾 `/` 的 canonical HTTPS root；authorize/token/JWKS/revoke endpoint 必须是同一 issuer origin 的固定 HTTPS URL。API 与 Web origin 在远端必须使用 HTTPS；HTTP 只允许精确 `localhost`、`127.0.0.1` 或 `[::1]` loopback。非法值在 Vite 构建与 worker runtime 使用前 fail closed。
-- Extension 的 API/provider `host_permissions` 从上述验证配置生成；修改任一 origin 后必须重新构建 Extension。当前 manifest 权限只有 `identity` 与 `storage`，不含 `activeTab`、`tabs`、content script 或招聘网站权限。
-- FastAPI 不自动读取根 `.env`，而是从 API 进程环境读取 `JOBPILOT_*` 数据库、Auth0、Web session 与 CORS 配置；`JOBPILOT_AUTH_WEB_CLIENT_SECRET` 只允许注入服务端，绝不能使用 `VITE_` 前缀。
-- 未设置 API 变量时，开发环境默认精确允许 `http://localhost:5173`。`test` 和 `production` 默认不允许跨域来源。
-- 多个 CORS origin 使用逗号分隔；任何环境都拒绝 `*`。生产环境必须在启动 API 的运行环境中显式注入精确 origin。
-- 生产 Web host 必须把 `/auth/error` rewrite 到 SPA entry，并在部署层配置经评审的 CSP 与安全响应头；仓库不使用宽松的 meta CSP 伪装生产配置。
-
-真实 Extension 登录当前仅允许在 ADR-007 的隔离验证 Slice 中执行：
-
-1. 不执行原 Auth0 tenant/application/API audience setup checklist，不绑定真实 Auth0 Client ID 或 Extension ID。
-2. 只创建 local / isolated development Logto、独立 PostgreSQL、Web confidential client、Extension public client 和 API resource；不创建生产资源或迁移代码。
-3. 冻结 exact issuer/resource、callback/CORS、claims、5–10 分钟 access-token 上限及 refresh rotation/reuse/revoke 语义；发现差异只分类，不放宽现有安全契约。
-4. Web/Extension 核心登录链路必须在中国大陆固定宽带和移动网络、无 VPN/代理/特殊 DNS 条件下各做一次 MVP smoke；`.invalid` fixture 不构成证据。完整矩阵和正式分发/恢复/运维/合规为 Production Release Gate。
-5. 即使 MVP Gate 通过，也只能提交 `Minimal Logto Adapter Migration` 授权请求；未经另行批准，不开始 migration、Task 8 或 Phase 3。
-
-### 验证命令
-
-| 命令                    | 作用                                                                |
-| ----------------------- | ------------------------------------------------------------------- |
-| `pnpm test`             | 运行 api-client、Web 和 Extension 的 TypeScript 测试；不包含 Pytest |
-| `pnpm api:test`         | 运行 FastAPI/Pytest 测试                                            |
-| `pnpm lint`             | 运行 ESLint                                                         |
-| `pnpm typecheck`        | 运行 TypeScript strict typecheck                                    |
-| `pnpm format:check`     | 检查 Prettier 格式                                                  |
-| `pnpm api:lint`         | 运行 Ruff lint                                                      |
-| `pnpm api:format:check` | 检查 Ruff 格式                                                      |
-| `pnpm build:web`        | 生成 Web production build                                           |
-| `pnpm build:extension`  | 生成 `apps/extension/dist` unpacked Extension                       |
-| `pnpm api:import:check` | 验证 FastAPI 应用可导入                                             |
-
-## 项目文档
+## Documentation
 
 - [产品规格](docs/PRODUCT_SPEC.md)
 - [系统架构](docs/ARCHITECTURE.md)
-- [认证架构（Phase 2A Accepted；Task 6 Web 与 Task 7 Extension deterministic slices implemented）](docs/AUTH_ARCHITECTURE.md)
-- [工程原则](docs/ENGINEERING_PRINCIPLES.md)
 - [API 契约](docs/API_CONTRACT.md)
 - [数据模型](docs/DATA_MODEL.md)
+- [工程原则](docs/ENGINEERING_PRINCIPLES.md)
 - [路线图](docs/ROADMAP.md)
 - [架构决策记录](docs/DECISIONS/README.md)
+
+当前决定由 [ADR-008](docs/DECISIONS/ADR-008-local-first-single-user-no-authentication.md) 固定。被移除的历史认证实现和 ADR 可从 annotated tag `pre-local-first-cleanup` 恢复；它们不是当前产品文档。

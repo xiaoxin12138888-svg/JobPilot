@@ -20,7 +20,7 @@
 
 ## Shared client and Web cleanup
 
-- [x] Write RED health/client/Web tests for loopback-only pending/ready/unavailable/retry behavior.
+- [x] Write RED health/client/Web tests for loopback-only `checking / ready / unavailable` and retry-action behavior.
 - [x] Add credential-free loopback `GET /health` with untrusted-response validation while temporarily retaining Extension-consumed auth exports.
 - [x] Delete `use-auth-session.ts` and every login/logout/account/auth-error UI path.
 - [x] Make Web start directly in the local workspace shell and bind its dev server to loopback.
@@ -32,20 +32,20 @@
 - [x] Delete the entire Extension auth directory, OAuth background worker/messages and credential lifecycle tests.
 - [x] Remove `chrome.identity`, `storage`, background, provider hosts and `oauth4webapi`.
 - [x] Atomically delete the last UserView/CSRF/session/login/logout/Extension bearer exports and tests after Extension no longer consumes them.
-- [x] Implement a bundled Popup with checking/available/unavailable/retry states using only local `/health`.
+- [x] Implement a bundled Popup with `checking / available / unavailable` and retry-action behavior using only local `/health`.
 - [x] Freeze manifest to exact loopback host/CSP with no content script, proxy, telemetry or remote executable code.
 - [x] Prove build output has no provider/auth/token/CDN/remote-script/background artifacts.
 
 ## Documentation and repository cleanup
 
-- [ ] Delete Logto verification infrastructure/evidence/summary and `docs/AUTH_ARCHITECTURE.md`.
-- [ ] Remove hosted-auth ADR-006/ADR-007 from the working tree; history remains at `pre-local-first-cleanup`.
-- [ ] Rewrite README, architecture, API contract, data model, product spec, roadmap and engineering principles for local-first single-user use.
-- [ ] Record the P0 no-proxy runtime and per-adapter future acceptance gate.
-- [ ] Remove all provider/auth environment variables and test fixtures.
-- [ ] Expand `.gitignore` for current caches, logs, local secrets and a scoped local runtime-data directory.
-- [ ] Audit tracked files for generated builds, caches, logs, screenshots and obsolete evidence.
-- [ ] Document that pre-release databases containing removed auth revisions must be recreated; no in-place migration is supported.
+- [x] Delete Logto verification infrastructure/evidence/summary and `docs/AUTH_ARCHITECTURE.md`.
+- [x] Remove hosted-auth ADR-006/ADR-007 from the working tree; history remains at `pre-local-first-cleanup`.
+- [x] Rewrite README, architecture, API contract, data model, product spec, roadmap and engineering principles for local-first single-user use.
+- [x] Record the P0 no-proxy runtime and per-adapter future acceptance gate.
+- [x] Remove all provider/auth environment variables and test fixtures.
+- [x] Expand `.gitignore` for current caches, logs, local secrets and a scoped local runtime-data directory.
+- [x] Audit tracked files for generated builds, caches, logs, screenshots and obsolete evidence.
+- [x] Document that pre-release databases containing removed auth revisions must be recreated; no in-place migration is supported.
 
 ## Rebuild and validation
 

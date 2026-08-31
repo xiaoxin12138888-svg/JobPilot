@@ -22,4 +22,3 @@ JobPilot monorepo 同时包含多个 TypeScript workspace 与一个 Python API�
 - pnpm workspace 支持 Web、Extension 与共享包的原子演进，uv 为 API 提供隔离虚拟环境。
 - 贡献者需要安装 pnpm 与 uv，但无需维护重复的格式化或依赖配置。
 - 若未来工具无法满足有证据的需求，应通过新 ADR 评估替代，而不是并行加入第二套方案。
-

@@ -1,421 +1,82 @@
-# JobPilot MVP 核心数据模型（Phase 1–4）
-
-> 文档状态：Phase 0 已批准的概念/逻辑模型；User/Identity 与 Task 6 最小 WebSession/LoginTransaction schema 已在 Phase 2B 实现。ADR-007 已接受 Self-hosted Logto OSS provider 方向并授权隔离验证，但不改变 `(issuer, subject) -> User.id` 或当前 schema（本文仍不是迁移文件或公共 API DTO）
->
-> 展开范围：`User`、`Job`、`Application`、`ResumeVersion` 四个核心实体，以及 `Application` 内部的最小状态事件子记录  
-> 仅预留：`Interview`、`Document`、`Evidence`
-
-## 1. 建模原则
-
-- PostgreSQL 是持久业务事实来源；Web 与 Extension 不独立定义或保存另一套业务状态。
-- 所有用户资源均有明确所有者，服务端从认证上下文执行授权，不能信任客户端提交的 `userId`。
-- Job 是某个用户主动保存的岗位快照，不是 JobPilot 建立的公共招聘职位库。
-- Application 表达投递工作流；单纯收藏岗位不创建 Application。
-- ResumeVersion 是不可变版本，Application 引用当时实际使用的版本，不能随“当前简历”漂移。
-- API DTO 与持久化模型分离；数据库字段、对象存储 key 和内部审计字段不原样暴露。
-- 时间统一保存为带时区的 UTC 时间，展示时使用 User 的时区。
-- 字段命名在数据库使用 `snake_case`，API wire format 使用 `camelCase`。
-- 独立 IdP 管理密码、验证与恢复；当前实现保留 Auth0 reference adapter，ADR-007 正在评审 Self-hosted Logto OSS。独立 `Identity` 保存 provider identity 到本地 User 的稳定映射，不保存 provider credential。Task 6 的 Web session 只保存 opaque secret/CSRF 的摘要、所有者、identity、时间与撤销状态；provider token/grant 不进入 session。
-- 本模型不展开 AI 分析结果、向量 chunk 或文件处理表；状态历史只保留 Application 所需的最小追加式子记录，不形成独立业务资源。
-
-## 2. 关系总览
-
-```mermaid
-erDiagram
-    USER ||--o{ IDENTITY : has
-    USER ||--o{ WEB_SESSION : authenticates
-    IDENTITY ||--o{ WEB_SESSION : proves
-    USER ||--o{ JOB : saves
-    USER ||--o{ APPLICATION : owns
-    USER ||--o{ RESUME_VERSION : creates
-    JOB ||--o| APPLICATION : may_become
-    RESUME_VERSION o|--o{ APPLICATION : used_for
-    APPLICATION ||--|{ APPLICATION_STATUS_EVENT : records
-
-    APPLICATION ||--o{ INTERVIEW : future_has
-    USER ||--o{ DOCUMENT : future_owns
-    USER ||--o{ EVIDENCE : future_owns
-    JOB ||--o{ EVIDENCE : future_scopes
-    RESUME_VERSION ||--o{ EVIDENCE : future_supports
-    DOCUMENT ||--o{ EVIDENCE : future_supplies
-    INTERVIEW ||--o{ EVIDENCE : future_produces
-
-    USER {
-        uuid id PK
-        string email UK
-        string display_name "nullable"
-        string locale "nullable"
-        string time_zone "nullable"
-        string account_status
-        timestamptz deletion_requested_at "nullable"
-        timestamptz created_at
-        timestamptz updated_at
-    }
-
-    IDENTITY {
-        uuid id PK
-        uuid user_id FK
-        string issuer
-        string subject
-        timestamptz created_at
-        timestamptz updated_at
-    }
-
-    WEB_SESSION {
-        uuid id PK
-        uuid user_id FK
-        uuid identity_id FK
-        bytes session_token_hash UK
-        bytes csrf_token_hash
-        timestamptz created_at
-        timestamptz last_used_at
-        timestamptz idle_expires_at
-        timestamptz absolute_expires_at
-        timestamptz revoked_at "nullable"
-    }
-
-    LOGIN_TRANSACTION {
-        uuid id PK
-        bytes browser_handle_hash UK
-        bytes state_hash UK
-        bytes nonce_hash
-        string pkce_verifier
-        string intent
-        string return_to
-        timestamptz created_at
-        timestamptz expires_at
-    }
-
-    JOB {
-        uuid id PK
-        uuid user_id FK
-        string source
-        string source_job_id "nullable"
-        string source_url "nullable"
-        string title
-        string company
-        string salary_text "nullable"
-        string location_text "nullable"
-        text description
-        string capture_method
-        timestamptz captured_at
-        timestamptz saved_at
-        timestamptz archived_at "nullable"
-        timestamptz created_at
-        timestamptz updated_at
-    }
-
-    APPLICATION {
-        uuid id PK
-        uuid user_id FK
-        uuid job_id FK
-        uuid resume_version_id FK "nullable"
-        string status
-        timestamptz status_changed_at
-        timestamptz applied_at "nullable"
-        timestamptz closed_at "nullable"
-        text note "nullable"
-        timestamptz created_at
-        timestamptz updated_at
-    }
-
-    APPLICATION_STATUS_EVENT {
-        uuid id PK
-        uuid application_id FK
-        string from_status "nullable"
-        string to_status
-        string change_kind
-        text note "nullable"
-        timestamptz occurred_at "nullable"
-        timestamptz recorded_at
-    }
-
-    RESUME_VERSION {
-        uuid id PK
-        uuid user_id FK
-        int version_number
-        string label "nullable"
-        string original_filename
-        string mime_type
-        bigint size_bytes
-        string storage_object_key
-        string content_sha256
-        timestamptz created_at
-    }
-```
-
-`ApplicationStatusEvent` 是 Application 的内部追加式子记录，不是第五个顶级业务资源。它只通过 Application 下的分页只读子资源查看，没有顶级资源或直接写入 endpoint。图中的 `Interview`、`Document`、`Evidence` 只用于表达未来关系方向，不在 Phase 0 定义字段、表或实现。未来迁移必须先更新本文件并形成相应 ADR。
-
-## 3. User
-
-### 职责
-
-代表 JobPilot 的资源所有者和个性化设置主体。生产 IdP 由 ADR-007 重新评审；本地 User 继续将经过验证的 provider identity 映射为稳定 `id`。密码、密码哈希、authorization code、access/refresh token、Web session secret 和社交 provider token 均不属于 User。
-
-### 核心字段
-
-| 字段                    | 必需 | 语义与约束                                                                                              |
-| ----------------------- | ---- | ------------------------------------------------------------------------------------------------------- |
-| `id`                    | 是   | 服务端生成的稳定 UUID；公开标识不承载业务含义                                                           |
-| `email`                 | 是   | provider 已验证的可变联系/展示属性；写入前规范化；唯一；不是身份主键，也不用于自动合并账号              |
-| `display_name`          | 否   | 用户可修改的显示名称，不作为唯一标识                                                                    |
-| `locale`                | 否   | 用户明确设置的文案和 AI 输出语言偏好，例如 `zh-CN`；首次 identity provisioning 不从未验证客户端输入猜测 |
-| `time_zone`             | 否   | 用户明确设置的 IANA 时区，例如 `Asia/Shanghai`；首次 identity provisioning 保持为空                     |
-| `account_status`        | 是   | `active` 或 `deletion_pending`；认证边界只允许 active User 进入业务服务                                 |
-| `deletion_requested_at` | 否   | 账号进入 deletion workflow 的服务端时间；active 时为空                                                  |
-| `created_at`            | 是   | 创建时间                                                                                                |
-| `updated_at`            | 是   | 最近一次可变资料更新时间                                                                                |
-
-### 约束
-
-- 独立 `Identity(issuer, subject)` 唯一并映射到 `User.id`；所有业务表只引用本地 `User.id`，不得引用 provider `sub`。
-- 同一 email 出现在不同 identity 上时停止并要求显式账号绑定/迁移；不得仅凭 email 自动合并。
-- 只有验证后的 email identity 才能激活本地 User。后续 provider claim 变化只能同步 allowlist 中的可变资料，不能覆盖本地授权状态。
-- `display_name`、`locale`、`time_zone` 初始可空，通过受认证的 `PATCH /api/v1/auth/me` 明确设置；API/UI 必须在为空时使用非持久化展示 fallback，而不是写入猜测值。
-- 账号删除按 [AUTH_ARCHITECTURE.md](AUTH_ARCHITECTURE.md#9-account-deletion) 执行：先在普通应用备份之外耐久写入 keyed `HMAC(User.id)` 的 `pending` restore marker，再把 User 事务性标为 `deletion_pending` 并写入 `deletion_requested_at`；两步成功后才返回 `202`，随后阻止访问、撤销会话并幂等删除业务/对象/派生数据。Selected-provider identity 删除确认前保留该不可登录 User 和 marker 作为重试锚点；provider cutoff 获确认且 credential quarantine 完成后才硬删除本地 User。若采用 Self-hosted Logto，其 identity database/logs/backups 同时进入删除传播和 restore quarantine；与简历、对象存储有关的责任最迟在 Phase 4 上传启用前实现并测试。
-- 数据导出和保留遵循同一生命周期规格：Phase 2B 的 `/auth/me` 覆盖当前 User profile，Phase 3 导出 User/Job，Phase 4 在接受 ResumeVersion 文件前补齐 Application、ResumeVersion 与原始文件；JobPilot-controlled live deletion、backup、restore ledger 和日志窗口以 [AUTH_ARCHITECTURE.md](AUTH_ARCHITECTURE.md#93-data-export-and-retention-policy) 的 Accepted 设计上限为准。Self-hosted IdP data 属于 JobPilot-controlled stores；只有 managed provider 中无法直接控制的 retention 才另按真实 DPA/tenant disclosure 审批。
-- Provider 确认不再签发 token 后，仍保留 `deletion_pending` mapping 至少一个最大 access-token lifetime + clock skew；残余 JWT 在此期间只能被拒绝，不能 reprovision。Quarantine 完成并硬删除后不保留 `(identity_issuer, identity_subject)` tombstone；以后明确重新注册会生成新 `User.id`，不能按 email、provider identity 或 restore marker 自动连接已删除账号的数据。
-- 其他核心实体必须通过 `user_id` 隔离；API 不允许跨用户引用 Job 或 ResumeVersion。
-
-### Provider Identity
-
-`Identity` 是 provider 边界，不是第二个业务用户。它只保存 `id`、`user_id`、经过验证的精确 `issuer`、区分大小写的 opaque `subject` 与创建/更新时间。`(issuer, subject)` 唯一；同一 User 未来可以在显式重新认证/绑定流程后拥有多个 Identity，但当前不实现自动 linking。`Identity` 删除随 User 级联，任何 provider token、claim payload、授权码或 refresh grant 都不保存。
-
-### Task 6 Web session records
-
-`WebSession` 保存 `id`、`user_id`、`identity_id`、32-byte `session_token_hash`、32-byte `csrf_token_hash`、`created_at`、`last_used_at`、`idle_expires_at`、`absolute_expires_at` 与可空 `revoked_at`。浏览器 cookie 是独立的 256-bit opaque secret；数据库永不保存其明文。`identity_id + user_id` 必须通过组合外键指向同一个 Identity/User，删除 User/Identity 时 session 级联删除。
-
-时间约束固定为：`created_at <= last_used_at < idle_expires_at <= absolute_expires_at`；撤销、未知、畸形、idle 过期或 absolute 过期对外都只是 `401 AUTHENTICATION_REQUIRED`。Task 6 不保存 IP、User-Agent、设备、位置、风险分数、provider token/grant、raw claims 或 `reauthenticated_at`。
-
-`LoginTransaction` 是最长 600 秒的一次性 Web OIDC 记录：`id`、32-byte `browser_handle_hash`、32-byte `state_hash`、32-byte `nonce_hash`、服务端 `pkce_verifier`、`intent`（`login | signup`）、allowlisted relative `return_to`、`created_at` 与 `expires_at`。成功、取消、provider 错误、超时、state/cookie mismatch 都原子删除所有可识别 transaction；不保存 authorization code、provider token/error、email 或 callback URL。Recent reauthentication 所需的 session/User binding 留给明确的后续 contract，不在 Task 6 预建。
-
-## 4. Job
-
-### 职责
-
-代表用户主动确认并保存的某一时刻岗位快照。Job 保留来源信息以便回访，但 JobPilot 不依赖来源页面持续存在，也不会后台刷新该页面。
-
-### 核心字段
-
-| 字段             | 必需     | 语义与约束                                                                        |
-| ---------------- | -------- | --------------------------------------------------------------------------------- |
-| `id`             | 是       | 服务端生成 UUID                                                                   |
-| `user_id`        | 是       | 所有者；所有查询和写入的授权边界                                                  |
-| `source`         | 是       | `boss`、`nowcoder`、`shixiseng`、`liepin`、`iguopin`、`generic` 或 `manual`       |
-| `source_job_id`  | 否       | 页面明确提供时保存的平台岗位 ID；不得调用隐藏接口获取                             |
-| `source_url`     | 条件必需 | 自动/选区采集时为当前页面 URL；纯手动粘贴允许为空；写入前移除已知跟踪参数并规范化 |
-| `title`          | 是       | 用户确认后的岗位名称                                                              |
-| `company`        | 是       | 用户确认后的公司名称                                                              |
-| `salary_text`    | 否       | 保留来源展示文本；早期不强行推断统一薪资数值                                      |
-| `location_text`  | 否       | 保留来源展示文本；早期不强行推断行政区代码                                        |
-| `description`    | 是       | 用户确认后的 JD 正文；服务端校验长度并安全呈现                                    |
-| `capture_method` | 是       | `automatic`、`selection` 或 `manual`                                              |
-| `captured_at`    | 是       | 客户端发生采集的时间；只作来源元数据，不替代服务端时间                            |
-| `saved_at`       | 是       | API 成功持久化的服务端时间，即“已收藏”事实                                        |
-| `archived_at`    | 否       | 用户将收藏归档的时间；归档不等于投递关闭                                          |
-| `created_at`     | 是       | 记录创建时间，通常与 `saved_at` 相同                                              |
-| `updated_at`     | 是       | 用户修正快照字段或归档状态的时间                                                  |
-
-### 收藏与去重
-
-`saved` 不属于 Application 状态。原因是收藏岗位时用户可能完全没有投递计划；如果为收藏强制创建 Application，会制造虚假投递漏斗并混淆转化统计。
-
-收藏事实用以下方式表达：
-
-- 存在一条用户所有的 Job 且有 `saved_at`：已收藏。
-- 没有对应 Application：仅收藏，尚未进入投递工作流。
-- `archived_at` 非空：该收藏已归档，但不推断申请结果。
-
-去重只在单个用户范围内进行。优先键是 `(user_id, source, source_job_id)`；没有稳定平台 ID 时使用规范化 URL 形成内部 `dedupe_key`。纯手动内容没有可靠来源键时，API提示可能重复而不做跨用户内容合并。`dedupe_key` 是实现细节，可在数据库迁移规格中补充，不进入公开 DTO。
-
-### 隐私边界
-
-默认不持久化完整页面 DOM、Cookie、平台 Token 或与岗位无关的页面内容。Job 是用户私有快照，不作为其他用户的共享岗位记录。
-
-## 5. Application
-
-### 职责
-
-代表用户针对一个已保存 Job 的一次投递工作流。第一阶段每个 `(user_id, job_id)` 至多一条 Application；未来若出现真实“同岗位多次投递”需求，再通过 ADR 引入 attempt 概念，而不是现在预建复杂模型。
-
-### 核心字段
-
-| 字段                | 必需 | 语义与约束                                                                                           |
-| ------------------- | ---- | ---------------------------------------------------------------------------------------------------- |
-| `id`                | 是   | 服务端生成 UUID                                                                                      |
-| `user_id`           | 是   | 所有者；必须与关联 Job、ResumeVersion 的所有者一致                                                   |
-| `job_id`            | 是   | 被跟踪的 Job；第一阶段与 `user_id` 组成唯一业务约束                                                  |
-| `resume_version_id` | 否   | 实际投递使用的固定 ResumeVersion；尚未选择或未知时允许为空；离开 `planned` 后按下文规则锁定          |
-| `status`            | 是   | 统一的 `ApplicationStatus`，只能取下文九个值                                                         |
-| `status_changed_at` | 是   | 当前状态最近一次写入的服务端时间，等于最后一条事件的 `recorded_at`；不冒充现实流程发生时间           |
-| `applied_at`        | 否   | 用户实际提交投递的时间；进入/越过 `applied` 后可补录一次，未知时不猜测；普通更新不能覆盖或清空已知值 |
-| `closed_at`         | 否   | 进入 `closed` 时记录的关闭时间；纠正离开 `closed` 时清空；其他结果状态不自动等价为 closed            |
-| `note`              | 否   | 用户的简短工作流备注；不是面试记录或文档仓库                                                         |
-| `created_at`        | 是   | 工作流创建时间                                                                                       |
-| `updated_at`        | 是   | 最近更新时间                                                                                         |
-
-### ApplicationStatusEvent（内部子记录）
-
-Application 创建时写入首条事件；之后只有状态真实变化时才追加事件。它用于保留 MVP 阶段无法事后重建的流程事实，并为后续阶段耗时和漏斗统计提供来源，但不作为可独立增删改查的业务资源。
-
-| 字段             | 必需 | 语义与约束                                                   |
-| ---------------- | ---- | ------------------------------------------------------------ |
-| `id`             | 是   | 内部稳定 UUID；不进入公共 `ApplicationStatusEventView`       |
-| `application_id` | 是   | 所属 Application；授权始终通过 Application 的所有者判断      |
-| `from_status`    | 否   | 创建事件为 `null`，其余事件为变更前状态                      |
-| `to_status`      | 是   | 变更后的合法 `ApplicationStatus`                             |
-| `change_kind`    | 是   | `progress` 表示真实流程进展；`correction` 表示用户修正误录   |
-| `note`           | 否   | 本次变更的简短说明；correction 必填                          |
-| `occurred_at`    | 否   | 用户明确提供的现实流程发生时间；未知时保持为空，不由系统猜测 |
-| `recorded_at`    | 是   | 服务端不可伪造的录入时间；用于稳定排序与审计                 |
-
-`Application.status`、`status_changed_at` 与新增事件必须在同一事务中更新；当前字段是列表查询所需的权威快照，事件是不可原地修改的历史事实。同值更新是 no-op，不追加事件。阶段耗时优先使用相邻事件的 `occurred_at`；任一端缺失时，只能明确标注为基于系统 `recorded_at` 的近似统计。
-
-### ResumeVersion 关联锁定
-
-- Application 处于 `planned` 时，用户可以设置、替换或清空 `resume_version_id`。
-- Application 离开 `planned` 后，如果关联仍为空，可补录一次实际使用版本；一旦非空，普通更新不得替换或清空。
-- 同一请求从 `planned` 进入后续状态时，可以同时绑定实际使用版本。
-- 未来如确有纠错需求，必须先定义显式、带原因且可审计的纠错用例；不得用普通 PATCH 静默改写历史事实。
-- `applied_at` 同样是历史事实：`planned` 状态不得填写；进入或越过 `applied` 后允许从空值补录一次，已知值的纠错必须走未来的显式审计用例。
-
-### ApplicationStatus 统一定义
-
-唯一允许值为：
-
-```text
-planned
-applied
-screening
-assessment
-interviewing
-offer
-rejected
-withdrawn
-closed
-```
-
-| 状态           | 含义                                                                                |
-| -------------- | ----------------------------------------------------------------------------------- |
-| `planned`      | 用户明确计划投递，但尚未确认已提交                                                  |
-| `applied`      | 用户已通过招聘平台或其他渠道正式提交                                                |
-| `screening`    | 简历筛选、招聘方初筛或电话初筛阶段                                                  |
-| `assessment`   | 笔试、在线测评、作业、案例或其他非面试考核；取代过窄的 `written_test`               |
-| `interviewing` | 一轮或多轮正式面试进行中；轮次由未来 Interview 表达，不扩张状态枚举                 |
-| `offer`        | 已收到 offer；是否接受可在后续需求明确后建模，当前不猜测                            |
-| `rejected`     | 招聘方明确拒绝或流程明确失败                                                        |
-| `withdrawn`    | 用户主动退出该投递                                                                  |
-| `closed`       | 用户明确结束/归档该工作流，例如岗位关闭、长期无响应或无需继续跟进；不代表成功或失败 |
-
-`saved` 被排除，因为它描述 Job 收藏事实而非投递进度。`assessment` 替代 `written_test`，可以覆盖国内平台常见的笔试，也能容纳测评、作业和案例环节而无需继续增加状态。
-
-### 状态流转原则
-
-```mermaid
-stateDiagram-v2
-    [*] --> planned
-    planned --> applied
-    planned --> withdrawn
-    planned --> closed
-    applied --> screening
-    applied --> assessment
-    applied --> interviewing
-    applied --> offer
-    applied --> rejected
-    screening --> assessment
-    screening --> interviewing
-    screening --> offer
-    screening --> rejected
-    assessment --> interviewing
-    assessment --> offer
-    assessment --> rejected
-    interviewing --> assessment: 追加考核
-    interviewing --> offer
-    interviewing --> rejected
-    offer --> closed
-```
-
-该图是正常流程指引，不是僵硬的数据库有限状态机。真实招聘流程可能跳过阶段、倒序补录或需要纠错，因此：
-
-- API 强制枚举、资源所有权和时间字段一致性。
-- 正常 UI 引导推荐流转，但允许用户显式纠正状态，并更新 `status_changed_at`。
-- 任意非终止状态均可由用户转为 `withdrawn` 或 `closed`；图中省略重复箭头以保持可读。
-- 每次真实状态变化都在同一事务中追加最小 `ApplicationStatusEvent`；不把历史塞进 Application 的 JSON 数组，也不假装 `updated_at` 是完整历史。
-- `rejected`、`withdrawn`、`closed` 是终止状态；误录只能通过带说明的 `correction` 纠正，而不是伪装成正常流程进展。
-- 进入 `closed` 时，`closed_at` 使用明确提供的 `occurred_at`；未提供时使用本次服务端 `recorded_at`。通过 correction 离开 `closed` 时必须清空 `closed_at`。
-
-权威状态由 PostgreSQL 持久化、由 API 领域规则变更。Web/Extension 只能消费同一 wire contract；任何客户端不允许另起一个不同枚举。
-
-## 6. ResumeVersion
-
-### 职责
-
-代表某份简历的不可变版本及其私有原始文件引用。编辑或重新上传会创建新版本，已关联 Application 始终指向当时版本，以保证匹配分析和复盘可重现。
-
-### 核心字段
-
-| 字段                 | 必需 | 语义与约束                                             |
-| -------------------- | ---- | ------------------------------------------------------ |
-| `id`                 | 是   | 服务端生成 UUID                                        |
-| `user_id`            | 是   | 所有者；对象读取和 Application 引用均受此边界约束      |
-| `version_number`     | 是   | 用户范围内单调递增，与 `user_id` 组成唯一约束          |
-| `label`              | 否   | 用户可读标签，例如“产品经理-数据方向”                  |
-| `original_filename`  | 是   | 展示和下载用文件名；不能作为对象 key                   |
-| `mime_type`          | 是   | 经服务端校验的允许类型，不仅信任客户端声明             |
-| `size_bytes`         | 是   | 用于上传限制与完整性检查                               |
-| `storage_object_key` | 是   | `ObjectStore` 返回的不透明私有 key；不进入普通 API DTO |
-| `content_sha256`     | 是   | 完整性和重复上传判断，不作为跨用户共享依据             |
-| `created_at`         | 是   | 该版本创建时间；版本内容创建后不可覆盖                 |
-
-### 约束
-
-- 原始二进制不存 PostgreSQL；通过 `ObjectStore` port 保存。
-- 不提供永久公开 URL。下载请求先经 API 授权，再流式返回或签发短时效 URL。
-- `storage_object_key` 指向的对象不可原地覆盖；新内容必须创建新 ResumeVersion。
-- 被 Application 引用的版本不能在未定义保留策略前硬删除。
-- “当前默认简历”的选择规则不在本表提前建模。Phase 6 在实现 ResumeMatcher 前定义与 ResumeVersion 绑定的版本化文本提取和处理状态；RAG chunk/embedding 仍留到 Phase 7 的 Document 规格。
-
-## 7. 未来关系预留（不展开）
-
-### Interview
-
-- 未来从属于 Application，一次 Application 可以有零到多次 Interview。
-- 面试轮次、真实问题、用户回答摘要、评价和录音/转写的具体结构在面试准备/真实复盘或模拟面试 Phase 再定义。
-- Application 的 `interviewing` 不编码轮次，避免状态枚举爆炸。
-
-### Document
-
-- 未来从属于 User，表示用户主动上传或确认进入知识库的资料元数据。
-- 原始内容走对象存储；检索 chunk/embedding 走 PostgreSQL + pgvector。
-- ResumeVersion 是否以特殊 Document 复用，需要在 RAG Phase 基于删除、权限和版本需求再决策；当前不强制合表或继承。
-
-### Evidence
-
-- 未来从属于 User，并在特定 Job/岗位要求语境下连接 ResumeVersion、Document 或 Interview 中的可追溯证据。
-- 目标链路为 `Requirement → Evidence → Resume/Portfolio → Interview`，但 Phase 0 不定义评分算法、几十种证据类型或图数据库。
-- AI 可以提出候选证据，成为持久可信映射前必须经过 schema 校验，并在需要时由用户确认。
-
-## 8. 完整性与索引候选
-
-以下约束随各模型进入数据库时验证。User、Identity、WebSession 与 LoginTransaction 已由 Phase 2B migrations/integration tests 覆盖；其余仍是后续业务 Phase 的候选：
-
-- 所有外键都验证同一 `user_id` 所有权；不能仅靠 UI 隐藏越权资源。
-- `Identity(issuer, subject)` 唯一；`User.email` 规范化后唯一但不承担 identity linking。
-- `WebSession.session_token_hash` 唯一且两个 hash 都固定 32 bytes；`identity_id + user_id` 必须引用同一个 Identity。
-- `LoginTransaction.browser_handle_hash` 与 `state_hash` 分别唯一；transaction 在任一终态删除，不能 replay。
-- `Application(user_id, job_id)` 第一阶段唯一。
-- `ApplicationStatusEvent(application_id, recorded_at, id)` 提供稳定历史顺序；事件不能绕过所属 Application 单独访问。
-- `ResumeVersion(user_id, version_number)` 唯一。
-- Job 的用户内来源去重键唯一或采用明确的冲突确认策略；手动岗位不做脆弱的全文强唯一。
-- 常用列表至少评估 `(user_id, saved_at)`、`(user_id, status, updated_at)` 和 `(user_id, created_at)` 索引。
-- API 删除行为优先使用明确归档/保留语义；涉及个人数据彻底删除时必须同时协调 PostgreSQL、对象存储和未来向量数据。
-
-## 9. 尚待后续规格决定
-
-- 所选生产 IdP 的 Mainland 可达性、成本与负责人批准后的具体 deployment、client、claim、connector 与 secret 管理；Task 6 session schema 已冻结，provider 迁移、recent reauthentication、revoke-all 和显式账号绑定在出现明确后续 contract 时单独设计。
-- Phase 3 实现账户导出前，由项目负责人冻结导出格式、异步状态、下载控制与短期 artifact TTL；不得导出 credential、provider/session 内部字段、object key 或 deletion ledger。
-- Application 状态事件的长期保留和未来系统自动变更 actor 语义，在出现相应需求时再扩展；Phase 4 只记录用户触发的最小历史，并分别保留可空现实发生时间与可靠录入时间。
-- offer 接受/拒绝是否需要独立结果字段，必须以真实产品需求而不是枚举“全面性”驱动。
-- 简历允许的格式、大小、病毒检查、解析失败和重新处理策略。
-- 平台 URL 规范化与重复岗位冲突的精确规则，需要使用真实 fixture 验证。
-- Document、Evidence、Interview 的字段和删除级联规则留到对应 Phase，不在 Phase 0 预建。
+# JobPilot Local Data Model
+
+> 状态：当前数据库 metadata 为空，没有业务表或 Alembic revision。以下未来概念不是已实现 schema。
+
+## 1. Current baseline
+
+- `Base.metadata` 不包含业务实体；
+- `/health` 启动不创建 database engine；
+- PostgreSQL URL 只允许 loopback host；
+- migrations 与 integration tests 需要显式本地数据库 URL；
+- 包含旧认证 revision 的预发布开发/测试数据库必须重建，不支持原地迁移。
+
+一个安装实例隐含一个本地 workspace。当前没有 User、Identity、Session、Account 或 LocalProfile。
+
+## 2. Modeling principles
+
+- PostgreSQL 是未来本地业务事实来源；
+- Web 与 Extension 不直接访问数据库；
+- 单 workspace 模型不包含 `user_id`、tenant ID 或 owner ID；
+- 时间统一保存为 UTC-aware timestamp；
+- 枚举由 domain 与 API contract 共同固定；
+- 外部 URL、页面文本和文件元数据都视为不可信输入；
+- 只在对应 Phase 获批时创建表、约束和索引。
+
+## 3. Future `Job`
+
+Phase 3 的候选职责是保存用户确认后的岗位快照。概念字段可以包括：
+
+- opaque `id`；
+- source、source job ID、source URL；
+- title、company、location、salary text；
+- 用户确认后的 description；
+- captured/saved/updated timestamps；
+- 本地 dedupe key。
+
+去重只发生在当前本地 workspace，不存在跨用户合并。JobPilot 后端不主动访问 source URL。
+
+## 4. Future `Application`
+
+Phase 4 的候选职责是记录一个 Job 的本地申请进度。概念字段可以包括：
+
+- opaque `id`；
+- `job_id`；
+- status；
+- note；
+- applied/created/updated timestamps；
+- append-only status event records。
+
+Application、Job 和 ResumeVersion 的引用必须属于同一个本地数据库。由于只有一个 workspace，不需要 `user_id`。
+
+## 5. Future `ResumeVersion`
+
+Phase 4 的候选职责是标识用户本地保存的简历版本。概念字段可以包括：
+
+- opaque `id`；
+- label 与 version number；
+- local object reference 或文件元数据；
+- created timestamp。
+
+文件保存、MIME/大小限制、恶意内容处理、导出和删除语义必须在上传功能获批前单独设计。
+
+## 6. `LocalProfile` is not current scope
+
+本机显示名、语言、时区或偏好只有出现真实产品需要时才进入 `LocalProfile` 设计。它不代表账号、远程身份或授权主体，也不能为了“以后可能需要”而提前建表。
+
+## 7. Local data lifecycle
+
+未来业务数据默认留在用户电脑。对应 Phase 必须提供可理解的本地备份、导出、删除和重建说明，不把云同步作为默认恢复路径。
+
+操作系统账户和文件权限是本地静态数据边界；loopback 只限制网络暴露，不能防御同一操作系统账户下的恶意本机进程。
+
+## 8. Future integrity gates
+
+首次实现每个模型时至少重新评审：
+
+- 主键、唯一约束和有界索引；
+- 同 workspace 外键一致性；
+- 删除/级联与文件一致性；
+- 并发创建、去重和幂等；
+- migration upgrade/downgrade；
+- 本地备份与恢复；
+- 不含 `user_id`、旧身份字段或 provider credential。
