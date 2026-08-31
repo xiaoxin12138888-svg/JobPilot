@@ -1,29 +1,21 @@
-import type { ExtensionConfig } from './src/auth/config.ts';
+import type { ExtensionConfig } from './src/config.ts';
 
 export function createManifest(config: ExtensionConfig): chrome.runtime.ManifestV3 {
-  const hostPermissions = [
-    `${new URL(config.apiBaseUrl).origin}/*`,
-    `${new URL(config.auth.issuer).origin}/*`,
-  ];
-
   return {
     manifest_version: 3,
     name: 'JobPilot Extension',
-    description: 'Securely connect the JobPilot browser extension to your JobPilot account',
+    description: 'Check whether the local JobPilot service is available',
     version: '0.1.0',
     minimum_chrome_version: '106',
     action: {
       default_popup: 'popup.html',
-      default_title: 'Open JobPilot Extension',
+      default_title: 'Check local JobPilot',
     },
-    background: {
-      service_worker: 'background.js',
-      type: 'module',
-    },
-    permissions: ['identity', 'storage'],
-    host_permissions: [...new Set(hostPermissions)],
+    host_permissions: [`${config.apiBaseUrl}/*`],
     content_security_policy: {
-      extension_pages: "script-src 'self'; object-src 'self'",
+      extension_pages:
+        `default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; ` +
+        `connect-src ${config.apiBaseUrl}; base-uri 'none'`,
     },
   };
 }

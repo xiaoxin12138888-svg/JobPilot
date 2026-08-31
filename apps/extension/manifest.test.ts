@@ -2,47 +2,41 @@ import { describe, expect, it } from 'vitest';
 
 import { createManifest } from './manifest';
 
-const config = {
-  apiBaseUrl: 'http://localhost:8000/api',
-  auth: {
-    issuer: 'https://tenant.example.invalid/',
-    authorizationEndpoint: 'https://tenant.example.invalid/authorize',
-    tokenEndpoint: 'https://tenant.example.invalid/oauth/token',
-    jwksUri: 'https://tenant.example.invalid/.well-known/jwks.json',
-    revocationEndpoint: 'https://tenant.example.invalid/oauth/revoke',
-    audience: 'https://api.jobpilot.example.invalid',
-    clientId: 'public-extension-client-id',
-  },
-  webAppUrl: 'http://localhost:5173/',
-};
+const config = { apiBaseUrl: 'http://127.0.0.1:8000' } as const;
 
 describe('createManifest', () => {
-  it('uses only the trusted authentication permissions and exact origins', () => {
-    const manifest = createManifest(config);
-
-    expect(manifest.manifest_version).toBe(3);
-    expect(manifest.minimum_chrome_version).toBe('106');
-    expect(manifest.permissions).toEqual(['identity', 'storage']);
-    expect(manifest.host_permissions).toEqual([
-      'http://localhost:8000/*',
-      'https://tenant.example.invalid/*',
-    ]);
-    expect(manifest.background).toEqual({
-      service_worker: 'background.js',
-      type: 'module',
+  it('exposes only the local Popup and exact loopback health origin', () => {
+    expect(createManifest(config)).toEqual({
+      manifest_version: 3,
+      name: 'JobPilot Extension',
+      description: 'Check whether the local JobPilot service is available',
+      version: '0.1.0',
+      minimum_chrome_version: '106',
+      action: {
+        default_popup: 'popup.html',
+        default_title: 'Check local JobPilot',
+      },
+      host_permissions: ['http://127.0.0.1:8000/*'],
+      content_security_policy: {
+        extension_pages:
+          "default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; connect-src http://127.0.0.1:8000; base-uri 'none'",
+      },
     });
-    expect(manifest.content_security_policy).toEqual({
-      extension_pages: "script-src 'self'; object-src 'self'",
-    });
-    expect(manifest).not.toHaveProperty('content_scripts');
   });
 
-  it('deduplicates host permissions when API and provider share an origin', () => {
-    expect(
-      createManifest({
-        ...config,
-        apiBaseUrl: 'https://tenant.example.invalid/api',
-      }).host_permissions,
-    ).toEqual(['https://tenant.example.invalid/*']);
+  it('has no privileged, background, injected, or OAuth surfaces', () => {
+    const manifest = createManifest(config);
+
+    for (const forbiddenKey of [
+      'permissions',
+      'optional_permissions',
+      'background',
+      'content_scripts',
+      'oauth2',
+      'externally_connectable',
+      'web_accessible_resources',
+    ]) {
+      expect(manifest).not.toHaveProperty(forbiddenKey);
+    }
   });
 });

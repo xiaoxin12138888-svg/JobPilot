@@ -6,12 +6,10 @@
   "scripts": {
     "dev": "vite build --watch --mode development",
     "build": "vite build",
-    "build:test": "vite build --mode extension-test",
     "test": "vitest run",
     "typecheck": "tsc --project tsconfig.json"
   },
   "dependencies": {
-    "@jobpilot/api-client": "workspace:*",
-    "oauth4webapi": "3.8.7"
+    "@jobpilot/api-client": "workspace:*"
   }
 }

@@ -28,13 +28,13 @@
 
 ## Extension cleanup
 
-- [ ] Write RED manifest/config/Popup tests for exact `127.0.0.1` health-only behavior.
-- [ ] Delete the entire Extension auth directory, OAuth background worker/messages and credential lifecycle tests.
-- [ ] Remove `chrome.identity`, `storage`, background, provider hosts and `oauth4webapi`.
-- [ ] Atomically delete the last UserView/CSRF/session/login/logout/Extension bearer exports and tests after Extension no longer consumes them.
-- [ ] Implement a bundled Popup with checking/available/unavailable/retry states using only local `/health`.
-- [ ] Freeze manifest to exact loopback host/CSP with no content script, proxy, telemetry or remote executable code.
-- [ ] Prove build output has no provider/auth/token/CDN/remote-script/background artifacts.
+- [x] Write RED manifest/config/Popup tests for exact `127.0.0.1` health-only behavior.
+- [x] Delete the entire Extension auth directory, OAuth background worker/messages and credential lifecycle tests.
+- [x] Remove `chrome.identity`, `storage`, background, provider hosts and `oauth4webapi`.
+- [x] Atomically delete the last UserView/CSRF/session/login/logout/Extension bearer exports and tests after Extension no longer consumes them.
+- [x] Implement a bundled Popup with checking/available/unavailable/retry states using only local `/health`.
+- [x] Freeze manifest to exact loopback host/CSP with no content script, proxy, telemetry or remote executable code.
+- [x] Prove build output has no provider/auth/token/CDN/remote-script/background artifacts.
 
 ## Documentation and repository cleanup
 
