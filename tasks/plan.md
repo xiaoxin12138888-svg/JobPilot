@@ -29,6 +29,8 @@ The cleanup starts from clean branch `phase/2-authentication` at `9a3e79a7e13414
 
 ### Slice 1 — Remove API authentication and enforce loopback runtime
 
+**Status:** Complete.
+
 **Acceptance:** delete provider/auth/User/Identity/session/transaction code, routes, revisions and tests; OpenAPI contains only `/health`; retain generic request IDs/errors/query redaction, PostgreSQL engine, empty SQLAlchemy metadata and Alembic scaffolding. `/health` startup creates no database connection. Add a tested launcher that rejects non-loopback bind hosts before calling Uvicorn, and restrict supported PostgreSQL URLs to loopback hosts. CORS is exact, GET-only and credential-free. Pre-release development/test databases containing removed auth revisions must be recreated; no in-place compatibility is claimed.
 
 **TDD:** first change tests to require `/health`-only OpenAPI, loopback launcher rejection and exact credential-free CORS; confirm targeted RED; then make the smallest API/config/main changes and delete obsolete tests/files.
@@ -36,6 +38,8 @@ The cleanup starts from clean branch `phase/2-authentication` at `9a3e79a7e13414
 **Dependencies:** Slice 0.
 
 ### Slice 2 — Reduce shared contracts and Web to local health
+
+**Status:** Complete.
 
 **Acceptance:** add a loopback-only health client and migrate Web to it; Web has no login/logout/account/auth-error state and directly renders local API `checking / ready / unavailable` with retry as an unavailable-state action. Temporarily retain only the auth exports still consumed by the not-yet-migrated Extension so this increment remains buildable. Web dev server binds loopback and build needs no provider config.
 
@@ -45,6 +49,8 @@ The cleanup starts from clean branch `phase/2-authentication` at `9a3e79a7e13414
 
 ### Slice 3 — Replace Extension OAuth lifecycle with local health Popup
 
+**Status:** Complete.
+
 **Acceptance:** delete OAuth/PKCE/token/storage/background/message code and tests; remove `oauth4webapi`; Popup directly uses the bundled local health client. In the same atomic increment, delete the now-last auth exports (`UserView`, CSRF, Web session/login/logout and Extension bearer contracts/tests) from shared-types/api-client. Manifest has no permissions, background, content script, remote host, telemetry or proxy capability; its only host permission and `connect-src` are the exact loopback API origin.
 
 **TDD:** first rewrite manifest/config/Popup tests for local-only behavior and confirm RED; then implement `checking / available / unavailable` with retry as an unavailable-state action and rebuild. Inspect unpacked artifacts for no provider/auth/remote executable code.
@@ -53,17 +59,23 @@ The cleanup starts from clean branch `phase/2-authentication` at `9a3e79a7e13414
 
 ### Slice 4 — Remove obsolete provider infrastructure and rebaseline documentation
 
+**Status:** Complete.
+
 **Acceptance:** delete `infra/logto`, Logto summary, AUTH_ARCHITECTURE and hosted-auth ADRs; rewrite README, product/architecture/API/data/roadmap/principles around local-first single-user operation and P0 no-proxy runtime. `.env.example` and `.gitignore` contain only current local settings and rebuildable/runtime exclusions.
 
 **Dependencies:** Slices 1–3.
 
 ### Slice 5 — Repository cleanup, clean install and complete validation
 
+**Status:** Complete.
+
 **Acceptance:** remove generated caches/builds/logs and any tracked generated artifact; regenerate pnpm/uv locks after dependency removal; perform frozen/locked installs and the complete new test/build/lint/typecheck/import/startup/health/security suite. Run real browser verification when Chrome DevTools MCP is available.
 
 **Dependencies:** Slices 1–4.
 
 ### Slice 6 — Mandatory review and simplification
+
+**Status:** Complete — Critical 0 / Required 0.
 
 **Acceptance:** `code-review-and-quality` reports Critical 0 / Required 0 across correctness, readability, architecture, security, performance and dependencies. `code-simplification` removes orphan interfaces, empty wrappers, dead DTOs/helpers/comments/TODOs and duplicate local-mode checks without adding speculative abstractions.
 

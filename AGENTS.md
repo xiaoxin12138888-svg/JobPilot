@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Local-first Single-user Repository Simplification. Work on `phase/2-authentication` from checkpoint `pre-local-first-cleanup`; Phase 3 is not started. Do not implement Job, Application, ResumeVersion, recruitment-site adapters, content scripts, AI, RAG, uploads, analytics or dashboards without separate approval.
+Local-first Single-user Repository Simplification is complete and awaiting project-owner acceptance. Work on `phase/2-authentication`; recovery checkpoint is `pre-local-first-cleanup`. Phase 3 is not started. Do not implement Job, Application, ResumeVersion, recruitment-site adapters, content scripts, AI, RAG, uploads, analytics or dashboards without separate approval.
 
 ## Canonical context
 

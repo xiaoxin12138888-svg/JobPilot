@@ -53,11 +53,11 @@ ADR-008 将产品固定为本地优先、单用户、无账号架构。旧远程
 
 ### Slice 5 — Clean install and complete validation
 
-待执行：清理可重建产物，重新 frozen/locked install，运行全部测试、lint、format、typecheck、build、API 和安全扫描。
+完成：清理可重建产物，重新 frozen/locked install，并通过全部测试、lint、format、typecheck、build、API 和安全扫描。
 
 ### Slice 6 — Mandatory review and simplification
 
-待执行：`code-review-and-quality` 达到 Critical 0 / Required 0；`code-simplification` 删除所有确认的死 wrapper、DTO、helper、comment 和 TODO。
+完成：`code-review-and-quality` 达到 Critical 0 / Required 0；`code-simplification` 删除确认的死 wrapper、DTO、fixture、配置和说明。
 
 完成 Slice 6 后必须停止并等待 Phase 3 授权。
 
@@ -100,4 +100,4 @@ ADR-008 将产品固定为本地优先、单用户、无账号架构。旧远程
 
 ## 6. Current next step
 
-Slice 4 文档与 repository cleanup 已完成；下一步只执行 Slice 5 clean install、完整验证和 Slice 6 review/simplification。不得创建 Job/Application/ResumeVersion、Adapter、content script、AI 或 RAG 实现。
+Local-first cleanup Slices 0–6 已完成。当前下一步只有项目负责人评审 cleanup 结果并决定是否批准 Phase 3；不得自动创建 Job/Application/ResumeVersion、Adapter、content script、AI 或 RAG 实现。

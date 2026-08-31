@@ -6,7 +6,7 @@ JobPilot 不替代招聘网站，不建设职位数据库，也不代表用户�
 
 ## 当前状态
 
-项目正在完成 **Local-first Single-user Repository Cleanup**。当前基线只有：
+项目已完成 **Local-first Single-user Repository Cleanup**，正在等待负责人决定是否进入 Phase 3。当前基线只有：
 
 - React Web：显示本机 API 的 `checking / ready / unavailable` 状态；`unavailable` 提供 retry 动作；
 - Chrome Extension：无 privileged Chrome API permission、无后台进程的本地健康 Popup；唯一 host permission 是 `http://127.0.0.1:8000/*`；
@@ -105,7 +105,6 @@ pnpm build:extension
 - `JOBPILOT_API_BIND_HOST`：API 监听地址，只接受 IP-literal loopback；
 - `JOBPILOT_CORS_ORIGINS`：逗号分隔的精确 Web/Extension origins；
 - `JOBPILOT_DATABASE_URL`：仅供本地 Alembic/数据库工具使用；
-- `JOBPILOT_TEST_DATABASE_URL`：仅供 PostgreSQL integration tests 使用。
 
 当前 health-only API 不读取数据库 URL。远端 PostgreSQL URL 会被拒绝。旧认证 revision 对应的预发布开发/测试数据库必须重建，不支持原地迁移。
 

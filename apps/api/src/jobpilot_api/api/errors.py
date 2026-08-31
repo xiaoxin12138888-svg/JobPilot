@@ -6,45 +6,11 @@ import secrets
 from collections.abc import Mapping
 
 from fastapi import FastAPI, Request
-from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
-from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 LOGGER = logging.getLogger(__name__)
 REQUEST_ID_PATTERN = re.compile(r"[A-Za-z0-9._:-]{1,128}")
-
-
-class ApiError(Exception):
-    def __init__(
-        self,
-        status_code: int,
-        code: str,
-        message: str,
-        *,
-        headers: Mapping[str, str] | None = None,
-    ) -> None:
-        super().__init__()
-        self.status_code = status_code
-        self.code = code
-        self.message = message
-        self.headers = headers
-
-
-class ErrorDetail(BaseModel):
-    field: str
-    reason: str
-
-
-class ErrorBody(BaseModel):
-    code: str
-    message: str
-    details: list[ErrorDetail] | None = None
-    request_id: str = Field(serialization_alias="requestId")
-
-
-class ErrorResponse(BaseModel):
-    error: ErrorBody
 
 
 def install_error_handlers(application: FastAPI) -> None:
@@ -61,36 +27,6 @@ def install_error_handlers(application: FastAPI) -> None:
             return await call_next(request)
         except Exception as error:
             return _unexpected_error_response(request, error)
-
-    @application.exception_handler(ApiError)
-    async def handle_api_error(request: Request, error: ApiError) -> JSONResponse:
-        return _error_response(
-            request,
-            error.status_code,
-            error.code,
-            error.message,
-            headers=error.headers,
-        )
-
-    @application.exception_handler(RequestValidationError)
-    async def handle_validation_error(
-        request: Request,
-        error: RequestValidationError,
-    ) -> JSONResponse:
-        details = [
-            {
-                "field": ".".join(str(part) for part in item["loc"][1:]) or "request",
-                "reason": item["type"],
-            }
-            for item in error.errors()
-        ]
-        return _error_response(
-            request,
-            422,
-            "VALIDATION_ERROR",
-            "Request validation failed",
-            details=details,
-        )
 
     @application.exception_handler(StarletteHTTPException)
     async def handle_http_error(
@@ -139,7 +75,6 @@ def _error_response(
     code: str,
     message: str,
     *,
-    details: list[dict[str, str]] | None = None,
     headers: Mapping[str, str] | None = None,
 ) -> JSONResponse:
     error_body: dict[str, object] = {
@@ -147,8 +82,6 @@ def _error_response(
         "message": message,
         "requestId": request.state.request_id,
     }
-    if details is not None:
-        error_body["details"] = details
     response = JSONResponse(
         status_code=status_code,
         content={"error": error_body},

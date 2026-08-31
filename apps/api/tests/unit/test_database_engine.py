@@ -2,10 +2,37 @@ from __future__ import annotations
 
 import pytest
 
+import jobpilot_api.infrastructure.database.engine as engine_module
 from jobpilot_api.infrastructure.database.engine import (
     create_database_engine,
     parse_postgresql_url,
 )
+
+
+@pytest.mark.parametrize(
+    ("database_url", "expected_hostaddr"),
+    [
+        ("postgresql+psycopg://postgres:secret@localhost/jobpilot", "127.0.0.1"),
+        ("postgresql+psycopg://postgres:secret@127.0.0.2/jobpilot", "127.0.0.2"),
+        ("postgresql+psycopg://postgres:secret@[::1]/jobpilot", "::1"),
+    ],
+)
+def test_database_engine_pins_the_validated_loopback_hostaddr(
+    monkeypatch: pytest.MonkeyPatch,
+    database_url: str,
+    expected_hostaddr: str,
+) -> None:
+    captured: dict[str, object] = {}
+
+    def capture_create_engine(url: object, **kwargs: object) -> object:
+        captured.update(url=url, **kwargs)
+        return object()
+
+    monkeypatch.setattr(engine_module, "create_engine", capture_create_engine)
+
+    create_database_engine(database_url)
+
+    assert captured["connect_args"] == {"hostaddr": expected_hostaddr}
 
 
 @pytest.mark.parametrize(

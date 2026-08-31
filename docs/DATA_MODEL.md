@@ -7,7 +7,7 @@
 - `Base.metadata` 不包含业务实体；
 - `/health` 启动不创建 database engine；
 - PostgreSQL URL 只允许 loopback host；
-- migrations 与 integration tests 需要显式本地数据库 URL；
+- Alembic migration tooling 需要显式本地数据库 URL；
 - 包含旧认证 revision 的预发布开发/测试数据库必须重建，不支持原地迁移。
 
 一个安装实例隐含一个本地 workspace。当前没有 User、Identity、Session、Account 或 LocalProfile。

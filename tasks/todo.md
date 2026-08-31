@@ -5,7 +5,7 @@
 - [x] Confirm clean `phase/2-authentication` at `9a3e79a7e134142d800bf94a78ecafcad0cf9302`.
 - [x] Create annotated checkpoint tag `pre-local-first-cleanup` without rewriting history.
 - [x] Add ADR-008 and synchronize the active agent/task boundaries.
-- [ ] Keep Phase 3 and all Job/Application/Resume/Adapter/content-script/AI/RAG work out of scope.
+- [x] Keep Phase 3 and all Job/Application/Resume/Adapter/content-script/AI/RAG work out of scope.
 
 ## API and persistence cleanup
 
@@ -49,17 +49,17 @@
 
 ## Rebuild and validation
 
-- [ ] Remove local `node_modules`, builds, coverage, caches, bytecode, temporary logs/browser artifacts and rebuildable `.venv` after implementation tests.
-- [ ] Run `pnpm install --frozen-lockfile` and `uv sync --project apps/api --locked` from the cleaned state.
-- [ ] Run all TypeScript tests, ESLint, Prettier, strict typecheck, Web build and Extension build.
-- [ ] Run all Pytest, Ruff lint/format, API import/startup and `/health` checks.
-- [ ] Run lock/dependency, secret, remote-runtime, proxy, manifest/CSP, loopback/CORS, tracked-artifact and `git diff --check` scans.
-- [ ] Use Chrome DevTools MCP for Web and Extension runtime verification, or report the tool as BLOCKED without substituting a fake PASS.
+- [x] Remove old local `node_modules`, builds, coverage, caches, bytecode, temporary logs/browser artifacts and rebuildable `.venv` before the clean reinstall.
+- [x] Run `pnpm install --frozen-lockfile` and `uv sync --project apps/api --locked` from the cleaned state.
+- [x] Run all TypeScript tests, ESLint, Prettier, strict typecheck, Web build and Extension build.
+- [x] Run all Pytest, Ruff lint/format, API import/startup and `/health` checks.
+- [x] Run lock/dependency, secret, remote-runtime, proxy, manifest/CSP, loopback/CORS, tracked-artifact and `git diff --check` scans.
+- [x] Verify Web ready/unavailable/retry and responsive layouts in the isolated in-app browser; Chrome DevTools MCP / Extension Load unpacked remains truthfully `BLOCKED / NOT VERIFIED`.
 
 ## Mandatory review
 
-- [ ] Run `code-review-and-quality`; resolve every Critical and Required finding.
-- [ ] Run `code-simplification`; remove every confirmed dead wrapper/interface/DTO/helper/comment/TODO.
-- [ ] Re-run affected gates after every review fix or simplification.
-- [ ] Commit coherent increments and finish with a clean worktree.
-- [ ] Stop before Phase 3 and wait for explicit project-owner approval.
+- [x] Run `code-review-and-quality`; resolve every Critical and Required finding.
+- [x] Run `code-simplification`; remove every confirmed dead wrapper/interface/DTO/helper/comment/TODO.
+- [x] Re-run affected gates after every review fix or simplification.
+- [x] Commit coherent increments and finish with a clean worktree.
+- [x] Stop before Phase 3 and wait for explicit project-owner approval.

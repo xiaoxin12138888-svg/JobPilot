@@ -28,9 +28,20 @@ def _is_loopback_host(host: str) -> bool:
         return False
 
 
+def _loopback_hostaddr(url: URL) -> str:
+    host = url.host
+    if host is None:
+        raise ValueError("JobPilot persistence requires a loopback PostgreSQL psycopg URL")
+    if host.lower() == "localhost":
+        return "127.0.0.1"
+    return str(ip_address(host))
+
+
 def create_database_engine(database_url: str) -> Engine:
+    url = parse_postgresql_url(database_url)
     return create_engine(
-        parse_postgresql_url(database_url),
+        url,
+        connect_args={"hostaddr": _loopback_hostaddr(url)},
         hide_parameters=True,
         pool_pre_ping=True,
     )
