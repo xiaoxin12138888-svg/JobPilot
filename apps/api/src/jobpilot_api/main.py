@@ -19,7 +19,12 @@ class HealthResponse(BaseModel):
 def create_app(settings: ApiSettings | None = None) -> FastAPI:
     install_uvicorn_access_query_redaction()
     active_settings = settings or ApiSettings.from_environment()
-    application = FastAPI(title="JobPilot API")
+    application = FastAPI(
+        title="JobPilot API",
+        openapi_url=None,
+        docs_url=None,
+        redoc_url=None,
+    )
 
     install_error_handlers(application)
     if active_settings.cors_origins:

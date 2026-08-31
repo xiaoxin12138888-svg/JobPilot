@@ -23,6 +23,13 @@ def test_openapi_exposes_only_health() -> None:
     assert set(app.openapi()["paths"]) == {"/health"}
 
 
+def test_framework_documentation_routes_are_not_exposed() -> None:
+    client = TestClient(app)
+
+    for path in ("/openapi.json", "/docs", "/docs/oauth2-redirect", "/redoc"):
+        assert client.get(path).status_code == 404
+
+
 def test_health_startup_does_not_require_or_connect_to_a_database(
     monkeypatch,
 ) -> None:
