@@ -1,0 +1,49 @@
+name: jobpilot-logto-verification
+
+services:
+  logto:
+    image: ghcr.io/logto-io/logto:1.42.0@sha256:aac94e24ab7bef59be5d1809b1481b179495aaa75bb9dc2895ceae46e4117854
+    restart: 'no'
+    depends_on:
+      logto-postgres:
+        condition: service_healthy
+    entrypoint: ['sh', '-c', 'npm run cli db seed -- --swe && npm start']
+    environment:
+      DB_URL: postgresql://${LOGTO_DB_USER:?set LOGTO_DB_USER}:${LOGTO_DB_PASSWORD:?set LOGTO_DB_PASSWORD}@logto-postgres:5432/${LOGTO_DB_NAME:-logto_verification}
+      ENDPOINT: ${LOGTO_ENDPOINT:-http://localhost:3001}
+      ADMIN_ENDPOINT: ${LOGTO_ADMIN_ENDPOINT:-http://localhost:3002}
+    ports:
+      - '127.0.0.1:3001:3001'
+      - '127.0.0.1:3002:3002'
+    networks:
+      - logto-verification
+
+  logto-postgres:
+    image: postgres:17-alpine@sha256:18cfe3ef5e6815560c98237d6216d1e5119702fb0f3894c8785dd58b8bbe5d73
+    restart: 'no'
+    user: postgres
+    environment:
+      POSTGRES_USER: ${LOGTO_DB_USER:?set LOGTO_DB_USER}
+      POSTGRES_PASSWORD: ${LOGTO_DB_PASSWORD:?set LOGTO_DB_PASSWORD}
+      POSTGRES_DB: ${LOGTO_DB_NAME:-logto_verification}
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${LOGTO_DB_USER:?set LOGTO_DB_USER} -d ${LOGTO_DB_NAME:-logto_verification}',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - logto-identity-data:/var/lib/postgresql/data
+    networks:
+      - logto-verification
+
+networks:
+  logto-verification:
+    internal: true
+
+volumes:
+  logto-identity-data:
+    name: jobpilot-logto-verification-identity-data
