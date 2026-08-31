@@ -11,6 +11,7 @@ export function createManifest(config: ExtensionConfig): chrome.runtime.Manifest
     name: 'JobPilot Extension',
     description: 'Securely connect the JobPilot browser extension to your JobPilot account',
     version: '0.1.0',
+    minimum_chrome_version: '106',
     action: {
       default_popup: 'popup.html',
       default_title: 'Open JobPilot Extension',

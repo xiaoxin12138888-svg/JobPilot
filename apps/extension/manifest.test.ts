@@ -21,6 +21,7 @@ describe('createManifest', () => {
     const manifest = createManifest(config);
 
     expect(manifest.manifest_version).toBe(3);
+    expect(manifest.minimum_chrome_version).toBe('106');
     expect(manifest.permissions).toEqual(['identity', 'storage']);
     expect(manifest.host_permissions).toEqual([
       'http://localhost:8000/*',
