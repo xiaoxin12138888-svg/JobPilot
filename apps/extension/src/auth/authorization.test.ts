@@ -30,6 +30,14 @@ const nonceValue = 'n'.repeat(43);
 const now = 1_800_000_000_000;
 const issuerParameter = `iss=${encodeURIComponent(authConfig.issuer)}`;
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((complete) => {
+    resolve = complete;
+  });
+  return { promise, resolve };
+}
+
 function callbackUrl(parameters: string): string {
   return `${redirectUri}?${parameters}&${issuerParameter}`;
 }
@@ -241,7 +249,7 @@ describe('InteractiveAuthorization', () => {
       primitives: deterministicPrimitives,
     });
 
-    const result = await authorization.launch();
+    const result = await authorization.launch({ signal: new AbortController().signal });
 
     expect(identity.getRedirectURL).toHaveBeenCalledWith();
     expect(identity.launchWebAuthFlow).toHaveBeenCalledWith({
@@ -250,6 +258,113 @@ describe('InteractiveAuthorization', () => {
     });
     expect(store.saveAttempt).toHaveBeenCalledWith(stored);
     expect(result.parameters.get('code')).toBe('authorization-code');
+    expect(store.clearAttempt).toHaveBeenCalledOnce();
+  });
+
+  it('does not persist an attempt or launch hosted login after cancellation during PKCE creation', async () => {
+    const challenge = deferred<string>();
+    const store = {
+      saveAttempt: vi.fn().mockResolvedValue(undefined),
+      loadAttempt: vi.fn().mockResolvedValue(attempt()),
+      clearAttempt: vi.fn().mockResolvedValue(undefined),
+    };
+    const launchWebAuthFlow = vi.fn().mockResolvedValue(undefined);
+    const controller = new AbortController();
+    const authorization = new InteractiveAuthorization({
+      config: authConfig,
+      store,
+      identity: { getRedirectURL: () => redirectUri, launchWebAuthFlow },
+      clock: () => now,
+      primitives: {
+        ...deterministicPrimitives,
+        calculateCodeChallenge: () => challenge.promise,
+      },
+    });
+
+    const launch = authorization.launch({ signal: controller.signal });
+    controller.abort();
+    challenge.resolve('challenge-value');
+
+    await expect(launch).rejects.toEqual(new ExtensionAuthError('AUTHENTICATION_REQUIRED'));
+    expect(store.saveAttempt).not.toHaveBeenCalled();
+    expect(store.clearAttempt).not.toHaveBeenCalled();
+    expect(launchWebAuthFlow).not.toHaveBeenCalled();
+  });
+
+  it('clears a late attempt and never launches hosted login after cancellation during its save', async () => {
+    const attemptSave = deferred<void>();
+    const store = {
+      saveAttempt: vi.fn(() => attemptSave.promise),
+      loadAttempt: vi.fn().mockResolvedValue(attempt()),
+      clearAttempt: vi.fn().mockResolvedValue(undefined),
+    };
+    const launchWebAuthFlow = vi.fn().mockResolvedValue(undefined);
+    const controller = new AbortController();
+    const authorization = new InteractiveAuthorization({
+      config: authConfig,
+      store,
+      identity: { getRedirectURL: () => redirectUri, launchWebAuthFlow },
+      clock: () => now,
+      primitives: deterministicPrimitives,
+    });
+
+    const launch = authorization.launch({ signal: controller.signal });
+    await vi.waitFor(() => expect(store.saveAttempt).toHaveBeenCalledOnce());
+    controller.abort();
+    attemptSave.resolve();
+
+    await expect(launch).rejects.toEqual(new ExtensionAuthError('AUTHENTICATION_REQUIRED'));
+    expect(store.clearAttempt).toHaveBeenCalledOnce();
+    expect(launchWebAuthFlow).not.toHaveBeenCalled();
+  });
+
+  it('clears an attempt whose save outcome is rejected and never launches hosted login', async () => {
+    const failure = new ExtensionAuthError('AUTH_STORAGE_UNAVAILABLE');
+    const store = {
+      saveAttempt: vi.fn().mockRejectedValue(failure),
+      loadAttempt: vi.fn().mockResolvedValue(attempt()),
+      clearAttempt: vi.fn().mockResolvedValue(undefined),
+    };
+    const launchWebAuthFlow = vi.fn().mockResolvedValue(undefined);
+    const authorization = new InteractiveAuthorization({
+      config: authConfig,
+      store,
+      identity: { getRedirectURL: () => redirectUri, launchWebAuthFlow },
+      clock: () => now,
+      primitives: deterministicPrimitives,
+    });
+
+    await expect(authorization.launch({ signal: new AbortController().signal })).rejects.toBe(
+      failure,
+    );
+    expect(store.clearAttempt).toHaveBeenCalledOnce();
+    expect(launchWebAuthFlow).not.toHaveBeenCalled();
+  });
+
+  it('discards a hosted callback after cancellation without loading the stored attempt', async () => {
+    const callback = deferred<string | undefined>();
+    const store = {
+      saveAttempt: vi.fn().mockResolvedValue(undefined),
+      loadAttempt: vi.fn().mockResolvedValue(attempt()),
+      clearAttempt: vi.fn().mockResolvedValue(undefined),
+    };
+    const launchWebAuthFlow = vi.fn(() => callback.promise);
+    const controller = new AbortController();
+    const authorization = new InteractiveAuthorization({
+      config: authConfig,
+      store,
+      identity: { getRedirectURL: () => redirectUri, launchWebAuthFlow },
+      clock: () => now,
+      primitives: deterministicPrimitives,
+    });
+
+    const launch = authorization.launch({ signal: controller.signal });
+    await vi.waitFor(() => expect(launchWebAuthFlow).toHaveBeenCalledOnce());
+    controller.abort();
+    callback.resolve(callbackUrl(`code=authorization-code&state=${stateValue}`));
+
+    await expect(launch).rejects.toEqual(new ExtensionAuthError('AUTHENTICATION_REQUIRED'));
+    expect(store.loadAttempt).not.toHaveBeenCalled();
     expect(store.clearAttempt).toHaveBeenCalledOnce();
   });
 
@@ -270,7 +385,9 @@ describe('InteractiveAuthorization', () => {
       primitives: deterministicPrimitives,
     });
 
-    await expect(authorization.launch()).rejects.toEqual(new ExtensionAuthError('AUTH_CANCELLED'));
+    await expect(authorization.launch({ signal: new AbortController().signal })).rejects.toEqual(
+      new ExtensionAuthError('AUTH_CANCELLED'),
+    );
     expect(store.clearAttempt).toHaveBeenCalledOnce();
   });
 
@@ -311,7 +428,9 @@ describe('InteractiveAuthorization', () => {
       primitives: deterministicPrimitives,
     });
 
-    await expect(authorization.launch()).rejects.toEqual(expect.objectContaining({ code }));
+    await expect(authorization.launch({ signal: new AbortController().signal })).rejects.toEqual(
+      expect.objectContaining({ code }),
+    );
     expect(store.clearAttempt).toHaveBeenCalledOnce();
   });
 });

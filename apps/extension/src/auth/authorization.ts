@@ -56,6 +56,10 @@ interface InteractiveAuthorizationOptions {
   primitives?: AuthorizationPrimitives;
 }
 
+export interface AuthorizationLaunchOptions {
+  signal: AbortSignal;
+}
+
 export interface ValidatedAuthorizationCallback {
   parameters: URLSearchParams;
   attempt: AuthorizationAttempt;
@@ -206,21 +210,30 @@ export class InteractiveAuthorization {
     this.#primitives = options.primitives ?? createDefaultAuthorizationPrimitives();
   }
 
-  async launch(): Promise<ValidatedAuthorizationCallback> {
+  async launch(options: AuthorizationLaunchOptions): Promise<ValidatedAuthorizationCallback> {
+    requireActiveAuthorization(options.signal);
     const created = await createAuthorizationRequest({
       config: this.#config,
       redirectUri: this.#identity.getRedirectURL(),
       now: this.#clock(),
       primitives: this.#primitives,
     });
-    await this.#store.saveAttempt(created.attempt);
+    requireActiveAuthorization(options.signal);
 
+    let attemptWriteStarted = false;
     try {
+      attemptWriteStarted = true;
+      await this.#store.saveAttempt(created.attempt);
+      requireActiveAuthorization(options.signal);
       const callbackUrl = await this.#launchWebAuthFlow(created.authorizationUrl.toString());
+      requireActiveAuthorization(options.signal);
       const storedAttempt = await this.#store.loadAttempt();
+      requireActiveAuthorization(options.signal);
       return validateAuthorizationCallback(callbackUrl, storedAttempt, this.#config, this.#clock());
     } finally {
-      await this.#store.clearAttempt();
+      if (attemptWriteStarted) {
+        await this.#store.clearAttempt();
+      }
     }
   }
 
@@ -240,6 +253,12 @@ export class InteractiveAuthorization {
       }
       throw new ExtensionAuthError('AUTH_CANCELLED');
     }
+  }
+}
+
+function requireActiveAuthorization(signal: AbortSignal): void {
+  if (signal.aborted) {
+    throw new ExtensionAuthError('AUTHENTICATION_REQUIRED');
   }
 }
 

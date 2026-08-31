@@ -3,9 +3,11 @@ import {
   areStorableCredentials,
   isCommittedReadyRecord,
   isGeneration,
+  isLocallyClearedRefreshRecord,
   isRefreshInProgressRecord,
   isSafeTimestamp,
   isStoredAccessCredential,
+  type LocallyClearedRefreshRecord,
   type ReadyRefreshRecord,
   type RefreshInProgressRecord,
   type StoredAccessCredential,
@@ -17,6 +19,10 @@ const AUTH_ATTEMPT_KEY = 'jobpilot.auth.attempt';
 const REFRESH_CREDENTIAL_KEY = 'jobpilot.auth.refresh';
 const ACCESS_CREDENTIAL_KEY = 'jobpilot.auth.access';
 const TRUSTED_CONTEXTS = { accessLevel: 'TRUSTED_CONTEXTS' } as const;
+const LOCALLY_CLEARED_REFRESH_RECORD: LocallyClearedRefreshRecord = {
+  version: 1,
+  status: 'locally_cleared',
+};
 
 export interface AccessCredential {
   accessToken: string;
@@ -43,12 +49,18 @@ interface ChromeAuthStorageOptions {
   session: StorageArea;
 }
 
+interface ActiveRefreshTokenUse {
+  generation: number;
+  purpose: 'refresh' | 'revocation';
+}
+
 export class ChromeAuthStorage {
   readonly #local: StorageArea;
   readonly #session: StorageArea;
   #trustedAccess: Promise<void> | undefined;
-  #credentialOperationQueue: Promise<void> = Promise.resolve();
-  #activeRefreshGeneration: number | undefined;
+  #authStateOperationQueue: Promise<void> = Promise.resolve();
+  #activeRefreshTokenUse: ActiveRefreshTokenUse | undefined;
+  #credentialStatePoisoned = false;
 
   constructor(options: ChromeAuthStorageOptions) {
     this.#local = options.local;
@@ -63,43 +75,53 @@ export class ChromeAuthStorage {
     if (!isAuthorizationAttempt(attempt)) {
       throw new ExtensionAuthError('AUTHENTICATION_REQUIRED');
     }
-    await this.#withTrustedAccess(() => this.#session.set({ [AUTH_ATTEMPT_KEY]: attempt }));
+    await this.#serializeAuthStateOperation(() =>
+      this.#withTrustedAccess(() => this.#session.set({ [AUTH_ATTEMPT_KEY]: attempt })),
+    );
   }
 
   async loadAttempt(): Promise<AuthorizationAttempt> {
-    const stored = await this.#withTrustedAccess(() => this.#session.get(AUTH_ATTEMPT_KEY));
-    const attempt = stored[AUTH_ATTEMPT_KEY];
-    if (isAuthorizationAttempt(attempt)) {
-      return attempt;
-    }
-    if (attempt !== undefined) {
-      await this.#withTrustedAccess(() => this.#session.remove(AUTH_ATTEMPT_KEY));
-    }
-    throw new ExtensionAuthError('AUTHENTICATION_REQUIRED');
+    return this.#serializeAuthStateOperation(() =>
+      this.#withTrustedAccess(async () => {
+        const stored = await this.#session.get(AUTH_ATTEMPT_KEY);
+        const attempt = stored[AUTH_ATTEMPT_KEY];
+        if (isAuthorizationAttempt(attempt)) {
+          return attempt;
+        }
+        if (attempt !== undefined) {
+          await this.#session.remove(AUTH_ATTEMPT_KEY);
+        }
+        throw new ExtensionAuthError('AUTHENTICATION_REQUIRED');
+      }),
+    );
   }
 
   async clearAttempt(): Promise<void> {
-    await this.#withTrustedAccess(() => this.#session.remove(AUTH_ATTEMPT_KEY));
+    await this.#serializeAuthStateOperation(() =>
+      this.#withTrustedAccess(() => this.#session.remove(AUTH_ATTEMPT_KEY)),
+    );
   }
 
   async saveInitialCredentials(
     credentials: ExchangedProviderCredentials,
     now: number,
   ): Promise<void> {
-    await this.#withTrustedAccess(() =>
-      this.#serializeCredentialOperation(async () => {
-        this.#activeRefreshGeneration = undefined;
+    await this.#serializeAuthStateOperation(() =>
+      this.#withTrustedAccess(async () => {
+        this.#activeRefreshTokenUse = undefined;
         await this.#failClosedCredentialOperation(() =>
           this.#commitCredentials(1, credentials, now),
         );
+        this.#credentialStatePoisoned = false;
       }),
     );
   }
 
   async restoreCredentials(): Promise<RestoredCredentialState> {
-    return this.#withTrustedAccess(() =>
-      this.#serializeCredentialOperation(() => {
-        if (this.#activeRefreshGeneration !== undefined) {
+    return this.#serializeAuthStateOperation(() =>
+      this.#withTrustedAccess(() => {
+        this.#requireUsableCredentialState();
+        if (this.#activeRefreshTokenUse !== undefined) {
           throw new ExtensionAuthError('AUTH_REFRESH_FAILED');
         }
         return this.#failClosedCredentialOperation(async () => {
@@ -110,7 +132,10 @@ export class ChromeAuthStorage {
           const refreshRecord = localState[REFRESH_CREDENTIAL_KEY];
           const accessRecord = sessionState[ACCESS_CREDENTIAL_KEY];
 
-          if (refreshRecord === undefined && accessRecord === undefined) {
+          if (
+            (refreshRecord === undefined || isLocallyClearedRefreshRecord(refreshRecord)) &&
+            accessRecord === undefined
+          ) {
             return { status: 'signed_out' };
           }
           if (!isCommittedReadyRecord(refreshRecord)) {
@@ -138,50 +163,37 @@ export class ChromeAuthStorage {
   }
 
   async beginRefresh(now: number): Promise<RefreshGrant> {
-    return this.#withTrustedAccess(() =>
-      this.#serializeCredentialOperation(async () => {
-        if (this.#activeRefreshGeneration !== undefined) {
+    return this.#serializeAuthStateOperation(() =>
+      this.#withTrustedAccess(async () => {
+        this.#requireUsableCredentialState();
+        if (this.#activeRefreshTokenUse !== undefined) {
           throw new ExtensionAuthError('AUTH_REFRESH_FAILED');
         }
-        const grant = await this.#failClosedCredentialOperation(async () => {
-          if (!isSafeTimestamp(now)) {
-            throw new ExtensionAuthError('AUTHENTICATION_REQUIRED');
-          }
-          const [localState, sessionState] = await Promise.all([
-            this.#local.get(REFRESH_CREDENTIAL_KEY),
-            this.#session.get(ACCESS_CREDENTIAL_KEY),
-          ]);
-          const readyRecord = localState[REFRESH_CREDENTIAL_KEY];
-          const accessRecord = sessionState[ACCESS_CREDENTIAL_KEY];
-          if (
-            !isCommittedReadyRecord(readyRecord) ||
-            readyRecord.generation >= Number.MAX_SAFE_INTEGER
-          ) {
-            throw new ExtensionAuthError('AUTHENTICATION_REQUIRED');
-          }
-          if (
-            accessRecord !== undefined &&
-            (!isStoredAccessCredential(accessRecord) ||
-              accessRecord.generation !== readyRecord.generation)
-          ) {
-            throw new ExtensionAuthError('AUTHENTICATION_REQUIRED');
-          }
+        const grant = await this.#failClosedCredentialOperation(() =>
+          this.#claimRefreshToken(now, false),
+        );
+        if (grant === null) {
+          throw new ExtensionAuthError('AUTHENTICATION_REQUIRED');
+        }
+        this.#activeRefreshTokenUse = { generation: grant.generation, purpose: 'refresh' };
+        return grant;
+      }),
+    );
+  }
 
-          const nextGrant: RefreshGrant = {
-            generation: readyRecord.generation + 1,
-            refreshToken: readyRecord.refreshToken,
-          };
-          const inProgress: RefreshInProgressRecord = {
-            version: 1,
-            status: 'refresh_in_progress',
-            generation: nextGrant.generation,
-            startedAt: now,
-          };
-          await this.#local.set({ [REFRESH_CREDENTIAL_KEY]: inProgress });
-          await this.#session.remove(ACCESS_CREDENTIAL_KEY);
-          return nextGrant;
-        });
-        this.#activeRefreshGeneration = grant.generation;
+  async beginRevocation(now: number): Promise<RefreshGrant | null> {
+    return this.#serializeAuthStateOperation(() =>
+      this.#withTrustedAccess(async () => {
+        this.#requireUsableCredentialState();
+        if (this.#activeRefreshTokenUse !== undefined) {
+          throw new ExtensionAuthError('AUTH_REFRESH_FAILED');
+        }
+        const grant = await this.#failClosedCredentialOperation(() =>
+          this.#claimRefreshToken(now, true),
+        );
+        if (grant !== null) {
+          this.#activeRefreshTokenUse = { generation: grant.generation, purpose: 'revocation' };
+        }
         return grant;
       }),
     );
@@ -192,9 +204,13 @@ export class ChromeAuthStorage {
     credentials: ExchangedProviderCredentials,
     now: number,
   ): Promise<void> {
-    await this.#withTrustedAccess(() =>
-      this.#serializeCredentialOperation(async () => {
-        if (this.#activeRefreshGeneration !== generation) {
+    await this.#serializeAuthStateOperation(() =>
+      this.#withTrustedAccess(async () => {
+        this.#requireUsableCredentialState();
+        if (
+          this.#activeRefreshTokenUse?.purpose !== 'refresh' ||
+          this.#activeRefreshTokenUse.generation !== generation
+        ) {
           throw new ExtensionAuthError('AUTH_REFRESH_FAILED');
         }
         try {
@@ -207,28 +223,80 @@ export class ChromeAuthStorage {
             await this.#commitCredentials(generation, credentials, now);
           });
         } finally {
-          this.#activeRefreshGeneration = undefined;
+          this.#activeRefreshTokenUse = undefined;
         }
       }),
     );
   }
 
   async clearCredentials(): Promise<void> {
-    await this.#withTrustedAccess(() =>
-      this.#serializeCredentialOperation(async () => {
-        try {
-          const results = await Promise.allSettled([
-            this.#local.remove(REFRESH_CREDENTIAL_KEY),
-            this.#session.remove(ACCESS_CREDENTIAL_KEY),
-          ]);
-          if (results.some((result) => result.status === 'rejected')) {
-            throw new ExtensionAuthError('AUTH_STORAGE_UNAVAILABLE');
-          }
-        } finally {
-          this.#activeRefreshGeneration = undefined;
-        }
-      }),
-    );
+    await this.#serializeAuthStateOperation(async () => {
+      try {
+        await this.#removeWithTrustedAccess([
+          () => this.#local.remove(REFRESH_CREDENTIAL_KEY),
+          () => this.#session.remove(ACCESS_CREDENTIAL_KEY),
+        ]);
+      } finally {
+        this.#activeRefreshTokenUse = undefined;
+      }
+    });
+  }
+
+  async clearAuthenticationState(): Promise<void> {
+    await this.#serializeAuthStateOperation(async () => {
+      try {
+        await this.#removeWithTrustedAccess([
+          () => this.#local.remove(REFRESH_CREDENTIAL_KEY),
+          () => this.#session.remove(ACCESS_CREDENTIAL_KEY),
+          () => this.#session.remove(AUTH_ATTEMPT_KEY),
+        ]);
+      } finally {
+        this.#activeRefreshTokenUse = undefined;
+      }
+    });
+  }
+
+  async #claimRefreshToken(now: number, allowSignedOut: boolean): Promise<RefreshGrant | null> {
+    if (!isSafeTimestamp(now)) {
+      throw new ExtensionAuthError('AUTHENTICATION_REQUIRED');
+    }
+    const [localState, sessionState] = await Promise.all([
+      this.#local.get(REFRESH_CREDENTIAL_KEY),
+      this.#session.get(ACCESS_CREDENTIAL_KEY),
+    ]);
+    const readyRecord = localState[REFRESH_CREDENTIAL_KEY];
+    const accessRecord = sessionState[ACCESS_CREDENTIAL_KEY];
+    if (
+      (readyRecord === undefined || isLocallyClearedRefreshRecord(readyRecord)) &&
+      accessRecord === undefined &&
+      allowSignedOut
+    ) {
+      return null;
+    }
+    if (!isCommittedReadyRecord(readyRecord) || readyRecord.generation >= Number.MAX_SAFE_INTEGER) {
+      throw new ExtensionAuthError('AUTHENTICATION_REQUIRED');
+    }
+    if (
+      accessRecord !== undefined &&
+      (!isStoredAccessCredential(accessRecord) ||
+        accessRecord.generation !== readyRecord.generation)
+    ) {
+      throw new ExtensionAuthError('AUTHENTICATION_REQUIRED');
+    }
+
+    const grant: RefreshGrant = {
+      generation: readyRecord.generation + 1,
+      refreshToken: readyRecord.refreshToken,
+    };
+    const inProgress: RefreshInProgressRecord = {
+      version: 1,
+      status: 'refresh_in_progress',
+      generation: grant.generation,
+      startedAt: now,
+    };
+    await this.#local.set({ [REFRESH_CREDENTIAL_KEY]: inProgress });
+    await this.#session.remove(ACCESS_CREDENTIAL_KEY);
+    return grant;
   }
 
   async #commitCredentials(
@@ -263,9 +331,9 @@ export class ChromeAuthStorage {
     await this.#local.set({ [REFRESH_CREDENTIAL_KEY]: committedRefresh });
   }
 
-  #serializeCredentialOperation<T>(operation: () => Promise<T>): Promise<T> {
-    const result = this.#credentialOperationQueue.then(operation, operation);
-    this.#credentialOperationQueue = result.then(
+  #serializeAuthStateOperation<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.#authStateOperationQueue.then(operation, operation);
+    this.#authStateOperationQueue = result.then(
       () => undefined,
       () => undefined,
     );
@@ -288,11 +356,57 @@ export class ChromeAuthStorage {
   }
 
   async #clearCredentialRecordsBestEffort(): Promise<boolean> {
-    const results = await Promise.allSettled([
-      this.#local.remove(REFRESH_CREDENTIAL_KEY),
-      this.#session.remove(ACCESS_CREDENTIAL_KEY),
-    ]);
-    return results.every((result) => result.status === 'fulfilled');
+    const invalidationConfirmed = await this.#writeCredentialInvalidationBestEffort();
+    const results = await Promise.allSettled(
+      [
+        () => this.#local.remove(REFRESH_CREDENTIAL_KEY),
+        () => this.#session.remove(ACCESS_CREDENTIAL_KEY),
+      ].map(invokeStorageOperation),
+    );
+    if (!invalidationConfirmed && results[0]?.status === 'rejected') {
+      await this.#writeCredentialInvalidationBestEffort();
+    }
+    const cleared = results.every((result) => result.status === 'fulfilled');
+    if (!cleared) {
+      this.#credentialStatePoisoned = true;
+    } else {
+      this.#credentialStatePoisoned = false;
+    }
+    return cleared;
+  }
+
+  async #removeWithTrustedAccess(removals: readonly (() => Promise<void>)[]): Promise<void> {
+    try {
+      await this.#ensureTrustedAccess();
+    } catch {
+      // Cleanup remains safe after both access-level gates settle because no credential is read.
+    }
+
+    const invalidationConfirmed = await this.#writeCredentialInvalidationBestEffort();
+    const results = await Promise.allSettled(removals.map(invokeStorageOperation));
+    if (!invalidationConfirmed && results[0]?.status === 'rejected') {
+      await this.#writeCredentialInvalidationBestEffort();
+    }
+    if (results.some((result) => result.status === 'rejected')) {
+      this.#credentialStatePoisoned = true;
+      throw new ExtensionAuthError('AUTH_STORAGE_UNAVAILABLE');
+    }
+    this.#credentialStatePoisoned = false;
+  }
+
+  async #writeCredentialInvalidationBestEffort(): Promise<boolean> {
+    try {
+      await this.#local.set({ [REFRESH_CREDENTIAL_KEY]: LOCALLY_CLEARED_REFRESH_RECORD });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  #requireUsableCredentialState(): void {
+    if (this.#credentialStatePoisoned) {
+      throw new ExtensionAuthError('AUTH_STORAGE_UNAVAILABLE');
+    }
   }
 
   async #withTrustedAccess<T>(operation: () => Promise<T>): Promise<T> {
@@ -308,10 +422,20 @@ export class ChromeAuthStorage {
   }
 
   #ensureTrustedAccess(): Promise<void> {
-    this.#trustedAccess ??= Promise.all([
-      this.#local.setAccessLevel(TRUSTED_CONTEXTS),
-      this.#session.setAccessLevel(TRUSTED_CONTEXTS),
-    ]).then(() => undefined);
+    this.#trustedAccess ??= Promise.allSettled(
+      [
+        () => this.#local.setAccessLevel(TRUSTED_CONTEXTS),
+        () => this.#session.setAccessLevel(TRUSTED_CONTEXTS),
+      ].map(invokeStorageOperation),
+    ).then((results) => {
+      if (results.some((result) => result.status === 'rejected')) {
+        throw new ExtensionAuthError('AUTH_STORAGE_UNAVAILABLE');
+      }
+    });
     return this.#trustedAccess;
   }
+}
+
+function invokeStorageOperation(operation: () => Promise<void>): Promise<void> {
+  return Promise.resolve().then(operation);
 }

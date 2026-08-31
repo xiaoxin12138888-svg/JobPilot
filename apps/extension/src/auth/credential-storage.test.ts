@@ -6,6 +6,7 @@ import { ChromeAuthStorage, type StorageArea } from './trusted-storage';
 
 const REFRESH_KEY = 'jobpilot.auth.refresh';
 const ACCESS_KEY = 'jobpilot.auth.access';
+const ATTEMPT_KEY = 'jobpilot.auth.attempt';
 const now = 1_800_000_000_000;
 const initialCredentials: ExchangedProviderCredentials = {
   accessToken: 'initial-access-token',
@@ -285,6 +286,32 @@ describe('ChromeAuthStorage credential boundary', () => {
     });
   });
 
+  it('atomically claims a ready refresh grant for one-way logout revocation', async () => {
+    const { local, session, store } = createStore();
+    await store.saveInitialCredentials(initialCredentials, now);
+
+    const grant = await store.beginRevocation(now + 1_000);
+
+    expect(grant).toEqual({ generation: 2, refreshToken: initialCredentials.refreshToken });
+    expect(local.snapshot()[REFRESH_KEY]).toEqual({
+      version: 1,
+      status: 'refresh_in_progress',
+      generation: 2,
+      startedAt: now + 1_000,
+    });
+    expect(JSON.stringify(local.snapshot())).not.toContain(initialCredentials.refreshToken);
+    expect(session.snapshot()[ACCESS_KEY]).toBeUndefined();
+    await expect(
+      store.saveRefreshedCredentials(2, rotatedCredentials, now + 2_000),
+    ).rejects.toEqual(new ExtensionAuthError('AUTH_REFRESH_FAILED'));
+  });
+
+  it('reports revocation as not applicable only when both credential areas are empty', async () => {
+    const { store } = createStore();
+
+    await expect(store.beginRevocation(now)).resolves.toBeNull();
+  });
+
   it('commits rotated credentials only for the matching in-progress generation', async () => {
     const { local, session, store } = createStore();
     await store.saveInitialCredentials(initialCredentials, now);
@@ -419,6 +446,27 @@ describe('ChromeAuthStorage credential boundary', () => {
       },
       {},
     ],
+    [
+      'credential-bearing locally-cleared marker',
+      {
+        [REFRESH_KEY]: {
+          version: 1,
+          status: 'locally_cleared',
+          refreshToken: 'must-not-survive',
+        },
+      },
+      {},
+    ],
+    [
+      'wrong-version locally-cleared marker',
+      {
+        [REFRESH_KEY]: {
+          version: 2,
+          status: 'locally_cleared',
+        },
+      },
+      {},
+    ],
   ])(
     'fails closed and clears both areas for %s after restart',
     async (_name, localData, sessionData) => {
@@ -510,6 +558,232 @@ describe('ChromeAuthStorage credential boundary', () => {
     expect(session.snapshot()[ACCESS_KEY]).toBeUndefined();
   });
 
+  it('clears every exact auth key without deleting unrelated extension state', async () => {
+    const local = storageArea({
+      [REFRESH_KEY]: { credential: 'refresh' },
+      'jobpilot.preferences.locale': 'zh-CN',
+    });
+    const session = storageArea({
+      [ACCESS_KEY]: { credential: 'access' },
+      [ATTEMPT_KEY]: { credential: 'attempt' },
+      'jobpilot.popup.dismissed': true,
+    });
+    const store = new ChromeAuthStorage({ local, session });
+
+    await store.clearAuthenticationState();
+
+    expect(local.snapshot()).toEqual({ 'jobpilot.preferences.locale': 'zh-CN' });
+    expect(session.snapshot()).toEqual({ 'jobpilot.popup.dismissed': true });
+    expect(local.remove).toHaveBeenCalledTimes(1);
+    expect(session.remove).toHaveBeenCalledTimes(2);
+  });
+
+  it('serializes an attempt save before full authentication cleanup so it cannot revive', async () => {
+    const attemptSave = deferred();
+    const sessionValues: Record<string, unknown> = {};
+    const local = storageArea();
+    const session: StorageArea = {
+      setAccessLevel: vi.fn().mockResolvedValue(undefined),
+      get: vi.fn(async (key: string) => ({ [key]: sessionValues[key] })),
+      set: vi.fn(async (items: Record<string, unknown>) => {
+        await attemptSave.promise;
+        Object.assign(sessionValues, items);
+      }),
+      remove: vi.fn(async (key: string) => {
+        delete sessionValues[key];
+      }),
+    };
+    const store = new ChromeAuthStorage({ local, session });
+    const save = store.saveAttempt({
+      version: 1,
+      state: 's'.repeat(43),
+      nonce: 'n'.repeat(43),
+      codeVerifier: 'v'.repeat(64),
+      redirectUri: 'https://abcdefghijklmnopabcdefghijklmnop.chromiumapp.org/',
+      createdAt: now,
+      expiresAt: now + 600_000,
+    });
+    await vi.waitFor(() => expect(session.set).toHaveBeenCalledOnce());
+
+    const clear = store.clearAuthenticationState();
+    for (let index = 0; index < 10; index += 1) {
+      await Promise.resolve();
+    }
+    expect(local.set).not.toHaveBeenCalled();
+    expect(session.remove).not.toHaveBeenCalled();
+    attemptSave.resolve();
+
+    await expect(Promise.all([save, clear])).resolves.toEqual([undefined, undefined]);
+    expect(sessionValues[ATTEMPT_KEY]).toBeUndefined();
+  });
+
+  it('confirms local cleanup when every exact removal succeeds after a trusted-access gate failure', async () => {
+    const pendingSessionGate = deferred();
+    const local = storageArea({ [REFRESH_KEY]: { credential: 'refresh' } });
+    const session = storageArea({
+      [ACCESS_KEY]: { credential: 'access' },
+      [ATTEMPT_KEY]: { credential: 'attempt' },
+    });
+    vi.mocked(local.setAccessLevel).mockRejectedValue(new Error('private access gate failed'));
+    vi.mocked(session.setAccessLevel).mockReturnValue(pendingSessionGate.promise);
+    const store = new ChromeAuthStorage({ local, session });
+
+    const clearPromise = store.clearAuthenticationState();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(local.remove).not.toHaveBeenCalled();
+    expect(session.remove).not.toHaveBeenCalled();
+
+    pendingSessionGate.resolve();
+    await expect(clearPromise).resolves.toBeUndefined();
+    expect(local.snapshot()[REFRESH_KEY]).toBeUndefined();
+    expect(session.snapshot()[ACCESS_KEY]).toBeUndefined();
+    expect(session.snapshot()[ATTEMPT_KEY]).toBeUndefined();
+  });
+
+  it('waits for the other trusted gate and clears exact keys after one gate throws synchronously', async () => {
+    const pendingSessionGate = deferred();
+    const local = storageArea({ [REFRESH_KEY]: { credential: 'refresh' } });
+    const session = storageArea({
+      [ACCESS_KEY]: { credential: 'access' },
+      [ATTEMPT_KEY]: { credential: 'attempt' },
+    });
+    vi.mocked(local.setAccessLevel).mockImplementationOnce(() => {
+      throw new Error('synchronous private access gate failure');
+    });
+    vi.mocked(session.setAccessLevel).mockReturnValue(pendingSessionGate.promise);
+    const store = new ChromeAuthStorage({ local, session });
+
+    const clear = store.clearAuthenticationState();
+    await vi.waitFor(() => expect(session.setAccessLevel).toHaveBeenCalledOnce());
+    expect(local.remove).not.toHaveBeenCalled();
+    expect(session.remove).not.toHaveBeenCalled();
+    pendingSessionGate.resolve();
+
+    await expect(clear).resolves.toBeUndefined();
+    expect(local.snapshot()[REFRESH_KEY]).toBeUndefined();
+    expect(session.snapshot()[ACCESS_KEY]).toBeUndefined();
+    expect(session.snapshot()[ATTEMPT_KEY]).toBeUndefined();
+  });
+
+  it('attempts all exact auth removals when one local cleanup cannot be confirmed', async () => {
+    const local = storageArea(
+      { [REFRESH_KEY]: { credential: 'refresh' } },
+      { failRemoveCalls: [1] },
+    );
+    const session = storageArea({
+      [ACCESS_KEY]: { credential: 'access' },
+      [ATTEMPT_KEY]: { credential: 'attempt' },
+    });
+    const store = new ChromeAuthStorage({ local, session });
+
+    await expect(store.clearAuthenticationState()).rejects.toEqual(
+      new ExtensionAuthError('AUTH_STORAGE_UNAVAILABLE'),
+    );
+    expect(local.remove).toHaveBeenCalledWith(REFRESH_KEY);
+    expect(session.remove).toHaveBeenCalledWith(ACCESS_KEY);
+    expect(session.remove).toHaveBeenCalledWith(ATTEMPT_KEY);
+    expect(session.snapshot()[ACCESS_KEY]).toBeUndefined();
+    expect(session.snapshot()[ATTEMPT_KEY]).toBeUndefined();
+  });
+
+  it('attempts every exact auth removal and poisons the store after a synchronous remove failure', async () => {
+    const local = storageArea({ [REFRESH_KEY]: { credential: 'refresh' } });
+    const session = storageArea({
+      [ACCESS_KEY]: { credential: 'access' },
+      [ATTEMPT_KEY]: { credential: 'attempt' },
+    });
+    vi.mocked(local.remove).mockImplementationOnce(() => {
+      throw new Error('synchronous local removal failure');
+    });
+    const store = new ChromeAuthStorage({ local, session });
+
+    await expect(store.clearAuthenticationState()).rejects.toEqual(
+      new ExtensionAuthError('AUTH_STORAGE_UNAVAILABLE'),
+    );
+
+    expect(local.remove).toHaveBeenCalledWith(REFRESH_KEY);
+    expect(session.remove).toHaveBeenCalledWith(ACCESS_KEY);
+    expect(session.remove).toHaveBeenCalledWith(ATTEMPT_KEY);
+    expect(session.snapshot()[ACCESS_KEY]).toBeUndefined();
+    expect(session.snapshot()[ATTEMPT_KEY]).toBeUndefined();
+    await expect(store.restoreCredentials()).rejects.toEqual(
+      new ExtensionAuthError('AUTH_STORAGE_UNAVAILABLE'),
+    );
+  });
+
+  it('invalidates an old refresh token and poisons the current store when exact removal fails', async () => {
+    const local = storageArea({}, { failRemoveCalls: [1] });
+    const session = storageArea();
+    const store = new ChromeAuthStorage({ local, session });
+    await store.saveInitialCredentials(initialCredentials, now);
+
+    await expect(store.clearAuthenticationState()).rejects.toEqual(
+      new ExtensionAuthError('AUTH_STORAGE_UNAVAILABLE'),
+    );
+
+    expect(JSON.stringify(local.snapshot())).not.toContain(initialCredentials.refreshToken);
+    expect(session.snapshot()[ACCESS_KEY]).toBeUndefined();
+    await expect(store.restoreCredentials()).rejects.toEqual(
+      new ExtensionAuthError('AUTH_STORAGE_UNAVAILABLE'),
+    );
+    await expect(store.beginRefresh(now + 1_000)).rejects.toEqual(
+      new ExtensionAuthError('AUTH_STORAGE_UNAVAILABLE'),
+    );
+  });
+
+  it('keeps an invalidated refresh token unusable after a new store starts', async () => {
+    const local = storageArea({}, { failRemoveCalls: [1] });
+    const session = storageArea();
+    const store = new ChromeAuthStorage({ local, session });
+    await store.saveInitialCredentials(initialCredentials, now);
+    await expect(store.clearAuthenticationState()).rejects.toEqual(
+      new ExtensionAuthError('AUTH_STORAGE_UNAVAILABLE'),
+    );
+
+    const restartedStore = new ChromeAuthStorage({ local, session });
+
+    await expect(restartedStore.restoreCredentials()).resolves.toEqual({ status: 'signed_out' });
+    expect(JSON.stringify(local.snapshot())).not.toContain(initialCredentials.refreshToken);
+    await expect(restartedStore.beginRefresh(now + 1_000)).rejects.toEqual(
+      new ExtensionAuthError('AUTHENTICATION_REQUIRED'),
+    );
+  });
+
+  it('lets a successful new credential commit recover a poisoned current store', async () => {
+    const local = storageArea({}, { failRemoveCalls: [1] });
+    const session = storageArea();
+    const store = new ChromeAuthStorage({ local, session });
+    await store.saveInitialCredentials(initialCredentials, now);
+    await expect(store.clearCredentials()).rejects.toEqual(
+      new ExtensionAuthError('AUTH_STORAGE_UNAVAILABLE'),
+    );
+
+    await store.saveInitialCredentials(rotatedCredentials, now + 1_000);
+
+    await expect(store.restoreCredentials()).resolves.toEqual({
+      status: 'ready',
+      access: {
+        accessToken: rotatedCredentials.accessToken,
+        accessTokenExpiresAt: rotatedCredentials.accessTokenExpiresAt,
+      },
+    });
+  });
+
+  it('unpoisons the current store after a cleanup retry confirms every exact removal', async () => {
+    const local = storageArea({}, { failRemoveCalls: [1] });
+    const session = storageArea();
+    const store = new ChromeAuthStorage({ local, session });
+    await store.saveInitialCredentials(initialCredentials, now);
+    await expect(store.clearAuthenticationState()).rejects.toEqual(
+      new ExtensionAuthError('AUTH_STORAGE_UNAVAILABLE'),
+    );
+
+    await expect(store.clearAuthenticationState()).resolves.toBeUndefined();
+
+    await expect(store.restoreCredentials()).resolves.toEqual({ status: 'signed_out' });
+  });
+
   it('reports storage unavailable when either credential cleanup cannot be confirmed', async () => {
     const local = storageArea({}, { failRemoveCalls: [1] });
     const session = storageArea();
@@ -560,5 +834,26 @@ describe('ChromeAuthStorage credential boundary', () => {
     await expect(store.restoreCredentials()).rejects.toEqual(
       new ExtensionAuthError('AUTH_STORAGE_UNAVAILABLE'),
     );
+  });
+
+  it('attempts both credential removals when fail-closed cleanup sees a synchronous throw', async () => {
+    const local = storageArea({
+      [REFRESH_KEY]: { version: 999, refreshToken: 'must-not-survive' },
+    });
+    const session = storageArea({
+      [ACCESS_KEY]: { version: 999, accessToken: 'must-not-survive' },
+    });
+    vi.mocked(local.remove).mockImplementationOnce(() => {
+      throw new Error('synchronous local removal failure');
+    });
+    const store = new ChromeAuthStorage({ local, session });
+
+    await expect(store.restoreCredentials()).rejects.toEqual(
+      new ExtensionAuthError('AUTH_STORAGE_UNAVAILABLE'),
+    );
+
+    expect(local.remove).toHaveBeenCalledWith(REFRESH_KEY);
+    expect(session.remove).toHaveBeenCalledWith(ACCESS_KEY);
+    expect(session.snapshot()[ACCESS_KEY]).toBeUndefined();
   });
 });

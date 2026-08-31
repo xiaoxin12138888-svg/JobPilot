@@ -18,6 +18,11 @@ export interface RefreshInProgressRecord {
   startedAt: number;
 }
 
+export interface LocallyClearedRefreshRecord {
+  version: 1;
+  status: 'locally_cleared';
+}
+
 export interface StoredAccessCredential {
   version: 1;
   generation: number;
@@ -46,6 +51,17 @@ export function isRefreshInProgressRecord(value: unknown): value is RefreshInPro
     value.status === 'refresh_in_progress' &&
     isGeneration(value.generation) &&
     isSafeTimestamp(value.startedAt)
+  );
+}
+
+export function isLocallyClearedRefreshRecord(
+  value: unknown,
+): value is LocallyClearedRefreshRecord {
+  return (
+    isRecord(value) &&
+    hasExactKeys(value, ['version', 'status']) &&
+    value.version === 1 &&
+    value.status === 'locally_cleared'
   );
 }
 

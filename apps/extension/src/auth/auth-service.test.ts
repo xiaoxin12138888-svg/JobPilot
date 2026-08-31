@@ -2,11 +2,11 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { ApiClientError, type ExtensionBearerApiClient, type UserView } from '@jobpilot/api-client';
 
-import type { ValidatedAuthorizationCallback } from './authorization';
+import type { AuthorizationLaunchOptions, ValidatedAuthorizationCallback } from './authorization';
 import { ExtensionAuthError } from './errors';
 import { ExtensionAuthService } from './auth-service';
 import type { ExchangedProviderCredentials } from './provider-protocol';
-import type { RestoredCredentialState } from './trusted-storage';
+import type { RefreshGrant, RestoredCredentialState } from './trusted-storage';
 
 const now = 1_800_000_000_000;
 const credentials: ExchangedProviderCredentials = {
@@ -43,6 +43,16 @@ const callback = {
   },
 } satisfies ValidatedAuthorizationCallback;
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((complete, fail) => {
+    resolve = complete;
+    reject = fail;
+  });
+  return { promise, reject, resolve };
+}
+
 function createHarness() {
   const events: string[] = [];
   const ensureTrustedAccess = vi.fn(async () => {
@@ -57,7 +67,12 @@ function createHarness() {
   const clearCredentials = vi.fn(async () => {
     events.push('clear-credentials');
   });
-  const launch = vi.fn(async () => {
+  const beginRevocation = vi.fn<(now: number) => Promise<RefreshGrant | null>>(async () => null);
+  const clearAuthenticationState = vi.fn<() => Promise<void>>(async () => undefined);
+  const revokeRefreshGrant = vi.fn(async () => undefined);
+  const launch = vi.fn<
+    (options: AuthorizationLaunchOptions) => Promise<ValidatedAuthorizationCallback>
+  >(async () => {
     events.push('launch');
     return callback;
   });
@@ -82,16 +97,27 @@ function createHarness() {
     authorization: { launch },
     clock: () => now,
     exchangeCode,
+    refreshCredentials: vi.fn(async () => credentials),
+    revokeRefreshGrant,
     storage: {
+      beginRefresh: vi.fn(async () => ({
+        generation: 2,
+        refreshToken: credentials.refreshToken,
+      })),
+      beginRevocation,
+      clearAuthenticationState,
       ensureTrustedAccess,
       saveInitialCredentials,
       restoreCredentials,
       clearCredentials,
+      saveRefreshedCredentials: vi.fn(async () => undefined),
     },
   });
 
   return {
     apiClient,
+    beginRevocation,
+    clearAuthenticationState,
     clearCredentials,
     ensureTrustedAccess,
     events,
@@ -99,6 +125,7 @@ function createHarness() {
     getCurrentUser,
     launch,
     restoreCredentials,
+    revokeRefreshGrant,
     saveInitialCredentials,
     service,
     establishIdentity,
@@ -140,6 +167,159 @@ describe('ExtensionAuthService', () => {
     expect(harness.exchangeCode).not.toHaveBeenCalled();
     expect(harness.saveInitialCredentials).not.toHaveBeenCalled();
     expect(harness.establishIdentity).not.toHaveBeenCalled();
+    expect(harness.getCurrentUser).not.toHaveBeenCalled();
+  });
+
+  it('does not launch hosted login after logout completes while the trusted gate is pending', async () => {
+    const harness = createHarness();
+    const trustedGate = deferred<void>();
+    harness.ensureTrustedAccess.mockReturnValue(trustedGate.promise);
+
+    const signIn = harness.service.signIn();
+    await vi.waitFor(() => expect(harness.ensureTrustedAccess).toHaveBeenCalledOnce());
+    await expect(harness.service.signOut()).resolves.toEqual({ status: 'unconfirmed' });
+    trustedGate.resolve();
+
+    await expect(signIn).rejects.toEqual(new ExtensionAuthError('AUTHENTICATION_REQUIRED'));
+    expect(harness.launch).not.toHaveBeenCalled();
+    expect(harness.exchangeCode).not.toHaveBeenCalled();
+    expect(harness.clearAuthenticationState).toHaveBeenCalledOnce();
+  });
+
+  it('normalizes a stale trusted-gate failure after logout has completed', async () => {
+    const harness = createHarness();
+    const trustedGate = deferred<void>();
+    harness.ensureTrustedAccess.mockReturnValue(trustedGate.promise);
+
+    const signIn = harness.service.signIn();
+    await vi.waitFor(() => expect(harness.ensureTrustedAccess).toHaveBeenCalledOnce());
+    await expect(harness.service.signOut()).resolves.toEqual({ status: 'unconfirmed' });
+    trustedGate.reject(new ExtensionAuthError('AUTH_STORAGE_UNAVAILABLE'));
+
+    await expect(signIn).rejects.toEqual(new ExtensionAuthError('AUTHENTICATION_REQUIRED'));
+    expect(harness.launch).not.toHaveBeenCalled();
+    expect(harness.clearAuthenticationState).toHaveBeenCalledOnce();
+  });
+
+  it('coalesces duplicate sign-in calls into one interactive authorization attempt', async () => {
+    const harness = createHarness();
+    const authorizationResult = deferred<ValidatedAuthorizationCallback>();
+    harness.launch.mockReturnValue(authorizationResult.promise);
+
+    const first = harness.service.signIn();
+    const second = harness.service.signIn();
+    expect(second).toBe(first);
+    authorizationResult.resolve(callback);
+
+    await expect(Promise.all([first, second])).resolves.toEqual([currentUser, currentUser]);
+    expect(harness.launch).toHaveBeenCalledOnce();
+    expect(harness.exchangeCode).toHaveBeenCalledOnce();
+    expect(harness.saveInitialCredentials).toHaveBeenCalledOnce();
+    expect(harness.establishIdentity).toHaveBeenCalledOnce();
+    expect(harness.getCurrentUser).toHaveBeenCalledOnce();
+  });
+
+  it('lets restore join an active sign-in instead of reading an older credential state', async () => {
+    const harness = createHarness();
+    const currentUserResult = deferred<UserView>();
+    harness.getCurrentUser.mockReturnValue(currentUserResult.promise);
+
+    const signIn = harness.service.signIn();
+    await vi.waitFor(() => expect(harness.getCurrentUser).toHaveBeenCalledOnce());
+    const restore = harness.service.restoreCurrentUser();
+
+    expect(restore).toBe(signIn);
+    expect(harness.restoreCredentials).not.toHaveBeenCalled();
+    currentUserResult.resolve(currentUser);
+    await expect(Promise.all([signIn, restore])).resolves.toEqual([currentUser, currentUser]);
+    expect(harness.getCurrentUser).toHaveBeenCalledOnce();
+  });
+
+  it('aborts the active authorization signal synchronously when logout starts', async () => {
+    const harness = createHarness();
+    const authorizationResult = deferred<ValidatedAuthorizationCallback>();
+    const cleanupResult = deferred<void>();
+    let authorizationSignal: AbortSignal | undefined;
+    harness.launch.mockImplementation((options) => {
+      authorizationSignal = options.signal;
+      return authorizationResult.promise;
+    });
+    harness.clearAuthenticationState.mockReturnValue(cleanupResult.promise);
+
+    const signIn = harness.service.signIn();
+    await vi.waitFor(() => expect(harness.launch).toHaveBeenCalledOnce());
+
+    const signOut = harness.service.signOut();
+    expect(authorizationSignal?.aborted).toBe(true);
+    await vi.waitFor(() => expect(harness.clearAuthenticationState).toHaveBeenCalledOnce());
+    authorizationResult.resolve(callback);
+    cleanupResult.resolve();
+
+    await expect(signOut).resolves.toEqual({ status: 'unconfirmed' });
+    await expect(signIn).rejects.toEqual(new ExtensionAuthError('AUTHENTICATION_REQUIRED'));
+    expect(harness.exchangeCode).not.toHaveBeenCalled();
+    expect(harness.saveInitialCredentials).not.toHaveBeenCalled();
+  });
+
+  it('treats logout during code exchange as remotely unconfirmed and discards the late grant', async () => {
+    const harness = createHarness();
+    const exchangeResult = deferred<ExchangedProviderCredentials>();
+    harness.exchangeCode.mockReturnValue(exchangeResult.promise);
+
+    const signIn = harness.service.signIn();
+    await vi.waitFor(() => expect(harness.exchangeCode).toHaveBeenCalledOnce());
+
+    await expect(harness.service.signOut()).resolves.toEqual({ status: 'unconfirmed' });
+    exchangeResult.resolve(credentials);
+    await expect(signIn).rejects.toEqual(new ExtensionAuthError('AUTHENTICATION_REQUIRED'));
+
+    expect(harness.beginRevocation).toHaveBeenCalledOnce();
+    expect(harness.revokeRefreshGrant).not.toHaveBeenCalled();
+    expect(harness.clearAuthenticationState).toHaveBeenCalledOnce();
+    expect(harness.saveInitialCredentials).not.toHaveBeenCalled();
+  });
+
+  it('does not confirm logout when an older grant is revoked during a pending code exchange', async () => {
+    const harness = createHarness();
+    const exchangeResult = deferred<ExchangedProviderCredentials>();
+    harness.exchangeCode.mockReturnValue(exchangeResult.promise);
+    harness.beginRevocation.mockResolvedValue({
+      generation: 2,
+      refreshToken: 'older-refresh-token',
+    });
+
+    const signIn = harness.service.signIn();
+    await vi.waitFor(() => expect(harness.exchangeCode).toHaveBeenCalledOnce());
+
+    await expect(harness.service.signOut()).resolves.toEqual({ status: 'unconfirmed' });
+    exchangeResult.resolve(credentials);
+    await expect(signIn).rejects.toEqual(new ExtensionAuthError('AUTHENTICATION_REQUIRED'));
+
+    expect(harness.revokeRefreshGrant).toHaveBeenCalledWith('older-refresh-token');
+    expect(harness.saveInitialCredentials).not.toHaveBeenCalled();
+    expect(harness.clearAuthenticationState).toHaveBeenCalledOnce();
+  });
+
+  it('revokes a persisted grant when logout interrupts the sign-in API stage', async () => {
+    const harness = createHarness();
+    const identityResult = deferred<UserView>();
+    harness.establishIdentity.mockReturnValue(identityResult.promise);
+    harness.beginRevocation.mockResolvedValue({
+      generation: 2,
+      refreshToken: credentials.refreshToken,
+    });
+
+    const signIn = harness.service.signIn();
+    await vi.waitFor(() => expect(harness.establishIdentity).toHaveBeenCalledOnce());
+
+    await expect(harness.service.signOut()).resolves.toEqual({ status: 'confirmed' });
+    identityResult.resolve(establishedUser);
+    await expect(signIn).rejects.toEqual(new ExtensionAuthError('AUTHENTICATION_REQUIRED'));
+
+    expect(harness.saveInitialCredentials).toHaveBeenCalledOnce();
+    expect(harness.beginRevocation).toHaveBeenCalledOnce();
+    expect(harness.revokeRefreshGrant).toHaveBeenCalledWith(credentials.refreshToken);
+    expect(harness.clearAuthenticationState).toHaveBeenCalledOnce();
     expect(harness.getCurrentUser).not.toHaveBeenCalled();
   });
 
@@ -216,6 +396,20 @@ describe('ExtensionAuthService', () => {
     expect(harness.getCurrentUser).not.toHaveBeenCalled();
   });
 
+  it('does not return stale signed-out state after a newer sign-in completes', async () => {
+    const harness = createHarness();
+    const restoredState = deferred<RestoredCredentialState>();
+    harness.restoreCredentials.mockReturnValue(restoredState.promise);
+
+    const restore = harness.service.restoreCurrentUser();
+    await expect(harness.service.signIn()).resolves.toEqual(currentUser);
+    restoredState.resolve({ status: 'signed_out' });
+
+    await expect(restore).rejects.toEqual(new ExtensionAuthError('AUTHENTICATION_REQUIRED'));
+    expect(harness.launch).toHaveBeenCalledOnce();
+    expect(harness.saveInitialCredentials).toHaveBeenCalledOnce();
+  });
+
   it('restores an existing user directly through me without provisioning again', async () => {
     const harness = createHarness();
     harness.restoreCredentials.mockResolvedValue({
@@ -252,14 +446,13 @@ describe('ExtensionAuthService', () => {
     expect(harness.clearCredentials).toHaveBeenCalledOnce();
   });
 
-  it('keeps a valid refresh-only restart state for Task 7F without making an API call', async () => {
+  it('restores a refresh-only restart state through the Task 7F lifecycle', async () => {
     const harness = createHarness();
     harness.restoreCredentials.mockResolvedValue({ status: 'ready', access: null });
 
-    await expect(harness.service.restoreCurrentUser()).rejects.toEqual(
-      new ExtensionAuthError('AUTHENTICATION_REQUIRED'),
-    );
-    expect(harness.getCurrentUser).not.toHaveBeenCalled();
+    await expect(harness.service.restoreCurrentUser()).resolves.toEqual(currentUser);
+    expect(harness.getCurrentUser).toHaveBeenCalledWith(credentials.accessToken);
+    expect(harness.establishIdentity).not.toHaveBeenCalled();
     expect(harness.clearCredentials).not.toHaveBeenCalled();
   });
 });
