@@ -30,6 +30,11 @@ export interface ApiClient {
   getWebLoginUrl(): string;
 }
 
+export interface ExtensionBearerApiClient {
+  establishIdentity(accessToken: string): Promise<UserView>;
+  getCurrentUser(accessToken: string): Promise<UserView>;
+}
+
 export interface ApiClientOptions {
   baseUrl: string;
   fetchImplementation?: typeof fetch;
@@ -154,6 +159,84 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
   };
 }
 
+export function createExtensionBearerApiClient(
+  options: ApiClientOptions,
+): ExtensionBearerApiClient {
+  const baseUrl = validateExtensionBearerApiBaseUrl(options.baseUrl);
+  const establishIdentityUrl = getApiUrl(baseUrl, '/api/v1/auth/session');
+  const currentUserUrl = getApiUrl(baseUrl, '/api/v1/auth/me');
+  const fetchImplementation = options.fetchImplementation ?? globalThis.fetch;
+
+  async function requestUser(
+    url: string,
+    method: 'GET' | 'POST',
+    accessToken: string,
+  ): Promise<UserView> {
+    if (!isValidAccessCredential(accessToken)) {
+      throw new ApiClientError(0, 'INVALID_ACCESS_CREDENTIAL');
+    }
+
+    let response: Response;
+    try {
+      response = await fetchImplementation(url, {
+        cache: 'no-store',
+        credentials: 'omit',
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        method,
+        redirect: 'error',
+      });
+    } catch {
+      throw new ApiClientError(0, 'API_UNAVAILABLE');
+    }
+
+    if (response.status !== 200) {
+      if (!response.ok) {
+        throw await apiErrorFromResponse(response);
+      }
+      throw invalidApiResponse(response.status);
+    }
+
+    const payload = await readApiJson(response);
+    const user = parseUserResponse(payload);
+    if (user === undefined) {
+      throw invalidApiResponse(response.status);
+    }
+    return user;
+  }
+
+  return {
+    establishIdentity(accessToken: string): Promise<UserView> {
+      return requestUser(establishIdentityUrl, 'POST', accessToken);
+    },
+
+    getCurrentUser(accessToken: string): Promise<UserView> {
+      return requestUser(currentUserUrl, 'GET', accessToken);
+    },
+  };
+}
+
+function validateExtensionBearerApiBaseUrl(baseUrl: string): URL {
+  const parsedBaseUrl = validateApiBaseUrl(baseUrl);
+  const isLoopbackHttp =
+    parsedBaseUrl.protocol === 'http:' &&
+    (parsedBaseUrl.hostname === 'localhost' ||
+      parsedBaseUrl.hostname === '127.0.0.1' ||
+      parsedBaseUrl.hostname === '[::1]');
+
+  if (parsedBaseUrl.protocol !== 'https:' && !isLoopbackHttp) {
+    throw new Error('Extension bearer API base URL must use HTTPS or loopback HTTP');
+  }
+
+  return parsedBaseUrl;
+}
+
+function isValidAccessCredential(value: string): boolean {
+  return /^[\x21-\x7e]{1,16384}$/u.test(value);
+}
+
 async function readApiJson(response: Response): Promise<unknown> {
   if (!response.ok) {
     throw await apiErrorFromResponse(response);
@@ -177,6 +260,7 @@ async function apiErrorFromResponse(response: Response): Promise<ApiClientError>
     isObject(payload) &&
     isObject(payload.error) &&
     isBoundedString(payload.error.code, 100) &&
+    API_ERROR_CODE_PATTERN.test(payload.error.code) &&
     isBoundedString(payload.error.message, 500) &&
     typeof payload.error.requestId === 'string' &&
     REQUEST_ID_PATTERN.test(payload.error.requestId)
@@ -227,6 +311,7 @@ function isCsrfTokenResponse(value: unknown): value is CsrfTokenResponse {
 }
 
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/u;
+const API_ERROR_CODE_PATTERN = /^[A-Z][A-Z0-9_]{0,99}$/u;
 const RFC3339_UTC_TIMESTAMP_PATTERN =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|\+00:00)$/iu;
 
