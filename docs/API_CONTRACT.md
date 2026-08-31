@@ -1,6 +1,6 @@
 # JobPilot API Contract
 
-> 状态：Phase 0–2A 已批准；Task 6 Web session endpoints 与 client contract 已确定性实现，Task 7 Extension client 和真实 Auth0 配置仍待完成
+> 状态：Phase 0–2A 已批准；Task 6 Web session endpoints 与 Task 7 Extension public-client contract 已确定性实现并通过 Task 7H 门禁。真实 Auth0/稳定 Extension 配置仍为人机门禁
 >
 > 覆盖范围：Roadmap Phase 1–4  
 > 路径：业务 API 使用 `/api/v1`；基础设施探针使用 `/health`
@@ -15,7 +15,7 @@
 | -------- | ------------------------------------- | ----------------------------------- |
 | Phase 1  | 工程基础与可部署性                    | 非版本化 health 探针                |
 | Phase 2A | 认证架构门禁（无 endpoint 实现）      | auth strategy 与 transport contract |
-| Phase 2B | 认证与用户数据边界                    | auth session、current account       |
+| Phase 2B | 认证与用户数据边界                    | Extension identity establishment、current account、Web session/CSRF/logout |
 | Phase 3  | Job Capture 与 Job Library            | jobs                                |
 | Phase 4  | Application 与 ResumeVersion 基础闭环 | applications、resumes               |
 
@@ -174,7 +174,7 @@ Web cookie-authenticated unsafe request 必须提供 session-bound `X-CSRF-Token
 
 已签发的 stateless Extension access token 在 refresh revoke/logout 后最多继续有效到短期 `exp`。任何界面和 API 文档不得虚假承诺即时 JWT 失效。
 
-本节与下列 Phase 2B endpoint 已随 ADR-006 获负责人批准。Task 6 已实现 Web authorize/callback、cookie `/auth/me`、CSRF 与 local logout；Extension client 的 PKCE/credential lifecycle 留给 Task 7。真实 tenant/application/ID/origin/redirect/secret 不得猜测，完整边界见 [AUTH_ARCHITECTURE.md](AUTH_ARCHITECTURE.md)。
+本节与下列 Phase 2B endpoint 已随 ADR-006 获负责人批准。Task 6 已实现 Web authorize/callback、cookie `/auth/me`、CSRF 与 local logout；Task 7 已实现 Extension PKCE、trusted credential lifecycle、shared bearer client、typed worker/popup boundary 与 direct revoke。真实 tenant/application/stable Extension ID/origin/redirect/secret 不得猜测，完整边界见 [AUTH_ARCHITECTURE.md](AUTH_ARCHITECTURE.md)。
 
 ## 4. 公共模型
 
@@ -306,11 +306,11 @@ JobPilot 不代理用户密码，不把这些路径伪装成 `/api/v1/auth/regis
 - 语义：幂等撤销当前 JobPilot Web server session并清 session cookie。Web callback 只请求 `openid profile email`，不保存 provider grant，所有 ID/access token 在验证后丢弃；因此 V1 这是明确的 **JobPilot local logout**，不宣称清除 Auth0 SSO cookie。下一次 login 强制 `prompt=login`，避免静默恢复共享设备上的旧账号。
 - `204`：无 body；不可把 session 是否曾存在或 provider revoke 细节泄露给客户端。
 
-Extension logout 不向 JobPilot 上传 refresh token：trusted worker 先尝试调用 Auth0 revoke，再清除 `chrome.storage.session`/trusted `chrome.storage.local`，并丢弃 popup profile。若网络或 provider 故障使撤销无法确认，本地退出仍完成，但 UI 必须明确提示远端 grant 状态未知；被复制的 refresh token 在 provider 撤销或自身过期前仍可能续期。恢复网络后，用户应从 Web 完成 recent reauthentication 并调用 revoke-all。由于 JobPilot 从未取得该 refresh token，本流程不虚构服务端自动重试。已签发 access token 最多存活到短期 `exp`。
+Extension logout 不向 JobPilot 上传 refresh token：trusted worker 先以 credential-free `refresh_in_progress` 独占当前 grant，然后并行发起 Auth0 revoke 与本地完整清理；本地清理覆盖 `chrome.storage.local` refresh、`chrome.storage.session` access/PKCE attempt 与 popup 临时状态。结果固定区分 `confirmed`、`not_applicable` 与 `unconfirmed`。若网络、provider 或并发中 grant 使远端撤销无法确认，本地退出仍完成且 UI 明确提示远端状态未知；若本地清理本身无法确认则返回 storage failure，不能声称退出成功。被复制的 refresh token 在 provider 撤销或自身过期前仍可能续期，已签发 access token 最多存活到短期 `exp`。Web recent reauthentication + revoke-all 是已接受但尚未实现的未来恢复能力；当前流程不能调用不存在的路由，也不虚构服务端自动重试。
 
 ### Deferred — `POST /api/v1/auth/sessions/revoke-all`
 
-该 endpoint 不属于 Task 6 当前公开实现。它需要 recent reauthentication、session/User binding 与经真实 Auth0 capability 审批的 provider grant 撤销边界；这些条件冻结前，OpenAPI 不得暴露半实现路由。以下保留为后续 Phase 2B contract 草案：
+该 endpoint 不属于当前 Task 6/7 最小 Phase 2B 公开实现。它需要 recent reauthentication、session/User binding 与经真实 Auth0 capability 审批的 provider grant 撤销边界；这些条件冻结并获得单独授权前，OpenAPI 不得暴露半实现路由。以下保留为未来 account-lifecycle contract 草案：
 
 - Auth：required；只允许完成 recent reauthentication 的 Web session。
 - CSRF：required。
@@ -321,7 +321,7 @@ Extension logout 不向 JobPilot 上传 refresh token：trusted worker 先尝试
 
 ### Deferred — `DELETE /api/v1/auth/account`
 
-该 endpoint 不属于 Task 6 当前公开实现；在 restore-control durable store/KMS 与完整生命周期基础设施获批前，不发布不安全的缩减版本。以下保留为后续 contract：
+该 endpoint 不属于当前 Task 6/7 最小 Phase 2B 公开实现；在 restore-control durable store/KMS 与完整生命周期基础设施获批前，不发布不安全的缩减版本。以下保留为未来 account-lifecycle contract：
 
 - Auth：required；仅允许完成 recent provider reauthentication 的 Web session。
 - CSRF：required；还需要显式不可逆确认，但确认文本/交互不属于 API credential。
@@ -664,22 +664,35 @@ Phase 4 不提供覆盖文件、对象存储直链、解析文本、AI 评分或
 - [x] Provisional password `/register`/`/login` contract 已移除；provider 与 JobPilot endpoint ownership 已明确。
 - [x] 项目负责人批准 ADR-006、Auth0 参考方案与 deterministic Phase 2B 实施范围；真实 Auth0 配置仍为单独的人机门禁。
 
-### Phase 2B–4 未来验收
+### Task 7 当前确定性验收
+
+- [x] Extension 使用用户触发的 Authorization Code + PKCE S256、secure state/nonce、runtime exact callback 与 public-client `none` authentication；不存在 client secret 输入。
+- [x] ID token 完成 issuer/audience/RS256/signature/time/nonce 验证后丢弃；API 只接收独立 audience 的短期 access bearer。
+- [x] `chrome.storage.local` 与 `chrome.storage.session` 均先设置 `TRUSTED_CONTEXTS`；credential commit 使用 `ready.pending -> access -> ready.committed`，`refresh_in_progress` 与 `locally_cleared` 均不含 credential。
+- [x] Restart、rotation、current-worker single-flight、ambiguous outcome、replacement refresh、API `401` fail-closed 与 logout `confirmed|not_applicable|unconfirmed` 语义均有确定性测试。
+- [x] 首次登录按 `/auth/session` identity establishment -> `/auth/me` 执行；同一 Web/Extension `(issuer, subject)` 返回相同本地 `User.id`。
+- [x] Auth-only manifest 只有 `identity`、`storage`、精确 API/provider origins 与 self-only MV3 CSP；Popup/worker 消息和 built bundle 不泄露 credential。
+- [ ] Chrome Load unpacked 与真实 Auth0 Extension flow：`NOT VERIFIED / BLOCKED — USER ACTION REQUIRED`。
+
+### 已完成的 Phase 2B deterministic authentication gates（Tasks 5–7）
+
+- [x] Web session/CSRF 与 Extension PKCE/rotation 通过 AUTH_ARCHITECTURE 的负向测试，日志没有 credential。
+- [x] JWT 错误 issuer/audience/algorithm/signature/time/token type 均被拒绝；未知 `kid` 只触发可信 issuer 的有界 JWKS refresh。
+- [x] Logout/revoke 测试准确表达 Extension access token 的残余 `exp` 窗口，不虚报即时撤销。
+- [x] 所有 Web logout（含缺失/失效 session）先通过 exact Origin/Fetch Metadata；只有有效 session 再要求 CSRF，跨站请求不能清 cookie。
+- [x] Extension rotation 覆盖 worker 在 request/response/storage 边界终止、`refresh_in_progress` 重启和不确定网络结果；旧 refresh token 从不重放。
+- [x] 随机 unknown `kid` 不产生逐请求 JWKS fetch；固定 URI、single-flight、cooldown、negative cache 与限流均通过测试。
+- [x] Extension direct revoke outage 明确区分本地退出与远端 grant 未确认状态，不虚构不可实现的重试。
+- [x] Web 与 Extension 使用同一 current-user API/`UserView` contract，并映射到同一个本地用户模型。
+
+### Phase 2B account-lifecycle 与 Phase 3–4 未来验收
 
 - [ ] Phase 2B–4 的业务端点全部位于 `/api/v1`。
-- [ ] Web session/CSRF 与 Extension PKCE/rotation 通过 AUTH_ARCHITECTURE 的负向测试，日志没有 credential。
-- [ ] JWT 错误 issuer/audience/algorithm/signature/time/token type 均被拒绝；未知 `kid` 只触发可信 issuer 的有界 JWKS refresh。
-- [ ] logout/revoke 测试准确表达 Extension access token 的残余 `exp` 窗口，不虚报即时撤销。
-- [ ] 所有 Web logout（含缺失/失效 session）先通过 exact Origin/Fetch Metadata；只有有效 session 再要求 CSRF，跨站请求不能清 cookie。
-- [ ] Extension rotation 覆盖 worker 在 request/response/storage 边界终止、`refresh_in_progress` 重启和不确定网络结果；旧 refresh token 从不重放。
-- [ ] 随机 unknown `kid` 不产生逐请求 JWKS fetch；固定 URI、single-flight、cooldown、negative cache 与限流均通过测试。
 - [ ] account deletion 立即阻止访问，并能从各个部分失败点幂等恢复。
 - [ ] account deletion 的独立 write-ahead marker 先于 `202`/cleanup，restore 对 pending/failed/completed marker 均 fail closed。
 - [ ] provider cutoff 后的残余 JWT 在整个 max-lifetime + clock-skew quarantine 中只能命中 `deletion_pending`，不能通过 `/auth/session` 创建 User；quarantine 前不硬删 mapping。
 - [ ] 删除完成后的重新注册生成新 User，跨用户/旧 ID 测试证明任何旧资源都不会重新关联。
-- [ ] Extension direct revoke outage 明确区分本地退出与远端 grant 未确认状态，不虚构不可实现的重试。
 - [ ] 当前 Phase 的账户导出覆盖全部已实现资源；live deletion、backup age、ledger replay/expiry 和伪名日志保留通过生命周期测试。
-- [ ] Web 与 Extension 调用同一业务 API，不复制状态枚举。
 - [ ] 所有列表端点通过统一分页契约测试。
 - [ ] 所有错误通过统一错误 schema 测试，内部异常不泄露。
 - [ ] 所有私有资源通过跨用户访问隔离测试。
@@ -687,8 +700,8 @@ Phase 4 不提供覆盖文件、对象存储直链、解析文本、AI 评分或
 - [ ] Job 创建覆盖同岗位重复导入和 manual 无稳定标识测试。
 - [ ] Application 状态枚举、`occurredAt`/`recordedAt`、终止态、显式 correction、分页事件及 ResumeVersion 锁定通过契约测试。
 - [ ] ResumeVersion 上传覆盖大小/MIME、配额/并发、不可变版本、失败补偿和对象存储字段不泄露测试。
-- [ ] ADR-006 获批且实际 tenant/client/origin/redirect/lifetime 配置已冻结后，Phase 2B 认证实现才可开始。
+- [ ] 实际 tenant/client/stable Extension ID/origin/redirect/lifetime/claim 配置冻结并完成真实 provider/browser 验证后，才可接受生产 Phase 2B integration；ADR-006 已批准的 deterministic Task 6/7 实现不受该外部门禁阻塞。
 
-## 12. 当前开放决策
+## 12. 当前开放的 live-integration 与 account-lifecycle 决策
 
-Phase 2B 实现前必须批准 ADR-006，并接受或修改 Auth0 的可达性、远程 tenant、本地开发、增长成本、数据处理和 DPA/provider-retention 取舍。项目负责人还必须批准或缩短 JobPilot-controlled live deletion 30 天、backup age 30 天、ledger safety margin 7 天与伪名日志 30 天上限，并接受 Phase 3/4 export milestones。实际 dev/prod issuer、audience、algorithms、authorized-party/client-ID allowlist、schemeful-same-site origins、Extension IDs、redirect/logout URLs、claim allowlist、session/access-token lifetimes 与 clock skew、provider token-issuance cutoff semantics、JWKS refresh controls、restore-ledger KMS/key retention、revoke-all/account-deletion provider capability 与最小 Management API scopes、secret storage 和依赖仍待 Phase 2B entry review；Phase 2A 不创建这些外部配置。其他新增资源、AI/RAG 能力和简历内容访问均由后续 Roadmap Phase 按需扩展。
+ADR-006 已批准，deterministic Task 6/7 实现、依赖与 public-client/no-secret boundary 已完成。真实 integration/production acceptance 仍要求项目负责人接受或修改 Auth0 的可达性、远程 tenant、增长成本、数据处理与 DPA/provider-retention 取舍，并提供 dev/prod issuer、audience、authorized-party/public client-ID allowlist、schemeful-same-site Web/API origins、稳定 Extension IDs、精确 chromiumapp callback 与 Extension CORS origin、namespaced claim allowlist、session/access-token lifetimes、clock skew、rotation/reuse/token-cutoff 语义及 server secret storage。Extension 永远不使用 client secret；当前 revoke-only logout 不需要 hosted Allowed Logout URL。Recent reauthentication、revoke-all、restore-ledger KMS/key retention、account deletion provider capability 与最小 Management API scopes 仍需未来单独批准。其他新增资源、AI/RAG 能力和简历内容访问均由后续 Roadmap Phase 按需扩展。

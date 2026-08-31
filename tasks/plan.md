@@ -98,7 +98,22 @@ Extension bearer
 
 The project owner's current Task 6 instruction supersedes the older Phase-level numbering that split persistence, BFF flow, and Web UI into Tasks 6–8. Current Task 6 is one bounded Web server-backed authentication closure delivered through the following independently tested sub-slices. Recent reauthentication and revoke-all are deferred; Task 7 is Extension Authorization Code + PKCE.
 
-**Current status:** Task 6A–6D are approved. Task 7 is authorized from clean commit `ff8593c`; real Auth0 Web/Extension verification remains `BLOCKED / USER ACTION REQUIRED` until exact provider and stable Extension values are supplied.
+**Current status:** Task 6A–6D are approved. Task 7A–7G and the Task 7H deterministic validation/review/documentation gate are complete on `phase/2-authentication`; Task 8 is not started and requires explicit project-owner authorization. Chrome Load unpacked is `NOT VERIFIED`, while real Auth0 Web/Extension verification remains `BLOCKED / USER ACTION REQUIRED` until exact provider and stable Extension values are supplied.
+
+### Task 7 delivery record
+
+| Slice | Commits | Status |
+| ----- | ------- | ------ |
+| Plan | `a698454` | Complete |
+| 7A — public config/manifest | `e136dac` | Complete |
+| 7B — PKCE authorization attempt | `be9b15c` | Complete |
+| 7C — public-client code exchange | `1624633` | Complete |
+| 7D — trusted credential persistence | `562f7d8` | Complete |
+| 7E — bearer transport/current user | `f10f14b`, `9d762ec` | Complete |
+| 7F — provider/credential lifecycle | `dcb2c2f`, `a43ce6c` | Complete |
+| 7G — typed worker/popup UI | `094dbce`, `efbdac0` | Complete |
+| 7H — independent review remediation | `b503867` | Complete |
+| 7H — docs/final gate | `docs(auth): record extension authentication flow` (this commit) | Complete |
 
 ### Task 1: Lock the approved dependencies and configuration contract
 
@@ -241,7 +256,7 @@ The project owner's current Task 6 instruction supersedes the older Phase-level 
 
 ### Task 7D: Add trusted crash-consistent credential storage
 
-**Acceptance:** every secret read/write is behind the awaited `TRUSTED_CONTEXTS` gate. Access state uses worker memory/`chrome.storage.session`; one versioned `ready` or credential-free `refresh_in_progress` record uses `chrome.storage.local`. Initial exchange and every rotation persist the new `ready` refresh record before access state. Normal restart restores a valid `ready` record. Corrupt state, `refresh_in_progress` observed after restart, request-start interruption, ambiguous network outcome, response interruption, or unacknowledged ready/access write clears credentials and requires interaction without replaying the old token.
+**Acceptance:** every secret read/write is behind the awaited `TRUSTED_CONTEXTS` gate for both Chrome storage areas. Attempt/access state uses `chrome.storage.session`; one versioned refresh record uses `chrome.storage.local`. Initial exchange and every rotation commit `ready.pending (new refresh) -> access (same generation) -> ready.committed`; only committed state is restorable. `refresh_in_progress` and best-effort `locally_cleared` contain no credential. Normal restart restores a valid committed record, including refresh-only state when session access is missing. Corrupt/pending/in-progress/generation-mismatched state, request-start interruption, ambiguous network outcome, response interruption, or unacknowledged write clears credentials and requires interaction without replaying the old token.
 
 **Verify:** RED -> GREEN storage/bootstrap/ordering/corruption/restart tests, including each crash boundary and positive ready-record restoration.
 
@@ -281,6 +296,8 @@ The project owner's current Task 6 instruction supersedes the older Phase-level 
 
 ### Task 7H: Validate, review, simplify, and document Task 7
 
+**Status:** Complete. The full deterministic suite contains 293 TypeScript tests and 452 Pytest tests (745 total); Task 7 added 252 tests over the approved 493-test Task 6 baseline. Frozen/locked installs, lint, format, strict typecheck, Web/Extension builds, API import/startup, dependency audit, PostgreSQL-backed identity invariant, and security/artifact scans pass. Independent review is Critical 0 / Required 0 after `b503867`; simplification found no Required refactor. Chrome Load unpacked is `NOT VERIFIED` and real Auth0 is `BLOCKED / USER ACTION REQUIRED`.
+
 **Acceptance:** rerun the existing deterministic Web-cookie/Extension-bearer `(issuer, subject) -> same User.id` integration invariant; inspect minimum permissions/CSP and built artifacts; run the complete TypeScript/Python gates and security scans; resolve all Critical/Required review findings; simplify only changed code; synchronize Task 7 documentation; leave a clean worktree without entering Task 8 or Phase 3.
 
 **Verify:** `pnpm install --frozen-lockfile`; `uv sync --project apps/api --locked`; `pnpm test`; `pnpm lint`; `pnpm format:check`; `pnpm typecheck`; `pnpm build:extension`; `pnpm build:web`; `pnpm api:test`; `pnpm api:lint`; `pnpm api:format:check`; `pnpm api:import:check`; package audits and repository secret/token/storage/layer/manifest/CSP scans; `git diff --check`; `git status --short`. Real Chrome/Auth0 results remain truthfully gated when unavailable.
@@ -288,6 +305,8 @@ The project owner's current Task 6 instruction supersedes the older Phase-level 
 **Dependencies:** Tasks 7A–7G.
 
 ### Task 8: Phase 2B Integration & Authentication Acceptance
+
+**Status:** Not started. Wait for explicit project-owner authorization after Task 7 acceptance; do not infer approval from deterministic Task 7 completion.
 
 **Acceptance:** Web cookie and Extension bearer for one provider identity return the same User ID; unauthorized and cross-user requests reveal no user data; exact CORS/cookie properties pass; secrets/tokens/raw provider errors are absent from tracked files, logs, and responses.
 
@@ -337,4 +356,4 @@ The following advanced future designs remain documented but are not over-enginee
 
 ## Real Auth0 Configuration Gate
 
-Code and deterministic tests may complete without a tenant. Live verification requires the project owner to supply/create a dev Auth0 Regular Web Application, a Native/public Chrome Extension Application, and a custom API audience, then provide exact callback/logout/origin/redirect values and non-committed secrets. Until then the final state is `Real Auth0 Integration — BLOCKED / USER ACTION REQUIRED`.
+Code and deterministic tests are complete without a tenant. Live verification requires the project owner to supply/create a dev Auth0 Regular Web Application, a Native/public Chrome Extension Application, and a custom API audience; freeze distinct Auth0 public client and stable Chrome Extension IDs; register the exact `https://<extension-id>.chromiumapp.org/` callback and `chrome-extension://<extension-id>` API CORS origin; approve namespaced verified-email claims, access lifetime, `offline_access`, and Rotating Refresh Token; and provide non-committed Web server secrets. The current Extension revoke-only logout does not use a hosted logout callback, and the public client never has a client secret. Until those gates are complete the final state is `Real Auth0 Integration — BLOCKED / USER ACTION REQUIRED`; do not begin Task 8 or Phase 3 without separate authorization.

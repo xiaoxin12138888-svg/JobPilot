@@ -1,8 +1,8 @@
 # JobPilot Roadmap
 
-> 当前状态：Phase 0–2A 已获得项目负责人明确批准；当前处于 **Phase 2B — Authentication Implementation & User Boundary**，ADR-006 已 Accepted。Task 6 Web server-backed session 已完成确定性实现并等待负责人验收，Task 7 尚未开始。
+> 当前状态：Phase 0–2A 与 Task 6 已获得项目负责人明确批准；当前处于 **Phase 2B — Authentication Implementation & User Boundary**，ADR-006 已 Accepted。Task 7A–7G Extension authentication 已确定性实现，Task 7H 自动化、审查、简化与文档门禁已完成；真实 Chrome/Auth0 验证仍为 `NOT VERIFIED / BLOCKED`。Task 8 与 Phase 3 均未开始。
 >
-> 本文是实施计划；Task 6 的完成不表示整个 Phase 2B 或后续业务功能已经完成。
+> 本文是实施计划；Task 6/7 的 deterministic 完成不表示整个 Phase 2B、真实 Auth0 integration 或后续业务功能已经完成。
 
 ## 1. 里程碑边界
 
@@ -85,7 +85,7 @@ Phase 0 规格基线
 
 - apps/web：React、TypeScript、Vite 的最小应用壳；
 - apps/extension：Manifest V3、TypeScript 的最小可加载扩展壳；
-- Extension 的初始权限预算：以 `activeTab`、用户手势和按需注入为默认，不申请无理由的广域常驻 host 权限；
+- Extension 的未来采集权限预算：Phase 3 以 `activeTab`、用户手势和按需注入为默认，不申请无理由的广域常驻 host 权限；当前 Task 7 auth-only manifest 不预先授予 `activeTab`；
 - apps/api：FastAPI 的应用入口、最小 CORS 配置边界和唯一的 `GET /health` 探针；
 - packages/shared-types 与 packages/api-client：仅加入当前真实需要的稳定共享契约；
 - 根级环境变量示例；PostgreSQL 在 Phase 2B 出现首个真实持久化消费者时再建立开发配置；
@@ -150,6 +150,8 @@ Phase 0 规格基线
 
 在 ADR-006 获批且 Auth0 tenant/config/依赖范围单独批准后，实现最小可用认证闭环和强制用户级数据边界，为后续个人求职数据提供统一身份基础。
 
+当前交付状态：Task 6 Web server-backed authentication 已批准；Task 7 Extension deterministic implementation、自动化测试、独立审查、简化与文档同步已完成。真实 tenant/application、稳定 Extension ID、callback/CORS/claims/rotation 配置与浏览器流程仍是 `USER ACTION REQUIRED`，不以 `.invalid` fixture 冒充 live verification。
+
 ### Deliverables
 
 - User 与最小 Web session/revocation state 的数据库迁移、领域模型和 API 表达模型；
@@ -158,7 +160,7 @@ Phase 0 规格基线
 - Web Authorization Code/BFF、opaque HttpOnly cookie、CSRF、session rotation/revocation；
 - Extension `launchWebAuthFlow` + PKCE/state/nonce、signed ID-token nonce validation/discard、exact API/Auth0 host permissions、trusted token storage、single-flight rotating refresh 与 logout；
 - FastAPI cookie/bearer adapters、OIDC/JWT/JWKS 验证和统一 `AuthenticatedUser`；
-- `/api/v1/auth/session`、current-user profile、Web CSRF 与 local logout 的批准 contract；recent reauthentication、revoke-all 与 account deletion 保留 Accepted design，但不在当前最小闭环实现；
+- Extension identity-establishment command `POST /api/v1/auth/session`（返回 `UserView`，不创建 Web session/cookie/token）、current-user `/api/v1/auth/me`、Web CSRF 与 local logout 的批准 contract；recent reauthentication、revoke-all 与 account deletion 保留 Accepted design，但不在当前最小闭环实现；
 - `resource_id + authenticated_user_id` repository/service ownership pattern 和跨用户负向 fixture；
 - 认证错误、CORS、限流、敏感日志脱敏、本地 fake issuer/JWKS 与 provider outage 测试；
 - 账号删除、write-ahead restore marker、backup replay/quarantine 与 provider cutoff policy 继续由认证架构约束，但只在后续单独批准的 account-lifecycle task 实现；当前不发布不安全的缩减版 endpoint；
@@ -167,7 +169,7 @@ Phase 0 规格基线
 ### Acceptance Criteria
 
 - 用户可以通过 hosted flow 创建/登录账号，Web 刷新后保持批准的会话并安全退出；JobPilot 不保存或接收密码；
-- Extension 通过用户手势和 PKCE 取得同一 identity 的短期 access context，调用 `/api/v1/auth/me`，并正确处理 worker 重启、rotation、reuse、过期与退出；
+- Extension 通过用户手势和 PKCE 取得同一 identity 的短期 access context，首次登录依次调用 `POST /api/v1/auth/session`、`GET /api/v1/auth/me`，并正确处理 worker 重启、rotation、过期、provider rejection 与退出；
 - 未认证、错误 issuer/audience/algorithm/signature/time/token type、未验证 email 和撤销会话返回统一安全错误；
 - Web unsafe request 通过 CSRF + Origin 门禁，Web/Extension CORS 只有精确 allowlist；
 - 集成测试证明用户 A 无法读取、更新、引用或删除用户 B 的受保护资源；
@@ -206,6 +208,7 @@ Phase 0 规格基线
 
 ### Acceptance Criteria
 
+- Phase 3 开始前才为用户触发 capture 增加并重新评审 `activeTab`/content script；Task 7 当前 manifest 没有 `activeTab`、`tabs` 或 content script；
 - 只有用户点击后才读取当前标签页，保存前必须展示确认步骤；
 - 权限与消息边界测试证明：未触发时不读取页面，非预期页面/frame 的消息不能启动采集或保存；
 - 用户能通过参考 Adapter 或人工兜底保存岗位，并在 Web 岗位库中查看；
@@ -504,4 +507,4 @@ Phase 0 规格基线
 
 ## 4. 当前下一步
 
-执行并验收 Phase 2B 的最小统一认证闭环。代码、依赖与 schema 实施已获授权；真实 Auth0 tenant/application、IDs、origins、redirects、capabilities 与 secrets 仍需项目负责人提供，不得猜测或擅自创建。Phase 2B 完成评审、简化和文档同步前不得进入 Phase 3。
+Task 7 已完成 deterministic implementation 与 Task 7H 门禁，当前只等待项目负责人明确授权 **Task 8 — Phase 2B Integration & Authentication Acceptance**。真实 Auth0 tenant/application、稳定 Extension IDs、origins、callbacks、claims、rotation capabilities 与 server secrets 仍需项目负责人提供；Chrome Load unpacked 与真实 Auth0 结果必须继续如实标为 `NOT VERIFIED / BLOCKED`，不得猜测或擅自创建。不要开始 Task 8 或 Phase 3。

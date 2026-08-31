@@ -9,21 +9,22 @@ JobPilot 不替代招聘网站，也不建设或批量抓取招聘职位数据�
 Phase 0、Phase 1 和 Phase 2A 已完成评审并获得项目负责人明确批准。项目当前严格处于 **Phase 2B — Authentication Implementation & User Boundary**。
 
 - 已接受 [ADR-006](docs/DECISIONS/ADR-006-authentication-strategy.md)：Auth0 managed OIDC；Web 使用 FastAPI/BFF 的 opaque HttpOnly session，Extension 使用 Authorization Code + PKCE 的短期 bearer。
-- Task 6 的 Web server-backed authentication session 已完成确定性实现与自动化门禁，等待项目负责人验收；Task 7 Extension PKCE 尚未开始。
-- 当前实现只覆盖 Web、FastAPI、PostgreSQL 的最小认证闭环，以及已由 Task 5 建立的 `issuer + subject -> JobPilot User.id` 服务端边界。
+- Task 6 已获项目负责人批准；Task 7A–7G 的 Extension Authorization Code + PKCE 确定性实现及 Task 7H 自动化、审查、简化和文档门禁均已完成。Task 8 尚未获授权。
+- 当前实现覆盖 Web 与 Extension 两种认证 transport、FastAPI/PostgreSQL 的最小认证闭环，以及由 Task 5 建立的 `issuer + subject -> JobPilot User.id` 服务端边界。
 - 自动化实现使用 deterministic fake issuer/JWKS；真实 Auth0 tenant、applications、IDs、origins、redirects 与 secrets 仍是明确的人机配置门禁，不得猜测或擅自创建。
+- Chrome Load unpacked 尚未在本环境验证；真实 Auth0 Web 与 Extension 验证均为 `BLOCKED / USER ACTION REQUIRED`，不能把 `.invalid` 构建或自动化测试描述为真实登录。
 - 本阶段不实现 Job、Application、Resume、AI、RAG 或其他 Phase 3+ 能力；Phase 2B 验收前不得进入 Phase 3。
 
-## 当前实现状态（截至 Task 6）
+## 当前实现状态（截至 Task 7）
 
 - `apps/web`：最小认证状态 UI；按 `/api/v1/auth/me` → `/api/v1/auth/csrf` 恢复 server-backed session，提供固定 login navigation、本地 logout、失败与重试状态。React 不处理 OAuth token。
-- `apps/extension`：仍保持 Phase 1 的最小 Manifest V3 Popup；Task 7 的 Authorization Code + PKCE、service worker 与 credential lifecycle 尚未实现。
+- `apps/extension`：Manifest V3 trusted service worker 负责用户触发的 Authorization Code + PKCE S256、callback/state/nonce 验证、public-client code exchange、按需 single-flight refresh、`/auth/session` identity establishment、`/auth/me` 与真实语义的 logout；Popup 只发送精确 typed intents 并显示 credential-free 用户状态。
 - `apps/api`：保留 `GET /health`，并实现 provider-neutral identity boundary、Web OIDC authorize/callback、opaque session、cookie `/auth/me`、CSRF 与本地 logout。
 - PostgreSQL：通过 SQLAlchemy/Alembic 持久化 User、Identity、WebSession 与 LoginTransaction；session/CSRF 只存摘要，不保存 provider token/grant。
 - `packages/shared-types`：共享 health、批准的 `UserView` 与 CSRF response 类型。
-- `packages/api-client`：验证 health 与 Web session response，使用 cookie credentials 调用 `/auth/me`、CSRF 和 logout，并只投影批准的 User 字段。
+- `packages/api-client`：分别封装 Web cookie transport 与 Extension bearer transport；Extension 首次登录依次调用 `/auth/session` 和 `/auth/me`，请求固定使用 `credentials: omit`，并只投影批准的 User 字段。
 
-当前仓库仍没有 Job、Application、Resume 等 Phase 3+ 业务 persistence、招聘网站解析、Extension PKCE 或 AI/RAG。真实 Auth0 Web flow 也未验证，必须等待项目负责人提供并批准实际 tenant/application 配置。
+当前仓库仍没有 Job、Application、Resume 等 Phase 3+ 业务 persistence、招聘网站解析或 AI/RAG。真实 Auth0 Web/Extension flow 仍未验证，必须等待项目负责人提供并批准实际 tenant/application 与稳定 Extension 配置。
 
 ## 目标技术栈
 
@@ -100,6 +101,12 @@ pnpm dev:web
 pnpm build:extension
 ```
 
+只验证确定性构建产物（使用已跟踪的 `.invalid` public-client 配置，不能登录真实 provider）：
+
+```powershell
+pnpm build:extension:test
+```
+
 或在开发期间持续构建：
 
 ```powershell
@@ -110,12 +117,21 @@ pnpm dev:extension
 
 ### 环境变量与 CORS
 
-- Vite 会从仓库根目录的 `.env` 读取 `VITE_API_BASE_URL`。该值是公开客户端配置，不是 secret。
-- Extension 的 API `host_permissions` 从同一个 `VITE_API_BASE_URL` 生成；修改该值后必须重新构建 Extension。
+- Vite 会从仓库根目录的 `.env` 读取 `VITE_API_BASE_URL`、`VITE_WEB_APP_URL`、`VITE_AUTH_ISSUER`、`VITE_AUTH_AUTHORIZE_URL`、`VITE_AUTH_TOKEN_URL`、`VITE_AUTH_JWKS_URL`、`VITE_AUTH_REVOKE_URL`、`VITE_AUTH_AUDIENCE` 与 `VITE_AUTH_EXTENSION_CLIENT_ID`。这些都是 public-client 配置，不是 secret；Extension 没有也不得新增 client-secret 输入。
+- Auth issuer 必须是带结尾 `/` 的 canonical HTTPS root；authorize/token/JWKS/revoke endpoint 必须是同一 issuer origin 的固定 HTTPS URL。API 与 Web origin 在远端必须使用 HTTPS；HTTP 只允许精确 `localhost`、`127.0.0.1` 或 `[::1]` loopback。非法值在 Vite 构建与 worker runtime 使用前 fail closed。
+- Extension 的 API/provider `host_permissions` 从上述验证配置生成；修改任一 origin 后必须重新构建 Extension。当前 manifest 权限只有 `identity` 与 `storage`，不含 `activeTab`、`tabs`、content script 或招聘网站权限。
 - FastAPI 不自动读取根 `.env`，而是从 API 进程环境读取 `JOBPILOT_*` 数据库、Auth0、Web session 与 CORS 配置；`JOBPILOT_AUTH_WEB_CLIENT_SECRET` 只允许注入服务端，绝不能使用 `VITE_` 前缀。
 - 未设置 API 变量时，开发环境默认精确允许 `http://localhost:5173`。`test` 和 `production` 默认不允许跨域来源。
 - 多个 CORS origin 使用逗号分隔；任何环境都拒绝 `*`。生产环境必须在启动 API 的运行环境中显式注入精确 origin。
 - 生产 Web host 必须把 `/auth/error` rewrite 到 SPA entry，并在部署层配置经评审的 CSP 与安全响应头；仓库不使用宽松的 meta CSP 伪装生产配置。
+
+真实 Extension 登录前还必须由项目负责人完成以下人机门禁：
+
+1. 创建/批准 Auth0 **Native / public** Extension application；只提供 public client ID，绝不配置或提交 client secret。
+2. 冻结开发与生产 Chrome Extension ID。Auth0 client ID 与 32 字符 Chrome Extension ID 是两个不同标识；当前 manifest 没有 `key`，因此仓库尚未冻结开发 ID。
+3. 将 `chrome.identity.getRedirectURL()` 的精确结果 `https://<extension-id>.chromiumapp.org/` 加入 Auth0 Allowed Callback URLs；当前 revoke-only logout 不使用 hosted logout callback，因此不虚构 Allowed Logout URL。
+4. 冻结 JobPilot API audience、namespaced verified-email claims/Action、5–10 分钟 access-token 上限、`offline_access` 与 Rotating Refresh Token；每次 rotation 必须返回不同的 replacement refresh token。
+5. 将精确 `chrome-extension://<extension-id>` 注入 FastAPI `JOBPILOT_CORS_ORIGINS`，并在 Auth0 对 direct token/revoke 请求有要求时配置对应精确 Allowed Web Origin/CORS。不得使用 wildcard。
 
 ### 验证命令
 
@@ -136,7 +152,7 @@ pnpm dev:extension
 
 - [产品规格](docs/PRODUCT_SPEC.md)
 - [系统架构](docs/ARCHITECTURE.md)
-- [认证架构（Phase 2A Accepted；Task 6 Web slice implemented）](docs/AUTH_ARCHITECTURE.md)
+- [认证架构（Phase 2A Accepted；Task 6 Web 与 Task 7 Extension deterministic slices implemented）](docs/AUTH_ARCHITECTURE.md)
 - [工程原则](docs/ENGINEERING_PRINCIPLES.md)
 - [API 契约](docs/API_CONTRACT.md)
 - [数据模型](docs/DATA_MODEL.md)

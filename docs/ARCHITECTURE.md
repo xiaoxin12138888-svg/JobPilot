@@ -1,6 +1,6 @@
 # JobPilot 总体架构
 
-> 文档状态：Phase 0–2A 已批准；Accepted authentication specialization 见 [AUTH_ARCHITECTURE.md](AUTH_ARCHITECTURE.md)。
+> 文档状态：Phase 0–2A 已批准；Task 6 Web 与 Task 7 Extension 的最小 deterministic Phase 2B authentication slices 已实现并通过 Task 7H 门禁。Accepted authentication specialization 见 [AUTH_ARCHITECTURE.md](AUTH_ARCHITECTURE.md)。
 >
 > 架构风格：Monorepo + Modular Monolith（模块化单体）  
 > 核心原则：Simple architecture first；数据库是业务事实来源；外部输入一律在边界校验。
@@ -110,7 +110,15 @@ jobpilot/
 
 ### 5.2 Extension
 
-负责：
+当前 Phase 2B authentication 负责：
+
+- Popup 只渲染认证状态并发送 `GET_AUTH_STATE`、`SIGN_IN`、`SIGN_OUT`、`OPEN_WEB_APP` 四个无载荷 intent。
+- Trusted service worker 负责 Authorization Code + PKCE、callback/ID-token 验证、双 trusted storage、bearer API、按需 single-flight refresh、direct revoke 与打开经过验证的 Web origin。
+- 首次登录通过统一 `api-client` 依次调用 `/api/v1/auth/session` identity establishment 与 `/api/v1/auth/me`；正常重启直接用 `/auth/me` 恢复同一 `UserView`。
+- Popup sender 必须同时匹配 runtime Extension ID、精确 popup URL、精确 Extension origin 且没有 `sender.tab`。Popup 与 response schema 都不允许 credential/provider protocol payload。
+- 当前没有 content script，也不读取页面、标签页或招聘网站数据。
+
+未来 Phase 3 capture 才负责：
 
 - 在用户主动点击后读取当前活动标签页的 URL 和可见岗位 DOM。
 - 调用 Adapter Registry 解析为统一 `JobCaptureDraft`。
@@ -126,9 +134,10 @@ jobpilot/
 
 权限与消息边界：
 
-- 优先使用 Manifest V3 的 `activeTab` 与用户手势后的按需脚本注入，不申请无理由的广域常驻 `host_permissions`。
-- 某个平台确需持久域权限时，必须作为 optional permission 在使用时请求，并记录用途与撤销方式。
-- Extension Shell/Service Worker 必须验证消息 schema、`sender.tab`、frame 与预期页面来源；不得信任任意页面脚本发送的消息。
+- 当前 auth-only manifest 只有 `identity`、`storage`，精确 JobPilot API/Auth0 origins，一个 module service worker，以及 `script-src 'self'; object-src 'self'` 的 MV3 CSP。它没有 `activeTab`、`tabs`、content script、招聘网站 host、`<all_urls>`、`unsafe-eval` 或 remote executable script。
+- `activeTab` 与用户手势后的按需脚本注入只属于 Phase 3 的候选权限预算；进入该 Phase 后必须重新评审并显式增加，不能把架构预算误写为当前已授予权限。
+- 某个平台未来确需持久域权限时，必须作为 optional permission 在使用时请求，并记录用途与撤销方式。
+- 当前 Popup/worker boundary 校验无 tab 的精确 Extension sender tuple；未来 content-script capture boundary 还必须验证 `sender.tab`、frame、预期页面来源与消息 schema，不得复用 Popup 信任规则或信任任意页面脚本。
 - 用户未点击采集时，后台组件不得读取页面 DOM、遍历标签页或发起招聘平台请求。
 
 ### 5.3 API
@@ -398,4 +407,4 @@ Phase 7 实施规格必须在真实启用前给出可测试的处理与检索预
 
 ## 14. 当前实施边界
 
-Phase 0–2A 已获项目负责人批准，ADR-006 与最小 Phase 2B contract 已 Accepted。当前 Phase 2B 只实现认证、User/Identity/session persistence 与统一用户边界；真实 Auth0 tenant/application 配置仍需项目负责人提供，不得猜测。“用户主动采集一个岗位并保存”的最小业务纵向切片仍在 Phase 3，当前不得进入。
+Phase 0–2A 已获项目负责人批准，ADR-006 与最小 Phase 2B contract 已 Accepted。Task 6 Web 与 Task 7 Extension 的 deterministic authentication、User/Identity/session persistence 与统一用户边界已实现并通过 Task 7H 自动化、审查、简化和文档门禁。Chrome Load unpacked 尚未验证，真实 Auth0 tenant/application、稳定 Extension ID、callback/CORS 与 provider capabilities 仍需项目负责人提供，因此 live verification 保持 blocked。Task 8 与“用户主动采集一个岗位并保存”的 Phase 3 纵向切片均未开始，必须等待单独授权。

@@ -74,39 +74,40 @@
 
 ## Extension Authentication
 
-- [ ] Validate every public Extension auth/API/Web endpoint, audience, and client-ID input; no client-secret input exists.
-- [ ] Add only `identity`, `storage`, exact API/Auth0 host permissions, a module service worker, and strict MV3 CSP needed for auth.
-- [ ] Generate a secure RFC 7636 verifier, S256 challenge, unpredictable state/nonce, and runtime redirect from `chrome.identity.getRedirectURL()`.
-- [ ] Persist one bounded, versioned login attempt in trusted session state and reject missing, mismatched, stale, reused, or malformed callbacks.
-- [ ] Keep `chrome.identity.launchWebAuthFlow` behind a user-initiated worker boundary and map cancellation/provider failure without leaking callback data.
-- [ ] Exchange the code as a public client through `oauth4webapi` with no client secret.
-- [ ] Validate token-response shape and signed Extension ID token issuer/audience/RS256 signature/times/nonce, then discard the ID token.
-- [ ] Require a bounded short-lived bearer access token and rotating refresh-token replacement.
-- [ ] Await `TRUSTED_CONTEXTS` for local and session storage before every secret read/write or token exchange.
-- [ ] Keep access token in worker memory/session storage and versioned rotating refresh state in local storage.
-- [ ] Persist each new refresh record before access state; `refresh_in_progress` contains no old refresh token.
-- [ ] Restore a valid `ready` record after normal worker restart; fail closed only on corrupt, in-progress, unacknowledged, or ambiguous state.
-- [ ] Cover termination before refresh request, during unknown network outcome, after response, before ready-write acknowledgement, and before access-write acknowledgement; never replay the old token.
-- [ ] Refresh locally expired/near-expiry access at most once with current-worker single-flight; an arbitrary API 401 clears state instead of triggering a speculative refresh loop.
-- [ ] On first login call `/auth/session` then `/auth/me`; on normal restore call `/auth/me` directly through the shared bearer boundary with `credentials: omit`.
-- [ ] Clear local credentials on logout and distinguish confirmed from unconfirmed remote revoke.
-- [ ] Validate typed popup/worker intents and reject untrusted or malformed messages.
-- [ ] Render minimal signed-out, authenticating, signed-in, error, and logout-result popup states; no OAuth/token/storage logic enters the popup.
-- [ ] Prove popup `/me`, token-expiry, logout, open-Web, and accessible-control behavior.
-- [ ] Remove the obsolete current-tab diagnostic and `activeTab` permission because Task 7 does not read page/tab content.
-- [ ] Re-run the existing Web/Extension same-identity integration test and confirm identical local `User.id`.
-- [ ] Inspect the built manifest/CSP/bundle and attempt isolated load-unpacked verification where the environment permits it.
+- [x] Validate every public Extension auth/API/Web endpoint, audience, and client-ID input; no client-secret input exists.
+- [x] Add only `identity`, `storage`, exact API/Auth0 host permissions, a module service worker, and strict MV3 CSP needed for auth.
+- [x] Generate a secure RFC 7636 verifier, S256 challenge, unpredictable state/nonce, and runtime redirect from `chrome.identity.getRedirectURL()`.
+- [x] Persist one bounded, versioned login attempt in trusted session state and reject missing, mismatched, stale, reused, or malformed callbacks.
+- [x] Keep `chrome.identity.launchWebAuthFlow` behind a user-initiated worker boundary and map cancellation/provider failure without leaking callback data.
+- [x] Exchange the code as a public client through `oauth4webapi` with no client secret.
+- [x] Validate token-response shape and signed Extension ID token issuer/audience/RS256 signature/times/nonce, then discard the ID token.
+- [x] Require a bounded short-lived bearer access token and rotating refresh-token replacement.
+- [x] Await `TRUSTED_CONTEXTS` for local and session storage before every secret read/write or token exchange.
+- [x] Keep access token in worker memory/session storage and versioned rotating refresh state in local storage.
+- [x] Persist credentials as `ready.pending -> access -> ready.committed`; keep `refresh_in_progress` and `locally_cleared` credential-free.
+- [x] Restore only a valid committed `ready` record after normal worker restart; fail closed on corrupt, pending, in-progress, unacknowledged, or ambiguous state.
+- [x] Cover termination before refresh request, during unknown network outcome, after response, before ready-write acknowledgement, and before access-write acknowledgement; never replay the old token.
+- [x] Refresh locally expired/near-expiry access at most once with current-worker single-flight; an arbitrary API 401 clears state instead of triggering a speculative refresh loop.
+- [x] On first login call `/auth/session` identity establishment then `/auth/me`; on normal restore call `/auth/me` directly through the shared bearer boundary with `credentials: omit`.
+- [x] Clear local credentials on logout and distinguish `confirmed`, `not_applicable`, and `unconfirmed` remote revoke results.
+- [x] Validate typed popup/worker intents and reject untrusted or malformed messages, including a missing/mismatched popup sender origin.
+- [x] Render minimal signed-out, authenticating, signed-in, error, and logout-result popup states; no OAuth/token/storage logic enters the popup.
+- [x] Prove popup `/me`, token-expiry, logout, open-Web, and accessible-control behavior.
+- [x] Remove the obsolete current-tab diagnostic and `activeTab` permission because Task 7 does not read page/tab content.
+- [x] Re-run the PostgreSQL-backed Web/Extension same-identity integration test and confirm identical local `User.id`.
+- [x] Inspect the deterministic built manifest/CSP/bundles and confirm only approved permissions/origins with no credential/provider protocol in the Popup bundle.
+- [ ] Load the unpacked Extension in real Chrome and inspect its runtime console/network: `NOT VERIFIED` because Chrome DevTools MCP is unavailable in this environment.
 
 ## Task 7 Review and Acceptance
 
-- [ ] Run `code-review-and-quality` across correctness, readability, architecture, security, performance, and dependency health.
-- [ ] Resolve every Task 7 Critical and Required finding.
-- [ ] Run `code-simplification` on Task 7 changes without altering behavior.
-- [ ] Synchronize README, auth/overall architecture, API contract, roadmap, `.env.example`, and tasks with the Extension implementation.
-- [ ] Run frozen pnpm install, locked uv sync, all tests, lint, format, typecheck, both builds, API import/startup, and dependency audit.
-- [ ] Run secret/token/storage/manifest/CSP/layer/scope scans, `git diff --check`, and final `git status`.
-- [ ] Report Chrome load-unpacked and real Auth0 verification truthfully as PASS, BLOCKED, or NOT VERIFIED.
-- [ ] Stop before Task 8 and Phase 3; wait for explicit project-owner approval.
+- [x] Run `code-review-and-quality` across correctness, readability, architecture, security, performance, and dependency health.
+- [x] Resolve every Task 7 Critical and Required finding; final review is Critical 0 / Required 0.
+- [x] Run `code-simplification` on Task 7 changes without altering behavior; no Required simplification remains.
+- [x] Synchronize README, auth/overall architecture, API contract, roadmap, `.env.example`, and tasks with the Extension implementation.
+- [x] Run frozen pnpm install, locked uv sync, all tests, lint, format, typecheck, both builds, API import/startup, and dependency audit.
+- [x] Run secret/token/storage/manifest/CSP/layer/scope scans, `git diff --check`, and final `git status`.
+- [x] Report Chrome Load unpacked as `NOT VERIFIED` and real Auth0 Web/Extension as `BLOCKED / USER ACTION REQUIRED`.
+- [x] Stop before Task 8 and Phase 3; wait for explicit project-owner approval.
 
 ## Integration, Authorization, and Security
 
@@ -119,7 +120,7 @@
 - [x] Prove unauthorized responses and provider failures reveal no user/credential/provider internals.
 - [x] Scan tracked files and captured logs for secrets/tokens.
 - [x] Confirm no Phase 3 Job/Application/Resume/AI/RAG implementation entered the diff.
-- [ ] Build/test Extension with deterministic `.invalid` configuration, require real production values at runtime/build, and never claim that fake config is live Auth0 verification.
+- [x] Build/test Extension with deterministic `.invalid` configuration, require real production values at runtime/build, and never claim that fake config is live Auth0 verification.
 - [ ] Configure the production Web host to rewrite `/auth/error` to the SPA entry and set reviewed CSP/security response headers; this deployment-specific gate is not a permissive meta tag.
 
 ## Phase 2B Final Review and Acceptance
