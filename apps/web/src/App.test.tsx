@@ -1,221 +1,107 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { ApiClientError, type ApiClient } from '@jobpilot/api-client';
+import type { ApiClient } from '@jobpilot/api-client';
 
 import { App } from './App';
+
+type HealthClient = Pick<ApiClient, 'getHealth'>;
+
+const healthyResponse = { status: 'ok', service: 'jobpilot-api' } as const;
 
 afterEach(cleanup);
 
 describe('App', () => {
-  it('renders a clear loading state while the current session is checked', () => {
-    const apiClient = createAuthClient({
-      getCurrentUser: vi.fn<ApiClient['getCurrentUser']>(() => new Promise<never>(() => undefined)),
-    });
+  it('renders a clear checking state while the local API health request is pending', () => {
+    const apiClient = createHealthClient(
+      vi.fn<HealthClient['getHealth']>(() => new Promise<never>(() => undefined)),
+    );
 
     render(<App apiClient={apiClient} />);
 
     expect(screen.getByRole('heading', { name: 'JobPilot' })).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('正在检查登录状态');
+    expect(screen.getByRole('status')).toHaveTextContent('正在连接本地服务');
+    expect(screen.getByRole('status')).toHaveAttribute('aria-busy', 'true');
   });
 
-  it('renders the signed-out state and fixed login action for an unauthenticated visitor', async () => {
-    const apiClient = createAuthClient({
-      getCurrentUser: vi
-        .fn<ApiClient['getCurrentUser']>()
-        .mockRejectedValue(new ApiClientError(401, 'AUTHENTICATION_REQUIRED')),
-    });
+  it('renders the ready state without account or authentication actions', async () => {
+    render(<App apiClient={createHealthClient()} />);
 
-    render(<App apiClient={apiClient} />);
+    expect(await screen.findByRole('heading', { name: '本地服务已就绪' })).toBeInTheDocument();
+    expect(screen.getByText('JobPilot 已连接到本机 API。')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /登录/u })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '退出' })).not.toBeInTheDocument();
+  });
 
-    expect(await screen.findByText('登录后继续使用 JobPilot')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '登录' })).toHaveAttribute(
-      'href',
-      'http://localhost:8000/api/v1/auth/web/authorize?intent=login&returnTo=%2F',
+  it('renders an actionable unavailable state when the local API cannot be reached', async () => {
+    const apiClient = createHealthClient(
+      vi.fn<HealthClient['getHealth']>().mockRejectedValue(new Error('offline')),
     );
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    expect(apiClient.getWebCsrfToken).not.toHaveBeenCalled();
-  });
-
-  it('renders the authenticated JobPilot user returned by /auth/me', async () => {
-    const apiClient = createAuthClient();
 
     render(<App apiClient={apiClient} />);
 
-    expect(await screen.findByText('欢迎，Lin')).toBeInTheDocument();
-    expect(screen.getByText('lin@example.com')).toBeInTheDocument();
-    expect(screen.getByText('019d4a83-cf8c-7f77-a4f0-2cc4131e3138')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '退出' })).toBeEnabled();
-    expect(apiClient.getWebCsrfToken).toHaveBeenCalledOnce();
+    expect(await screen.findByRole('alert')).toHaveTextContent('无法连接本地服务');
+    expect(screen.getByText('请确认本机 JobPilot API 已启动，然后重试。')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '重试' })).toBeEnabled();
   });
 
-  it('logs out with the in-memory session-bound CSRF token', async () => {
-    const apiClient = createAuthClient();
+  it('retries a failed health request and renders the recovered ready state', async () => {
+    const getHealth = vi
+      .fn<HealthClient['getHealth']>()
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce(healthyResponse);
 
-    render(<App apiClient={apiClient} />);
-    fireEvent.click(await screen.findByRole('button', { name: '退出' }));
+    render(<App apiClient={createHealthClient(getHealth)} />);
 
-    expect(await screen.findByText('登录后继续使用 JobPilot')).toBeInTheDocument();
-    expect(apiClient.logoutWebSession).toHaveBeenCalledWith('csrf-token');
-    expect(screen.getByRole('link', { name: '登录' })).toHaveFocus();
-  });
-
-  it('does not start a second logout while the first request is pending', async () => {
-    let finishLogout: (() => void) | undefined;
-    const pendingLogout = new Promise<void>((resolve) => {
-      finishLogout = resolve;
-    });
-    const apiClient = createAuthClient({
-      logoutWebSession: vi.fn<ApiClient['logoutWebSession']>().mockReturnValue(pendingLogout),
-    });
-
-    render(<App apiClient={apiClient} />);
-    const logoutButton = await screen.findByRole('button', { name: '退出' });
-    fireEvent.click(logoutButton);
-    fireEvent.click(logoutButton);
-
-    expect(apiClient.logoutWebSession).toHaveBeenCalledOnce();
-    await act(async () => finishLogout?.());
-    expect(await screen.findByText('登录后继续使用 JobPilot')).toBeInTheDocument();
-  });
-
-  it('recovers to signed out when the session expires between /me and /csrf', async () => {
-    const apiClient = createAuthClient({
-      getWebCsrfToken: vi
-        .fn<ApiClient['getWebCsrfToken']>()
-        .mockRejectedValue(new ApiClientError(401, 'AUTHENTICATION_REQUIRED')),
-    });
-
-    render(<App apiClient={apiClient} />);
-
-    expect(await screen.findByText('登录后继续使用 JobPilot')).toBeInTheDocument();
-    expect(apiClient.logoutWebSession).not.toHaveBeenCalled();
-  });
-
-  it('does not request a CSRF token after the session check is abandoned', async () => {
-    let resolveCurrentUser: ((user: typeof currentUser) => void) | undefined;
-    const pendingCurrentUser = new Promise<typeof currentUser>((resolve) => {
-      resolveCurrentUser = resolve;
-    });
-    const apiClient = createAuthClient({
-      getCurrentUser: vi.fn<ApiClient['getCurrentUser']>().mockReturnValue(pendingCurrentUser),
-    });
-
-    const { unmount } = render(<App apiClient={apiClient} />);
-    unmount();
-    await act(async () => {
-      resolveCurrentUser?.(currentUser);
-      await pendingCurrentUser;
-    });
-
-    expect(apiClient.getWebCsrfToken).not.toHaveBeenCalled();
-  });
-
-  it('fails closed when the CSRF boundary is temporarily unavailable', async () => {
-    const apiClient = createAuthClient({
-      getWebCsrfToken: vi
-        .fn<ApiClient['getWebCsrfToken']>()
-        .mockRejectedValue(new ApiClientError(503, 'DEPENDENCY_UNAVAILABLE')),
-    });
-
-    render(<App apiClient={apiClient} />);
-
-    expect(await screen.findByRole('alert')).toHaveTextContent('暂时无法确认登录状态');
-    expect(screen.queryByText('欢迎，Lin')).not.toBeInTheDocument();
-  });
-
-  it('falls back to verified email when displayName is not set', async () => {
-    const apiClient = createAuthClient({
-      getCurrentUser: vi.fn<ApiClient['getCurrentUser']>().mockResolvedValue({
-        ...currentUser,
-        displayName: null,
-      }),
-    });
-
-    render(<App apiClient={apiClient} />);
-
-    expect(await screen.findByText('欢迎，lin@example.com')).toBeInTheDocument();
-  });
-
-  it('falls back to verified email when displayName is empty', async () => {
-    const apiClient = createAuthClient({
-      getCurrentUser: vi.fn<ApiClient['getCurrentUser']>().mockResolvedValue({
-        ...currentUser,
-        displayName: '',
-      }),
-    });
-
-    render(<App apiClient={apiClient} />);
-
-    expect(await screen.findByText('欢迎，lin@example.com')).toBeInTheDocument();
-  });
-
-  it('keeps the visible user and reports uncertainty when logout fails', async () => {
-    const apiClient = createAuthClient({
-      logoutWebSession: vi
-        .fn<ApiClient['logoutWebSession']>()
-        .mockRejectedValue(new ApiClientError(503, 'DEPENDENCY_UNAVAILABLE')),
-    });
-
-    render(<App apiClient={apiClient} />);
-    fireEvent.click(await screen.findByRole('button', { name: '退出' }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent('暂时无法安全退出');
-    expect(screen.getByText('欢迎，Lin')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '退出' })).toBeEnabled();
-  });
-
-  it('shows a bounded callback error without making a session request', () => {
-    const apiClient = createAuthClient();
-
-    render(<App apiClient={apiClient} hasAuthenticationError />);
-
-    expect(screen.getByRole('alert')).toHaveTextContent('登录未完成');
-    expect(screen.getByText('请重新登录，或稍后再试。')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '重新登录' })).toHaveAttribute(
-      'href',
-      apiClient.getWebLoginUrl(),
-    );
-    expect(apiClient.getCurrentUser).not.toHaveBeenCalled();
-  });
-
-  it('retries a transient session-status failure and restores the signed-in state', async () => {
-    const apiClient = createAuthClient({
-      getCurrentUser: vi
-        .fn<ApiClient['getCurrentUser']>()
-        .mockRejectedValueOnce(new Error('offline'))
-        .mockResolvedValueOnce(currentUser),
-    });
-
-    render(<App apiClient={apiClient} />);
-
-    expect(await screen.findByRole('alert')).toHaveTextContent('暂时无法确认登录状态');
+    expect(await screen.findByRole('alert')).toHaveTextContent('无法连接本地服务');
     fireEvent.click(screen.getByRole('button', { name: '重试' }));
 
-    expect(await screen.findByText('欢迎，Lin')).toBeInTheDocument();
-    expect(apiClient.getCurrentUser).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole('status')).toHaveTextContent('正在连接本地服务');
+    expect(await screen.findByRole('heading', { name: '本地服务已就绪' })).toBeInTheDocument();
+    expect(getHealth).toHaveBeenCalledTimes(2);
+  });
+
+  it('ignores a stale health failure after the API client changes', async () => {
+    let rejectStaleRequest: ((reason?: unknown) => void) | undefined;
+    const staleRequest = new Promise<never>((_resolve, reject) => {
+      rejectStaleRequest = reject;
+    });
+    const staleClient = createHealthClient(
+      vi.fn<HealthClient['getHealth']>().mockReturnValue(staleRequest),
+    );
+    const currentClient = createHealthClient();
+    const { rerender } = render(<App apiClient={staleClient} />);
+
+    rerender(<App apiClient={currentClient} />);
+    expect(await screen.findByRole('heading', { name: '本地服务已就绪' })).toBeInTheDocument();
+
+    await act(async () => {
+      rejectStaleRequest?.(new Error('stale failure'));
+      await staleRequest.catch(() => undefined);
+    });
+
+    expect(screen.getByRole('heading', { name: '本地服务已就绪' })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('returns to checking when a ready view receives a new pending API client', async () => {
+    const { rerender } = render(<App apiClient={createHealthClient()} />);
+
+    expect(await screen.findByRole('heading', { name: '本地服务已就绪' })).toBeInTheDocument();
+
+    const pendingClient = createHealthClient(
+      vi.fn<HealthClient['getHealth']>(() => new Promise<never>(() => undefined)),
+    );
+    rerender(<App apiClient={pendingClient} />);
+
+    expect(screen.getByRole('status')).toHaveTextContent('正在连接本地服务');
+    expect(screen.getByRole('status')).toHaveAttribute('aria-busy', 'true');
+    expect(screen.queryByRole('heading', { name: '本地服务已就绪' })).not.toBeInTheDocument();
   });
 });
 
-const currentUser = {
-  id: '019d4a83-cf8c-7f77-a4f0-2cc4131e3138',
-  email: 'lin@example.com',
-  displayName: 'Lin',
-  locale: 'zh-CN',
-  timeZone: 'Asia/Shanghai',
-  createdAt: '2026-08-30T02:15:00Z',
-  updatedAt: '2026-08-30T02:15:00Z',
-};
-
-function createAuthClient(overrides: Partial<ApiClient> = {}): ApiClient {
-  return {
-    getHealth: vi.fn().mockResolvedValue({ status: 'ok', service: 'jobpilot-api' }),
-    getCurrentUser: vi.fn().mockResolvedValue(currentUser),
-    getWebCsrfToken: vi.fn().mockResolvedValue('csrf-token'),
-    logoutWebSession: vi.fn().mockResolvedValue(undefined),
-    getWebLoginUrl: vi
-      .fn()
-      .mockReturnValue('http://localhost:8000/api/v1/auth/web/authorize?intent=login&returnTo=%2F'),
-    ...overrides,
-  };
+function createHealthClient(
+  getHealth: HealthClient['getHealth'] = vi.fn().mockResolvedValue(healthyResponse),
+): HealthClient {
+  return { getHealth };
 }

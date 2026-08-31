@@ -1,104 +1,51 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 
 import type { ApiClient } from '@jobpilot/api-client';
 
 import './styles.css';
-import { type AuthSessionState, useAuthSession } from './use-auth-session';
+
+type HealthClient = Pick<ApiClient, 'getHealth'>;
+type LocalApiStatus = 'checking' | 'ready' | 'unavailable';
+type SettledHealthRequest = {
+  apiClient: HealthClient;
+  requestNumber: number;
+  status: Exclude<LocalApiStatus, 'checking'>;
+};
 
 interface AppProps {
-  apiClient: ApiClient;
-  hasAuthenticationError?: boolean;
+  apiClient: HealthClient;
 }
 
-export function App({ apiClient, hasAuthenticationError = false }: AppProps) {
-  const { state, retry, logout } = useAuthSession(apiClient, hasAuthenticationError);
-  const loginUrl = apiClient.getWebLoginUrl();
-  const loginLink = useRef<HTMLAnchorElement>(null);
-
-  useEffect(() => {
-    if (state.status === 'signed-out' && state.focusLogin) {
-      loginLink.current?.focus();
-    }
-  }, [state]);
+export function App({ apiClient }: AppProps) {
+  const { status, retry } = useLocalApiHealth(apiClient);
 
   return (
     <main className="app-shell">
-      <section className="auth-panel" aria-labelledby="jobpilot-title">
+      <section className="status-panel" aria-labelledby="jobpilot-title">
         <header className="brand-header">
-          <p className="product-label">个人求职工作台</p>
+          <p className="product-label">本地个人求职工作台</p>
           <h1 id="jobpilot-title">JobPilot</h1>
         </header>
 
-        {state.status !== 'authentication-error' && state.status !== 'unavailable' && (
-          <p className="visually-hidden" role="status" aria-live="polite">
-            {authStatusAnnouncement(state.status)}
-          </p>
-        )}
-
-        {state.status === 'checking' && (
-          <div className="auth-state" aria-busy="true">
-            <h2>正在检查登录状态…</h2>
-            <p>请稍候。</p>
+        {status === 'checking' && (
+          <div className="service-state" role="status" aria-live="polite" aria-busy="true">
+            <h2>正在连接本地服务…</h2>
+            <p>正在检查本机 JobPilot API。</p>
           </div>
         )}
 
-        {state.status === 'signed-out' && (
-          <div className="auth-state">
-            <h2>登录后继续使用 JobPilot</h2>
-            <p>登录由安全的托管页面完成，JobPilot Web 不保存身份提供方令牌。</p>
-            <a ref={loginLink} className="primary-action" href={loginUrl}>
-              登录
-            </a>
+        {status === 'ready' && (
+          <div className="service-state" role="status" aria-live="polite">
+            <h2>本地服务已就绪</h2>
+            <p>JobPilot 已连接到本机 API。</p>
           </div>
         )}
 
-        {state.status === 'signed-in' && (
-          <div className="auth-state">
-            <div>
-              <h2>欢迎，{state.user.displayName?.trim() || state.user.email}</h2>
-              <p>你已通过 JobPilot 的服务器会话安全登录。</p>
-            </div>
-            <dl className="account-details">
-              <div>
-                <dt>邮箱</dt>
-                <dd>{state.user.email}</dd>
-              </div>
-              <div>
-                <dt>用户 ID</dt>
-                <dd className="user-id">{state.user.id}</dd>
-              </div>
-            </dl>
-            {state.logoutFailed && (
-              <p className="inline-error" role="alert">
-                暂时无法安全退出，会话可能仍然有效。请重试。
-              </p>
-            )}
-            <button
-              type="button"
-              className="secondary-action"
-              onClick={logout}
-              disabled={state.isLoggingOut}
-            >
-              {state.isLoggingOut ? '正在退出…' : '退出'}
-            </button>
-          </div>
-        )}
-
-        {state.status === 'authentication-error' && (
-          <div className="auth-state error-state" role="alert">
-            <h2>登录未完成</h2>
-            <p>请重新登录，或稍后再试。</p>
-            <a className="primary-action" href={loginUrl}>
-              重新登录
-            </a>
-          </div>
-        )}
-
-        {state.status === 'unavailable' && (
-          <div className="auth-state error-state" role="alert">
-            <h2>暂时无法确认登录状态</h2>
-            <p>请检查网络连接后重试。</p>
-            <button type="button" className="secondary-action" onClick={retry}>
+        {status === 'unavailable' && (
+          <div className="service-state error-state" role="alert">
+            <h2>无法连接本地服务</h2>
+            <p>请确认本机 JobPilot API 已启动，然后重试。</p>
+            <button type="button" className="retry-action" onClick={retry}>
               重试
             </button>
           </div>
@@ -108,16 +55,42 @@ export function App({ apiClient, hasAuthenticationError = false }: AppProps) {
   );
 }
 
-function authStatusAnnouncement(status: AuthSessionState['status']): string {
-  switch (status) {
-    case 'checking':
-      return '正在检查登录状态';
-    case 'signed-out':
-      return '当前未登录';
-    case 'signed-in':
-      return '登录状态已确认';
-    case 'authentication-error':
-    case 'unavailable':
-      return '';
-  }
+function useLocalApiHealth(apiClient: HealthClient): {
+  status: LocalApiStatus;
+  retry(): void;
+} {
+  const [requestNumber, setRequestNumber] = useState(0);
+  const [settledRequest, setSettledRequest] = useState<SettledHealthRequest>();
+  const status =
+    settledRequest?.apiClient === apiClient && settledRequest.requestNumber === requestNumber
+      ? settledRequest.status
+      : 'checking';
+
+  useEffect(() => {
+    let ignoreResult = false;
+
+    void apiClient.getHealth().then(
+      () => {
+        if (!ignoreResult) {
+          setSettledRequest({ apiClient, requestNumber, status: 'ready' });
+        }
+      },
+      () => {
+        if (!ignoreResult) {
+          setSettledRequest({ apiClient, requestNumber, status: 'unavailable' });
+        }
+      },
+    );
+
+    return () => {
+      ignoreResult = true;
+    };
+  }, [apiClient, requestNumber]);
+
+  return {
+    status,
+    retry: () => {
+      setRequestNumber((current) => current + 1);
+    },
+  };
 }

@@ -34,8 +34,32 @@ describe('createApiClient', () => {
 
     await expect(client.getHealth()).resolves.toEqual(healthyPayload);
     expect(fetchImplementation).toHaveBeenCalledWith('http://localhost:8000/health', {
+      cache: 'no-store',
+      credentials: 'omit',
       headers: { Accept: 'application/json' },
+      method: 'GET',
+      redirect: 'error',
     });
+  });
+
+  it.each(['http://localhost:8000', 'http://127.0.0.1:8000', 'http://[::1]:8000'])(
+    'accepts the loopback API base URL %s',
+    (baseUrl) => {
+      expect(() =>
+        createApiClient({ baseUrl, fetchImplementation: vi.fn<typeof fetch>() }),
+      ).not.toThrow();
+    },
+  );
+
+  it.each([
+    'https://api.jobpilot.example.com',
+    'http://192.168.1.10:8000',
+    'http://0.0.0.0:8000',
+    'http://[::]:8000',
+  ])('rejects the non-loopback API base URL %s', (baseUrl) => {
+    expect(() => createApiClient({ baseUrl, fetchImplementation: vi.fn<typeof fetch>() })).toThrow(
+      'API base URL must use a loopback host',
+    );
   });
 
   it('rejects a non-success HTTP response', async () => {
@@ -54,6 +78,26 @@ describe('createApiClient', () => {
     const client = createApiClient({ baseUrl: 'http://localhost:8000', fetchImplementation });
 
     await expect(client.getHealth()).rejects.toThrow('invalid health response');
+  });
+
+  it('rejects an otherwise valid health response with extra fields', async () => {
+    const fetchImplementation = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ ...healthyPayload, deployment: 'remote' }), { status: 200 }),
+      );
+    const client = createApiClient({ baseUrl: 'http://localhost:8000', fetchImplementation });
+
+    await expect(client.getHealth()).rejects.toThrow('invalid health response');
+  });
+
+  it('rejects a non-200 health response even when it is nominally successful', async () => {
+    const fetchImplementation = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response(JSON.stringify(healthyPayload), { status: 201 }));
+    const client = createApiClient({ baseUrl: 'http://localhost:8000', fetchImplementation });
+
+    await expect(client.getHealth()).rejects.toThrow('health request failed with status 201');
   });
 
   it('rejects a non-HTTP API base URL', () => {
@@ -214,12 +258,12 @@ describe('createApiClient', () => {
 
   it('builds the fixed top-level Web login URL without exposing OAuth inputs', () => {
     const client = createApiClient({
-      baseUrl: 'https://api.jobpilot.example.invalid',
+      baseUrl: 'http://127.0.0.1:8000',
       fetchImplementation: vi.fn<typeof fetch>(),
     });
 
     expect(client.getWebLoginUrl()).toBe(
-      'https://api.jobpilot.example.invalid/api/v1/auth/web/authorize?intent=login&returnTo=%2F',
+      'http://127.0.0.1:8000/api/v1/auth/web/authorize?intent=login&returnTo=%2F',
     );
   });
 

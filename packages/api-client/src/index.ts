@@ -41,6 +41,16 @@ export interface ApiClientOptions {
 }
 
 export function validateApiBaseUrl(baseUrl: string): URL {
+  const parsedBaseUrl = parseApiBaseUrl(baseUrl);
+
+  if (!isLoopbackHostname(parsedBaseUrl.hostname)) {
+    throw new Error('API base URL must use a loopback host');
+  }
+
+  return parsedBaseUrl;
+}
+
+function parseApiBaseUrl(baseUrl: string): URL {
   let parsedBaseUrl: URL;
 
   try {
@@ -65,12 +75,13 @@ function getApiUrl(baseUrl: URL, path: string): string {
 }
 
 function isApiHealthResponse(value: unknown): value is ApiHealthResponse {
-  if (typeof value !== 'object' || value === null) {
+  if (!isObject(value)) {
     return false;
   }
 
-  const response = value as Record<string, unknown>;
-  return response.status === 'ok' && response.service === 'jobpilot-api';
+  return (
+    Object.keys(value).length === 2 && value.status === 'ok' && value.service === 'jobpilot-api'
+  );
 }
 
 export function createApiClient(options: ApiClientOptions): ApiClient {
@@ -87,10 +98,14 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
   return {
     async getHealth(): Promise<ApiHealthResponse> {
       const response = await fetchImplementation(healthUrl, {
+        cache: 'no-store',
+        credentials: 'omit',
         headers: { Accept: 'application/json' },
+        method: 'GET',
+        redirect: 'error',
       });
 
-      if (!response.ok) {
+      if (response.status !== 200) {
         throw new Error(`JobPilot API health request failed with status ${response.status}`);
       }
 
@@ -219,18 +234,19 @@ export function createExtensionBearerApiClient(
 }
 
 export function validateExtensionBearerApiBaseUrl(baseUrl: string): URL {
-  const parsedBaseUrl = validateApiBaseUrl(baseUrl);
+  const parsedBaseUrl = parseApiBaseUrl(baseUrl);
   const isLoopbackHttp =
-    parsedBaseUrl.protocol === 'http:' &&
-    (parsedBaseUrl.hostname === 'localhost' ||
-      parsedBaseUrl.hostname === '127.0.0.1' ||
-      parsedBaseUrl.hostname === '[::1]');
+    parsedBaseUrl.protocol === 'http:' && isLoopbackHostname(parsedBaseUrl.hostname);
 
   if (parsedBaseUrl.protocol !== 'https:' && !isLoopbackHttp) {
     throw new Error('Extension bearer API base URL must use HTTPS or loopback HTTP');
   }
 
   return parsedBaseUrl;
+}
+
+function isLoopbackHostname(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
 }
 
 function isValidAccessCredential(value: string): boolean {

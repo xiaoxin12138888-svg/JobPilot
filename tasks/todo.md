@@ -20,11 +20,11 @@
 
 ## Shared client and Web cleanup
 
-- [ ] Write RED health/client/Web tests for loopback-only pending/ready/unavailable/retry behavior.
-- [ ] Add credential-free loopback `GET /health` with untrusted-response validation while temporarily retaining Extension-consumed auth exports.
-- [ ] Delete `use-auth-session.ts` and every login/logout/account/auth-error UI path.
-- [ ] Make Web start directly in the local workspace shell and bind its dev server to loopback.
-- [ ] Prove Web builds without provider configuration and contains no remote runtime dependency.
+- [x] Write RED health/client/Web tests for loopback-only pending/ready/unavailable/retry behavior.
+- [x] Add credential-free loopback `GET /health` with untrusted-response validation while temporarily retaining Extension-consumed auth exports.
+- [x] Delete `use-auth-session.ts` and every login/logout/account/auth-error UI path.
+- [x] Make Web start directly in the local workspace shell and bind its dev server to loopback.
+- [x] Prove Web builds without provider configuration and contains no remote runtime dependency.
 
 ## Extension cleanup
 

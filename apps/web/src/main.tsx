@@ -12,9 +12,6 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <App
-      apiClient={apiClient}
-      hasAuthenticationError={window.location.pathname === '/auth/error'}
-    />
+    <App apiClient={apiClient} />
   </StrictMode>,
 );
