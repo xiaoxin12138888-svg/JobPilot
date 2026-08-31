@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,17 +7,16 @@
   </head>
   <body>
     <main class="popup-shell">
-      <p class="phase-label">Phase 1 engineering skeleton</p>
-      <h1>JobPilot Extension</h1>
-      <div class="status-list" aria-label="Extension status">
-        <p>Extension loaded</p>
-        <p id="current-tab-url" class="tab-url" role="status" aria-live="polite">
-          Current tab URL: Checking
-        </p>
-        <p id="api-status" role="status" aria-live="polite" data-status="checking">
-          API connection status: Checking
-        </p>
-      </div>
+      <header class="popup-header">
+        <p class="product-label">求职工作台</p>
+        <h1>JobPilot Extension</h1>
+      </header>
+      <section
+        id="popup-content"
+        class="auth-panel"
+        aria-live="polite"
+        aria-atomic="true"
+      ></section>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>

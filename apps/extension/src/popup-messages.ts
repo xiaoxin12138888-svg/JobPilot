@@ -75,10 +75,10 @@ export function parsePopupRequest(value: unknown): PopupRequest | undefined {
   return { type: value.type as PopupRequestType };
 }
 
-export function isPopupResponseFor(
-  requestType: PopupRequestType,
+export function isPopupResponseFor<RequestType extends PopupRequestType>(
+  requestType: RequestType,
   value: unknown,
-): value is PopupResponseMap[typeof requestType] {
+): value is PopupResponseMap[RequestType] {
   if (!isRecord(value) || typeof value.ok !== 'boolean') {
     return false;
   }
