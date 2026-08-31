@@ -109,6 +109,20 @@
 - [x] Report Chrome Load unpacked as `NOT VERIFIED` and real Auth0 Web/Extension as `BLOCKED / USER ACTION REQUIRED`.
 - [x] Stop before Task 8 and Phase 3; wait for explicit project-owner approval.
 
+## ADR-007 Architecture Change Gate
+
+- [x] Pause Task 8 real Auth0 configuration/integration and keep Phase 3 out of scope.
+- [x] Record the hard constraint: **Core JobPilot workflow must operate without VPN/proxy in Mainland China.**
+- [x] Compare Self-hosted Logto OSS, current Auth0, and FastAPI self-hosted authentication across reachability, OIDC/PKCE, reuse, security responsibility, deployment, maintenance, lock-in, and V1 cost.
+- [x] Document the minimum Logto migration seams while preserving `(issuer, subject) -> User.id`, Web opaque session, Extension PKCE, `/auth/session`, and `/auth/me`.
+- [x] Keep the Auth0 adapter and deterministic fake issuer/JWKS implementation unchanged; create no real provider resource or secret.
+- [x] Add ADR-007 as `Proposed` and synchronize architecture/roadmap/task status.
+- [x] Require the future Mainland acceptance matrix to freeze carrier/region/network coverage, runs/windows, timeout, success/P95, recovery-delivery, redacted evidence, `FAIL`, `NO-CUTOVER`, and rollback criteria before testing; one accidental success is never `PASS`.
+- [x] Add a no-proxy Extension distribution Gate for installation, controlled signing/stable Extension ID, reachable update manifest/artifact hosting, N-1 compatibility, and rollback; do not assume Chrome Web Store reachability and never commit the signing private key.
+- [ ] Obtain explicit project-owner approval, requested changes, or rejection for ADR-007.
+- [ ] If approved, separately authorize and complete fixed-version Logto deployment/protocol/Mainland ordinary-network and Extension distribution verification before any migration.
+- [ ] Resume Task 8 only after the selected provider passes its Gate and the project owner explicitly authorizes implementation.
+
 ## Integration, Authorization, and Security
 
 - [x] Prove Web session and Extension bearer for the same identity return the same JobPilot User ID.
@@ -134,5 +148,5 @@
 - [ ] Run all Pytest, Ruff lint/format, migration, import, and startup checks.
 - [ ] Run PostgreSQL clean upgrade -> downgrade -> upgrade.
 - [ ] Run `git diff --check`, secret scan, and final `git status`.
-- [ ] Report real Auth0 verification truthfully as PASS, BLOCKED, or NOT ATTEMPTED.
+- [ ] Report selected-provider and Mainland ordinary-network verification truthfully as PASS, BLOCKED, or NOT VERIFIED.
 - [ ] Stop before Phase 3 and wait for explicit project-owner approval.

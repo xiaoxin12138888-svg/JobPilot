@@ -6,13 +6,14 @@ JobPilot 不替代招聘网站，也不建设或批量抓取招聘职位数据�
 
 ## 当前阶段
 
-Phase 0、Phase 1 和 Phase 2A 已完成评审并获得项目负责人明确批准。项目当前严格处于 **Phase 2B — Authentication Implementation & User Boundary**。
+Phase 0、Phase 1 和 Phase 2A 已完成评审并获得项目负责人明确批准。项目当前严格处于 **Phase 2B — Authentication Implementation & User Boundary** 的 Architecture Change Gate。
 
-- 已接受 [ADR-006](docs/DECISIONS/ADR-006-authentication-strategy.md)：Auth0 managed OIDC；Web 使用 FastAPI/BFF 的 opaque HttpOnly session，Extension 使用 Authorization Code + PKCE 的短期 bearer。
-- Task 6 已获项目负责人批准；Task 7A–7G 的 Extension Authorization Code + PKCE 确定性实现及 Task 7H 自动化、审查、简化和文档门禁均已完成。Task 8 尚未获授权。
+- [ADR-006](docs/DECISIONS/ADR-006-authentication-strategy.md) 是已实现认证边界的 Accepted 历史记录；新增 [ADR-007](docs/DECISIONS/ADR-007-mainland-china-identity-provider.md) 正在评审生产 Identity Provider。
+- 新增硬约束：**Core JobPilot workflow must operate without VPN/proxy in Mainland China.**
+- Task 6 已获项目负责人批准；Task 7A–7G 的 Extension Authorization Code + PKCE 确定性实现及 Task 7H 自动化、审查、简化和文档门禁均已完成。Task 8 的真实 provider 配置和联调现已暂停。
 - 当前实现覆盖 Web 与 Extension 两种认证 transport、FastAPI/PostgreSQL 的最小认证闭环，以及由 Task 5 建立的 `issuer + subject -> JobPilot User.id` 服务端边界。
-- 自动化实现使用 deterministic fake issuer/JWKS；真实 Auth0 tenant、applications、IDs、origins、redirects 与 secrets 仍是明确的人机配置门禁，不得猜测或擅自创建。
-- Chrome Load unpacked 尚未在本环境验证；真实 Auth0 Web 与 Extension 验证均为 `BLOCKED / USER ACTION REQUIRED`，不能把 `.invalid` 构建或自动化测试描述为真实登录。
+- Self-hosted Logto OSS 是当前首选候选，但尚未批准或迁移；Auth0 不再默认批准为生产 provider。不得创建真实 Auth0/Logto 资源或绑定 IDs、origins、redirects、connectors 与 secrets。
+- 自动化继续使用 deterministic fake issuer/JWKS；Chrome Load unpacked、真实 provider flow 和中国大陆普通网络可用性均为 `NOT VERIFIED / BLOCKED`。
 - 本阶段不实现 Job、Application、Resume、AI、RAG 或其他 Phase 3+ 能力；Phase 2B 验收前不得进入 Phase 3。
 
 ## 当前实现状态（截至 Task 7）
@@ -24,7 +25,7 @@ Phase 0、Phase 1 和 Phase 2A 已完成评审并获得项目负责人明确批�
 - `packages/shared-types`：共享 health、批准的 `UserView` 与 CSRF response 类型。
 - `packages/api-client`：分别封装 Web cookie transport 与 Extension bearer transport；Extension 首次登录依次调用 `/auth/session` 和 `/auth/me`，请求固定使用 `credentials: omit`，并只投影批准的 User 字段。
 
-当前仓库仍没有 Job、Application、Resume 等 Phase 3+ 业务 persistence、招聘网站解析或 AI/RAG。真实 Auth0 Web/Extension flow 仍未验证，必须等待项目负责人提供并批准实际 tenant/application 与稳定 Extension 配置。
+当前仓库仍没有 Job、Application、Resume 等 Phase 3+ 业务 persistence、招聘网站解析或 AI/RAG。当前 Auth0-compatible deterministic implementation 保留不变；任何真实 provider flow 都必须等待 ADR-007 和后续 provider verification/migration slice 获得项目负责人批准。
 
 ## 目标技术栈
 
@@ -125,13 +126,13 @@ pnpm dev:extension
 - 多个 CORS origin 使用逗号分隔；任何环境都拒绝 `*`。生产环境必须在启动 API 的运行环境中显式注入精确 origin。
 - 生产 Web host 必须把 `/auth/error` rewrite 到 SPA entry，并在部署层配置经评审的 CSP 与安全响应头；仓库不使用宽松的 meta CSP 伪装生产配置。
 
-真实 Extension 登录前还必须由项目负责人完成以下人机门禁：
+真实 Extension 登录当前受 ADR-007 Architecture Change Gate 阻断：
 
-1. 创建/批准 Auth0 **Native / public** Extension application；只提供 public client ID，绝不配置或提交 client secret。
-2. 冻结开发与生产 Chrome Extension ID。Auth0 client ID 与 32 字符 Chrome Extension ID 是两个不同标识；当前 manifest 没有 `key`，因此仓库尚未冻结开发 ID。
-3. 将 `chrome.identity.getRedirectURL()` 的精确结果 `https://<extension-id>.chromiumapp.org/` 加入 Auth0 Allowed Callback URLs；当前 revoke-only logout 不使用 hosted logout callback，因此不虚构 Allowed Logout URL。
-4. 冻结 JobPilot API audience、namespaced verified-email claims/Action、5–10 分钟 access-token 上限、`offline_access` 与 Rotating Refresh Token；每次 rotation 必须返回不同的 replacement refresh token。
-5. 将精确 `chrome-extension://<extension-id>` 注入 FastAPI `JOBPILOT_CORS_ORIGINS`，并在 Auth0 对 direct token/revoke 请求有要求时配置对应精确 Allowed Web Origin/CORS。不得使用 wildcard。
+1. 不执行原 Auth0 tenant/application/API audience setup checklist，不绑定真实 Auth0 Client ID 或 Extension ID。
+2. 不直接创建 Self-hosted Logto OSS 生产实例或迁移代码；先等待项目负责人审批 ADR-007。
+3. 若 Logto 方向获批，后续独立 Gate 必须冻结 exact issuer/resource、Web confidential client、Extension public/SPA client、callback/CORS、claims、5–10 分钟 access-token 上限、refresh rotation/reuse/revoke 语义与 connector。
+4. Web、Extension、账号恢复和全部运行时依赖必须在中国大陆普通网络、无 VPN/代理条件下实测；`.invalid` fixture 不构成可达性证据。
+5. 在真实 provider 和 Mainland acceptance 通过前，不开始 Task 8 或 Phase 3。
 
 ### 验证命令
 

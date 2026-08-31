@@ -1,6 +1,6 @@
 # JobPilot MVP 核心数据模型（Phase 1–4）
 
-> 文档状态：Phase 0 已批准的概念/逻辑模型；User/Identity 与 Task 6 最小 WebSession/LoginTransaction schema 已在 Phase 2B 实现（本文仍不是迁移文件或公共 API DTO）
+> 文档状态：Phase 0 已批准的概念/逻辑模型；User/Identity 与 Task 6 最小 WebSession/LoginTransaction schema 已在 Phase 2B 实现。ADR-007 重开生产 IdP 选择，但不改变 `(issuer, subject) -> User.id` 或当前 schema（本文仍不是迁移文件或公共 API DTO）
 >
 > 展开范围：`User`、`Job`、`Application`、`ResumeVersion` 四个核心实体，以及 `Application` 内部的最小状态事件子记录  
 > 仅预留：`Interview`、`Document`、`Evidence`
@@ -15,7 +15,7 @@
 - API DTO 与持久化模型分离；数据库字段、对象存储 key 和内部审计字段不原样暴露。
 - 时间统一保存为带时区的 UTC 时间，展示时使用 User 的时区。
 - 字段命名在数据库使用 `snake_case`，API wire format 使用 `camelCase`。
-- Auth0 管理密码、验证与恢复；独立 `Identity` 保存 provider identity 到本地 User 的稳定映射，不保存 provider credential。Task 6 的 Web session 只保存 opaque secret/CSRF 的摘要、所有者、identity、时间与撤销状态；provider token/grant 不进入 session。
+- 独立 IdP 管理密码、验证与恢复；当前实现保留 Auth0 reference adapter，ADR-007 正在评审 Self-hosted Logto OSS。独立 `Identity` 保存 provider identity 到本地 User 的稳定映射，不保存 provider credential。Task 6 的 Web session 只保存 opaque secret/CSRF 的摘要、所有者、identity、时间与撤销状态；provider token/grant 不进入 session。
 - 本模型不展开 AI 分析结果、向量 chunk 或文件处理表；状态历史只保留 Application 所需的最小追加式子记录，不形成独立业务资源。
 
 ## 2. 关系总览
@@ -150,7 +150,7 @@ erDiagram
 
 ### 职责
 
-代表 JobPilot 的资源所有者和个性化设置主体。Auth0 是 V1 Accepted reference identity provider；本地 User 将经过验证的 provider identity 映射为稳定 `id`。密码、密码哈希、authorization code、access/refresh token、Web session secret 和社交 provider token 均不属于 User。
+代表 JobPilot 的资源所有者和个性化设置主体。生产 IdP 由 ADR-007 重新评审；本地 User 继续将经过验证的 provider identity 映射为稳定 `id`。密码、密码哈希、authorization code、access/refresh token、Web session secret 和社交 provider token 均不属于 User。
 
 ### 核心字段
 
@@ -168,12 +168,12 @@ erDiagram
 
 ### 约束
 
-- 独立 `Identity(issuer, subject)` 唯一并映射到 `User.id`；所有业务表只引用本地 `User.id`，不得引用 Auth0 `sub`。
+- 独立 `Identity(issuer, subject)` 唯一并映射到 `User.id`；所有业务表只引用本地 `User.id`，不得引用 provider `sub`。
 - 同一 email 出现在不同 identity 上时停止并要求显式账号绑定/迁移；不得仅凭 email 自动合并。
 - 只有验证后的 email identity 才能激活本地 User。后续 provider claim 变化只能同步 allowlist 中的可变资料，不能覆盖本地授权状态。
 - `display_name`、`locale`、`time_zone` 初始可空，通过受认证的 `PATCH /api/v1/auth/me` 明确设置；API/UI 必须在为空时使用非持久化展示 fallback，而不是写入猜测值。
-- 账号删除按 [AUTH_ARCHITECTURE.md](AUTH_ARCHITECTURE.md#9-account-deletion) 执行：先在普通应用备份之外耐久写入 keyed `HMAC(User.id)` 的 `pending` restore marker，再把 User 事务性标为 `deletion_pending` 并写入 `deletion_requested_at`；两步成功后才返回 `202`，随后阻止访问、撤销会话并幂等删除业务/对象/派生数据。Auth0 identity 删除确认前保留该不可登录 User 和 marker 作为重试锚点；provider cutoff 获确认且 credential quarantine 完成后才硬删除本地 User。与简历、对象存储有关的责任最迟在 Phase 4 上传启用前实现并测试。
-- 数据导出和保留遵循同一生命周期规格：Phase 2B 的 `/auth/me` 覆盖当前 User profile，Phase 3 导出 User/Job，Phase 4 在接受 ResumeVersion 文件前补齐 Application、ResumeVersion 与原始文件；JobPilot-controlled live deletion、backup、restore ledger 和日志窗口以 [AUTH_ARCHITECTURE.md](AUTH_ARCHITECTURE.md#93-data-export-and-retention-policy) 的 Accepted 设计上限为准，Auth0-side retention 另按真实 DPA/tenant disclosure 审批。
+- 账号删除按 [AUTH_ARCHITECTURE.md](AUTH_ARCHITECTURE.md#9-account-deletion) 执行：先在普通应用备份之外耐久写入 keyed `HMAC(User.id)` 的 `pending` restore marker，再把 User 事务性标为 `deletion_pending` 并写入 `deletion_requested_at`；两步成功后才返回 `202`，随后阻止访问、撤销会话并幂等删除业务/对象/派生数据。Selected-provider identity 删除确认前保留该不可登录 User 和 marker 作为重试锚点；provider cutoff 获确认且 credential quarantine 完成后才硬删除本地 User。若采用 Self-hosted Logto，其 identity database/logs/backups 同时进入删除传播和 restore quarantine；与简历、对象存储有关的责任最迟在 Phase 4 上传启用前实现并测试。
+- 数据导出和保留遵循同一生命周期规格：Phase 2B 的 `/auth/me` 覆盖当前 User profile，Phase 3 导出 User/Job，Phase 4 在接受 ResumeVersion 文件前补齐 Application、ResumeVersion 与原始文件；JobPilot-controlled live deletion、backup、restore ledger 和日志窗口以 [AUTH_ARCHITECTURE.md](AUTH_ARCHITECTURE.md#93-data-export-and-retention-policy) 的 Accepted 设计上限为准。Self-hosted IdP data 属于 JobPilot-controlled stores；只有 managed provider 中无法直接控制的 retention 才另按真实 DPA/tenant disclosure 审批。
 - Provider 确认不再签发 token 后，仍保留 `deletion_pending` mapping 至少一个最大 access-token lifetime + clock skew；残余 JWT 在此期间只能被拒绝，不能 reprovision。Quarantine 完成并硬删除后不保留 `(identity_issuer, identity_subject)` tombstone；以后明确重新注册会生成新 `User.id`，不能按 email、provider identity 或 restore marker 自动连接已删除账号的数据。
 - 其他核心实体必须通过 `user_id` 隔离；API 不允许跨用户引用 Job 或 ResumeVersion。
 
@@ -412,7 +412,7 @@ stateDiagram-v2
 
 ## 9. 尚待后续规格决定
 
-- Auth0 可达性/成本获得负责人批准后的具体 tenant、client、claim 与 secret 管理；Task 6 session schema 已冻结，provider 迁移、recent reauthentication、revoke-all 和显式账号绑定在出现明确后续 contract 时单独设计。
+- 所选生产 IdP 的 Mainland 可达性、成本与负责人批准后的具体 deployment、client、claim、connector 与 secret 管理；Task 6 session schema 已冻结，provider 迁移、recent reauthentication、revoke-all 和显式账号绑定在出现明确后续 contract 时单独设计。
 - Phase 3 实现账户导出前，由项目负责人冻结导出格式、异步状态、下载控制与短期 artifact TTL；不得导出 credential、provider/session 内部字段、object key 或 deletion ledger。
 - Application 状态事件的长期保留和未来系统自动变更 actor 语义，在出现相应需求时再扩展；Phase 4 只记录用户触发的最小历史，并分别保留可空现实发生时间与可靠录入时间。
 - offer 接受/拒绝是否需要独立结果字段，必须以真实产品需求而不是枚举“全面性”驱动。

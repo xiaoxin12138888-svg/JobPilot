@@ -1,6 +1,6 @@
 # JobPilot API Contract
 
-> 状态：Phase 0–2A 已批准；Task 6 Web session endpoints 与 Task 7 Extension public-client contract 已确定性实现并通过 Task 7H 门禁。真实 Auth0/稳定 Extension 配置仍为人机门禁
+> 状态：Phase 0–2A 已批准；Task 6 Web session endpoints 与 Task 7 Extension public-client contract 已确定性实现并通过 Task 7H 门禁。ADR-007 正在重选生产 IdP；公共 `/auth/session`、`/auth/me` 与双 transport contract 不变，真实 Auth0/Logto 配置均暂停
 >
 > 覆盖范围：Roadmap Phase 1–4  
 > 路径：业务 API 使用 `/api/v1`；基础设施探针使用 `/health`
@@ -11,13 +11,13 @@
 
 ### 1.1 Phase 1–4 端点范围
 
-| Phase    | 目标                                  | 本文覆盖的资源                      |
-| -------- | ------------------------------------- | ----------------------------------- |
-| Phase 1  | 工程基础与可部署性                    | 非版本化 health 探针                |
-| Phase 2A | 认证架构门禁（无 endpoint 实现）      | auth strategy 与 transport contract |
+| Phase    | 目标                                  | 本文覆盖的资源                                                             |
+| -------- | ------------------------------------- | -------------------------------------------------------------------------- |
+| Phase 1  | 工程基础与可部署性                    | 非版本化 health 探针                                                       |
+| Phase 2A | 认证架构门禁（无 endpoint 实现）      | auth strategy 与 transport contract                                        |
 | Phase 2B | 认证与用户数据边界                    | Extension identity establishment、current account、Web session/CSRF/logout |
-| Phase 3  | Job Capture 与 Job Library            | jobs                                |
-| Phase 4  | Application 与 ResumeVersion 基础闭环 | applications、resumes               |
+| Phase 3  | Job Capture 与 Job Library            | jobs                                                                       |
+| Phase 4  | Application 与 ResumeVersion 基础闭环 | applications、resumes                                                      |
 
 Phase 1–4 **不包含** interviews、documents、analytics、RAG、模拟面试或 AI 分析端点，也不包含招聘网站搜索、批量抓取或正式投递。
 
@@ -159,14 +159,14 @@ Phase 1–4 **不包含** interviews、documents、analytics、RAG、模拟面�
 
 ## 3. 认证机制与传输：Phase 2A Accepted Contract
 
-[ADR-006](DECISIONS/ADR-006-authentication-strategy.md) 推荐 Auth0 Universal Login + OIDC/OAuth 2.0，并按运行环境采用两种传输：
+[ADR-006](DECISIONS/ADR-006-authentication-strategy.md) 的当前已实现 reference adapter 使用 Auth0 Universal Login + OIDC/OAuth 2.0，并按运行环境采用两种传输。ADR-007 已暂停真实 Auth0 配置并重开生产 IdP 选择；以下公共 transport 和 JobPilot endpoint 边界继续有效：
 
 - **Web**：FastAPI/BFF 完成 Authorization Code 流并签发 opaque、服务端可撤销的 host-only HttpOnly session cookie。React 不接收 provider access/refresh token。
-- **Extension**：`chrome.identity.launchWebAuthFlow` + Authorization Code + PKCE S256；可信 service worker 使用短生命周期 Auth0 API access bearer，并通过 rotating refresh token 续期。
+- **Extension**：`chrome.identity.launchWebAuthFlow` + Authorization Code + PKCE S256；可信 service worker 使用短生命周期 provider API-resource access bearer，并通过 rotating refresh token 续期。当前 deterministic token profile 与 Auth0 兼容，未来 provider 必须通过独立 compatibility Gate。
 - **FastAPI**：cryptographic provider proof 先生成不能访问业务资源的 `VerifiedProviderIdentity`；只有 Web callback 与 `POST /api/v1/auth/session` 可以用它 provision。本地 active User 映射成功后，Web session adapter 与 Extension bearer adapter 才生成同一种 `AuthenticatedUser`。Bearer 必须校验固定 issuer、audience、algorithm、token type、authorized party、JWKS、时间与 `sub`；ID token、query token 和冲突双凭据均被拒绝。
 - **本地 User**：唯一映射为 `(identity_issuer, identity_subject) -> User.id`；email 仅是 provider 已验证的可变属性，不能自动合并 identity。
 
-Auth0 承担注册/登录页面、provider-managed email/password、邮箱验证、密码恢复、Extension authorize/token/revoke 等 provider 协议。JobPilot 不复制 `/register`、password `/login`、`/refresh`、`/verify-email` 或 `/reset-password` endpoint，也不接收用户密码。
+当前 Auth0 reference adapter 假定 IdP 承担注册/登录页面、provider-managed email/password、邮箱验证、密码恢复、Extension authorize/token/revoke 等 provider 协议。若 ADR-007 后续批准 Logto，责任仍由独立 IdP software surface 承担，但部署、补丁、数据库、connector 和事故响应转由 JobPilot 运维。无论选择哪个 provider，JobPilot 业务 API 都不复制 `/register`、password `/login`、`/refresh`、`/verify-email` 或 `/reset-password` endpoint，也不接收用户密码。
 
 Web cookie-authenticated unsafe request 必须提供 session-bound `X-CSRF-Token` 并通过精确 `Origin`/Fetch Metadata 校验。Extension bearer 只由 trusted service worker 附加，不进入 popup DOM、content script、页面、URL、日志或 `storage.sync`。生产 CORS 只允许精确 Web origin 与稳定的 `chrome-extension://<id>` origin；不得使用 `*`。
 
@@ -226,7 +226,7 @@ Phase 1 不提供额外 readiness、数据库探测或 `/api/v1/health/*` 兼容
 
 ### 6.1 Provider-owned operations（不是 JobPilot endpoint）
 
-以下操作由 Auth0 标准 authorize/token/revoke、Universal Login 或 provider account flow 承担：
+以下操作由选定 IdP 的标准 authorize/token/revoke、hosted sign-in 或 provider account flow 承担；当前代码中的具体请求仍是 Auth0 reference adapter：
 
 - provider-managed email/password 注册与登录；
 - 邮箱验证与凭据恢复；
@@ -234,21 +234,21 @@ Phase 1 不提供额外 readiness、数据库探测或 `/api/v1/health/*` 兼容
 - Extension Authorization Code + PKCE exchange 与 rotating refresh；
 - provider refresh grant revoke。
 
-JobPilot 不代理用户密码，不把这些路径伪装成 `/api/v1/auth/register`、password `/login` 或 `/refresh`。Auth0 原始响应也不是 JobPilot 公共 API 契约。
+JobPilot 不代理用户密码，不把这些路径伪装成 `/api/v1/auth/register`、password `/login` 或 `/refresh`。任何 provider 原始响应也不是 JobPilot 公共 API 契约。
 
 ### `GET /api/v1/auth/web/authorize`
 
 - Auth：不需要现有会话。该路径仅供顶层浏览器导航，不作为 fetch JSON API。
 - Query：`intent=login|signup`，以及可选 `returnTo`。`returnTo` 只能是 allowlist 中的相对 Web 路径，不能是完整 URL、protocol-relative URL 或任意调用方 origin。
-- `intent=login` 使用 `prompt=login`，因此 JobPilot local logout 后，即使 Auth0 SSO cookie 仍在，也不能静默恢复原用户；`signup` 只增加明确的 provider signup hint，注册页面和凭据仍由 Universal Login 所有。
-- 语义：创建最长 10 分钟的一次性 server-side login transaction（intent、state、nonce、PKCE、过期时间）及其随机 browser handle hash；生产设置 host-only `__Host-jobpilot_login_tx`（`HttpOnly; Secure; SameSite=Lax; Path=/; no Domain; Max-Age=600`），显式 loopback development 使用 `jobpilot_dev_login_tx`（同属性但不设 `Secure`），然后 `302` 到精确 Auth0 authorize URL。
+- `intent=login` 使用 `prompt=login`，因此 JobPilot local logout 后，即使 provider SSO cookie 仍在，也不能静默恢复原用户；`signup` 只增加经 adapter 验证的 provider signup hint，注册页面和凭据仍由 hosted IdP 所有。
+- 语义：创建最长 10 分钟的一次性 server-side login transaction（intent、state、nonce、PKCE、过期时间）及其随机 browser handle hash；生产设置 host-only `__Host-jobpilot_login_tx`（`HttpOnly; Secure; SameSite=Lax; Path=/; no Domain; Max-Age=600`），显式 loopback development 使用 `jobpilot_dev_login_tx`（同属性但不设 `Secure`），然后 `302` 到精确 configured-provider authorize URL。
 - 限流：应用基线按可信连接 IP 使用每 60 秒最多 10 次 login-start 的有界滚动窗口；超过时返回 `429 RATE_LIMITED` 与 `Retry-After`。多实例生产入口必须在可信边缘实施相同或更严格的聚合策略，应用不自行信任调用方提供的转发 IP header。
 - 主要错误：`400 BAD_REQUEST`、`429 RATE_LIMITED`、`503 DEPENDENCY_UNAVAILABLE`。
 
 ### `GET /api/v1/auth/web/callback`
 
 - Auth：不需要；只接受 state、server-side transaction 与发起浏览器的一次性 login-transaction cookie 三者同时匹配的 provider callback。
-- Query：Auth0 返回的 `code`、`state` 或标准错误字段；所有值都视为不可信。
+- Query：provider 返回的 `code`、`state` 或标准错误字段；所有值都视为不可信。
 - 语义：验证 browser-bound transaction，交换 code，验证 OIDC identity，生成 `VerifiedProviderIdentity`。Login/signup 解析或创建本地 User、丢弃所有 provider token，并建立全新的 opaque Web session。
 - 成功：以创建时完全一致的属性删除 login-transaction cookie，`303` 到已保存的 allowlisted Web path，并设置生产 `__Host-jobpilot_session` 或仅限 loopback development 的 `jobpilot_dev_session` HttpOnly cookie。credential 不进入 redirect URL。
 - 失败：无论 state/cookie 是否匹配，都使可识别 transaction 失效并用完全匹配属性删除 login-transaction cookie，再 `303` 到配置中固定、同站点且不携带 provider 参数的 `/auth/error` 页面；不得透传 provider 原始错误，也不按错误类型改变 redirect target。`INVALID_CREDENTIALS`、`EMAIL_VERIFICATION_REQUIRED`、`IDENTITY_CONFLICT`、rate limit 与 provider outage 是内部安全分类，不改变浏览器可观察的 callback redirect。
@@ -256,7 +256,7 @@ JobPilot 不代理用户密码，不把这些路径伪装成 `/api/v1/auth/regis
 
 ### `POST /api/v1/auth/session`
 
-- Auth：verified provider identity required，而不是普通业务 `AuthenticatedUser`；Phase 2B 仅允许完整验证的 Auth0 API access bearer，用于 Extension 完成 JobPilot identity establishment。Web callback 在服务端调用同一 application service，不需要从 React 调此 endpoint。
+- Auth：verified provider identity required，而不是普通业务 `AuthenticatedUser`；Phase 2B 仅允许符合所选 provider 冻结 token profile 且完成全部验证的 API-resource access bearer，用于 Extension 完成 JobPilot identity establishment。当前实现验证 Auth0-compatible profile；Web callback 在服务端调用同一 application service，不需要从 React 调此 endpoint。
 - Command 语义：路径中的 `session` 表示“建立/解析 JobPilot identity context”，不是创建 JobPilot Web session；成功只返回 `UserView`，不签发 JobPilot cookie/token。
 - Request：无业务 body；不得上传 ID token、refresh token、email、`userId` 或 provider profile JSON。
 - 语义：完整 JWT 校验先生成不具备业务权限的 `VerifiedProviderIdentity`。Access token 必须包含 Phase 2B 冻结的 collision-resistant namespaced email 与 `email_verified` claims；缺失/未验证时拒绝。随后才按 `(issuer, subject)` 幂等解析/创建本地 User，并同步 allowlist 中的可变 claim。
@@ -303,19 +303,19 @@ JobPilot 不代理用户密码，不把这些路径伪装成 `/api/v1/auth/regis
 - 有效 session：在通用 Origin/Fetch 门禁之外，还必须提供有效 `X-CSRF-Token`，然后撤销 session。CSRF 失败返回 `403`，不清除有效 session。
 - 缺失、过期、未知或已撤销 session：通过通用 Origin/Fetch 门禁后不要求 CSRF，仍使用与创建时完全一致的 cookie attributes 发送清理 cookie 并幂等返回 `204`。Session store 不可用时返回 `503` 且不修改 cookie。
 - Request：无业务 body。
-- 语义：幂等撤销当前 JobPilot Web server session并清 session cookie。Web callback 只请求 `openid profile email`，不保存 provider grant，所有 ID/access token 在验证后丢弃；因此 V1 这是明确的 **JobPilot local logout**，不宣称清除 Auth0 SSO cookie。下一次 login 强制 `prompt=login`，避免静默恢复共享设备上的旧账号。
+- 语义：幂等撤销当前 JobPilot Web server session并清 session cookie。Web callback 只请求 `openid profile email`，不保存 provider grant，所有 ID/access token 在验证后丢弃；因此 V1 这是明确的 **JobPilot local logout**，不宣称清除 provider SSO cookie。下一次 login 强制 `prompt=login`，避免静默恢复共享设备上的旧账号。
 - `204`：无 body；不可把 session 是否曾存在或 provider revoke 细节泄露给客户端。
 
-Extension logout 不向 JobPilot 上传 refresh token：trusted worker 先以 credential-free `refresh_in_progress` 独占当前 grant，然后并行发起 Auth0 revoke 与本地完整清理；本地清理覆盖 `chrome.storage.local` refresh、`chrome.storage.session` access/PKCE attempt 与 popup 临时状态。结果固定区分 `confirmed`、`not_applicable` 与 `unconfirmed`。若网络、provider 或并发中 grant 使远端撤销无法确认，本地退出仍完成且 UI 明确提示远端状态未知；若本地清理本身无法确认则返回 storage failure，不能声称退出成功。被复制的 refresh token 在 provider 撤销或自身过期前仍可能续期，已签发 access token 最多存活到短期 `exp`。Web recent reauthentication + revoke-all 是已接受但尚未实现的未来恢复能力；当前流程不能调用不存在的路由，也不虚构服务端自动重试。
+Extension logout 不向 JobPilot 上传 refresh token：trusted worker 先以 credential-free `refresh_in_progress` 独占当前 grant，然后并行发起 configured-provider revoke 与本地完整清理；本地清理覆盖 `chrome.storage.local` refresh、`chrome.storage.session` access/PKCE attempt 与 popup 临时状态。结果固定区分 `confirmed`、`not_applicable` 与 `unconfirmed`。若网络、provider 或并发中 grant 使远端撤销无法确认，本地退出仍完成且 UI 明确提示远端状态未知；若本地清理本身无法确认则返回 storage failure，不能声称退出成功。被复制的 refresh token 在 provider 撤销或自身过期前仍可能续期，已签发 access token 最多存活到短期 `exp`。Web recent reauthentication + revoke-all 是已接受但尚未实现的未来恢复能力；当前流程不能调用不存在的路由，也不虚构服务端自动重试。
 
 ### Deferred — `POST /api/v1/auth/sessions/revoke-all`
 
-该 endpoint 不属于当前 Task 6/7 最小 Phase 2B 公开实现。它需要 recent reauthentication、session/User binding 与经真实 Auth0 capability 审批的 provider grant 撤销边界；这些条件冻结并获得单独授权前，OpenAPI 不得暴露半实现路由。以下保留为未来 account-lifecycle contract 草案：
+该 endpoint 不属于当前 Task 6/7 最小 Phase 2B 公开实现。它需要 recent reauthentication、session/User binding 与经所选真实 provider capability 审批的 grant 撤销边界；这些条件冻结并获得单独授权前，OpenAPI 不得暴露半实现路由。以下保留为未来 account-lifecycle contract 草案：
 
 - Auth：required；只允许完成 recent reauthentication 的 Web session。
 - CSRF：required。
 - Request：无业务 body。
-- 语义：撤销当前 User 的全部 JobPilot Web sessions 与 Auth0 refresh grants。客户端必须展示已签发 access JWT 的最大残余有效窗口。
+- 语义：撤销当前 User 的全部 JobPilot Web sessions 与 selected-provider refresh grants。客户端必须展示已签发 access JWT 的最大残余有效窗口。
 - `204`：无 body，并清当前 Web cookies。
 - 主要错误：`403 RECENT_AUTHENTICATION_REQUIRED`、`503 IDENTITY_PROVIDER_UNAVAILABLE`。部分失败进入可重试安全状态，不能虚报完全成功。
 
@@ -339,7 +339,7 @@ Extension logout 不向 JobPilot 上传 refresh token：trusted worker 先以 cr
 
 响应后清 Web cookies。删除 provider identity/renewable grants 并确认不能再签发 JobPilot API token 后，本地 `deletion_pending` identity mapping 仍须保留至少“已配置最大 Extension access-token lifetime + clock skew”；该 quarantine 结束前，Web callback 与 `/auth/session` 均拒绝 provisioning。只有 quarantine 和其他 cleanup 都完成后才硬删 User，避免残余 JWT 创建新账号。
 
-JobPilot-controlled live store 尽快完成、最迟 30 天；JobPilot 生产备份从创建起最多保留 30 天。任何恢复必须在开放流量前重放独立 ledger；`pending`/`failed` marker 不过期并隔离匹配 User，`completed` marker 保留到最后一个可能含该用户的备份失效后 7 天。Ledger 只保存 keyed `HMAC(User.id)`、HMAC key version、删除时间、workflow 状态/版本和失效时间，不保存 email、provider subject 或用户内容；restore-control KMS 的相应 key version 至少保留到所有引用 marker 过期。Auth0 自有日志、备份和法定留存不受 JobPilot 30 天保证控制，必须按 Phase 2B 当期 DPA/tenant 能力披露并由负责人接受。
+JobPilot-controlled live store 尽快完成、最迟 30 天；JobPilot 生产备份从创建起最多保留 30 天。任何恢复必须在开放流量前重放独立 ledger；`pending`/`failed` marker 不过期并隔离匹配 User，`completed` marker 保留到最后一个可能含该用户的备份失效后 7 天。Ledger 只保存 keyed `HMAC(User.id)`、HMAC key version、删除时间、workflow 状态/版本和失效时间，不保存 email、provider subject 或用户内容；restore-control KMS 的相应 key version 至少保留到所有引用 marker 过期。Self-hosted IdP database/logs/backups 属于 JobPilot-controlled stores，必须进入同一删除传播、backup expiry 和 restore replay/quarantine scope；只有 managed provider 中 JobPilot 无法控制的记录才按 DPA/tenant 能力披露并由负责人接受。
 
 完成 quarantine 与硬删除后，JobPilot 不保留 `(issuer, subject)` tombstone。用户以后通过明确 hosted flow 重新注册时会得到新的 `User.id`；API 不恢复旧数据、资源 ownership、session 或 identity mapping，也不按 email 自动链接。
 
@@ -353,7 +353,7 @@ Phase 2B 不包含组织、RBAC、管理员 API、用户枚举、任意 session 
 - 首个业务资源 Job 在 Phase 3 验收前必须冻结账户导出 contract，并导出 User 与全部用户自有 Job 数据。Phase 4 在接受 ResumeVersion 文件前必须把 Application、ResumeVersion 元数据和原始文件纳入导出，形成完整 MVP 账户导出。
 - 删除确认页必须在删除前提供或指向当期机器可读导出，但用户无需先导出才能删除。导出只包含用户资料、自有业务记录和原始文件；不包含密码、token、session、provider 内部字段、对象 key、安全事件内部字段或 deletion ledger。
 - 导出产物必须是私有、授权下载且有短期 TTL；具体格式、异步状态、下载次数与 TTL 在 Phase 3 contract review 由项目负责人批准，不能以未决定的实现细节阻塞账号删除。
-- Active 业务数据在用户保留账号期间按各资源生命周期保存；账号删除的 live data、backup、ledger 和日志时限只约束 JobPilot-controlled stores。认证/安全日志不得含 credential、内容、email 或 provider subject；如需关联，只使用轮换密钥生成的伪名标识并在 30 天内删除。聚合指标不得保留用户级标识，意外写入的直接标识属于删除传播范围。Auth0 provider-side retention 按已披露并批准的 DPA/tenant policy 处理。
+- Active 业务数据在用户保留账号期间按各资源生命周期保存；账号删除的 live data、backup、ledger 和日志时限约束所有 JobPilot-controlled stores，包括 Self-hosted IdP。认证/安全日志不得含 credential、内容、email 或 provider subject；如需关联，只使用轮换密钥生成的伪名标识并在 30 天内删除。聚合指标不得保留用户级标识，意外写入的直接标识属于删除传播范围。只有 managed provider 中 JobPilot 无法直接控制的 retention 才按已披露并批准的 DPA/tenant policy 处理。
 
 ## 7. Phase 3 — Jobs
 
@@ -662,7 +662,7 @@ Phase 4 不提供覆盖文件、对象存储直链、解析文本、AI 评分或
 
 - [x] Managed/self-hosted/OAuth-centric 选项、Web/Extension transport、FastAPI identity/authorization boundary 和账号删除政策已形成并获批准。
 - [x] Provisional password `/register`/`/login` contract 已移除；provider 与 JobPilot endpoint ownership 已明确。
-- [x] 项目负责人批准 ADR-006、Auth0 参考方案与 deterministic Phase 2B 实施范围；真实 Auth0 配置仍为单独的人机门禁。
+- [x] 项目负责人批准 ADR-006、Auth0 reference adapter 与 deterministic Phase 2B 实施范围；ADR-007 后续暂停真实 Auth0 配置并重开生产 IdP 选择。
 
 ### Task 7 当前确定性验收
 
@@ -672,7 +672,7 @@ Phase 4 不提供覆盖文件、对象存储直链、解析文本、AI 评分或
 - [x] Restart、rotation、current-worker single-flight、ambiguous outcome、replacement refresh、API `401` fail-closed 与 logout `confirmed|not_applicable|unconfirmed` 语义均有确定性测试。
 - [x] 首次登录按 `/auth/session` identity establishment -> `/auth/me` 执行；同一 Web/Extension `(issuer, subject)` 返回相同本地 `User.id`。
 - [x] Auth-only manifest 只有 `identity`、`storage`、精确 API/provider origins 与 self-only MV3 CSP；Popup/worker 消息和 built bundle 不泄露 credential。
-- [ ] Chrome Load unpacked 与真实 Auth0 Extension flow：`NOT VERIFIED / BLOCKED — USER ACTION REQUIRED`。
+- [ ] Chrome Load unpacked、所选真实 provider Extension flow 与 Mainland ordinary-network result：`NOT VERIFIED / BLOCKED — USER ACTION REQUIRED`。
 
 ### 已完成的 Phase 2B deterministic authentication gates（Tasks 5–7）
 
@@ -704,4 +704,4 @@ Phase 4 不提供覆盖文件、对象存储直链、解析文本、AI 评分或
 
 ## 12. 当前开放的 live-integration 与 account-lifecycle 决策
 
-ADR-006 已批准，deterministic Task 6/7 实现、依赖与 public-client/no-secret boundary 已完成。真实 integration/production acceptance 仍要求项目负责人接受或修改 Auth0 的可达性、远程 tenant、增长成本、数据处理与 DPA/provider-retention 取舍，并提供 dev/prod issuer、audience、authorized-party/public client-ID allowlist、schemeful-same-site Web/API origins、稳定 Extension IDs、精确 chromiumapp callback 与 Extension CORS origin、namespaced claim allowlist、session/access-token lifetimes、clock skew、rotation/reuse/token-cutoff 语义及 server secret storage。Extension 永远不使用 client secret；当前 revoke-only logout 不需要 hosted Allowed Logout URL。Recent reauthentication、revoke-all、restore-ledger KMS/key retention、account deletion provider capability 与最小 Management API scopes 仍需未来单独批准。其他新增资源、AI/RAG 能力和简历内容访问均由后续 Roadmap Phase 按需扩展。
+ADR-006 的 deterministic Task 6/7 实现、依赖与 public-client/no-secret boundary 已完成。ADR-007 现暂停真实 Auth0 配置并重开生产 IdP 选择；Self-hosted Logto OSS 是首选候选但尚未批准。真实 integration/production acceptance 要求项目负责人先批准 provider 方向，再验证中国大陆普通网络可达性、部署/增长成本、数据处理与 retention，并冻结 dev/prod issuer、resource/audience、authorized-party/public client-ID allowlist、schemeful-same-site Web/API origins、稳定 Extension IDs、精确 chromiumapp callback、Extension CORS origin、claim allowlist、session/access-token lifetimes、clock skew、rotation/reuse/token-cutoff 语义及 server secret storage。Extension 永远不使用 client secret。Recent reauthentication、revoke-all、restore-ledger KMS/key retention、account deletion provider capability 与最小 Management API scopes 仍需未来单独批准。其他新增资源、AI/RAG 能力和简历内容访问均由后续 Roadmap Phase 按需扩展。

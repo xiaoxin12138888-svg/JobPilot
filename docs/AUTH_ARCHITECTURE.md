@@ -1,18 +1,28 @@
 # JobPilot Authentication Architecture
 
-> **Status**：Phase 2A Accepted architecture; Task 6 Web server-backed session and Task 7A–7G Extension Authorization Code + PKCE are deterministically implemented. Task 7H automated gates, review, simplification, and documentation are complete.
+> **Status**：Phase 2A provider-neutral boundaries remain Accepted; Task 6 Web server-backed session and Task 7 Extension Authorization Code + PKCE are deterministically implemented. Task 8 real-provider work is paused at the ADR-007 Architecture Change Gate.
 >
-> **Decision record**：[ADR-006](DECISIONS/ADR-006-authentication-strategy.md)
+> **Decision records**：[ADR-006](DECISIONS/ADR-006-authentication-strategy.md)（implemented historical strategy）; [ADR-007](DECISIONS/ADR-007-mainland-china-identity-provider.md)（Proposed production-provider change）
 >
-> **Implementation gate**：Satisfied for the Task 6 Web and Task 7 Extension deterministic code/test slices. Real Auth0 tenant/application values and stable Extension IDs must still be supplied and approved by the project owner; Chrome Load unpacked is not verified in this environment and no live provider verification is claimed.
+> **Implementation gate**：Satisfied for the Task 6 Web and Task 7 Extension deterministic code/test slices. Do not create or bind real Auth0/Logto resources, migrate authentication code, start Task 8, or enter Phase 3 until ADR-007 and a separate provider verification slice are approved. Chrome Load unpacked and Mainland ordinary-network availability are not verified.
 
 ## 1. Scope
 
-This document defines how the Web app, Chrome Extension, and FastAPI share one user identity while using transports appropriate to each runtime. It is both the accepted Phase 2B boundary and the implementation contract: Task 6 implements the Web/BFF/session portions and Task 7 implements the deterministic Extension public-client lifecycle. Real Auth0 configuration and browser verification remain external gates, not missing deterministic code.
+This document defines how the Web app, Chrome Extension, and FastAPI share one user identity while using transports appropriate to each runtime. It is both the accepted Phase 2B provider-neutral boundary and the implementation contract: Task 6 implements the Web/BFF/session portions and Task 7 implements the deterministic Extension public-client lifecycle. The current infrastructure adapter and fake protocol profile are Auth0-compatible; the production Identity Provider is reopened by ADR-007.
 
-V1 uses Auth0 as a managed OIDC identity provider. Auth0 owns credentials, email verification, recovery, hosted login, upstream OAuth connections, and provider refresh grants. JobPilot owns its local User, Web sessions, business authorization, account deletion orchestration, PostgreSQL data, and all future private objects. JobPilot-controlled retention limits do not claim control over Auth0's own logs/backups or legally required records; those provider-side terms must be reviewed and disclosed at the Phase 2B entry gate.
+The implemented reference uses Auth0 as a managed OIDC identity provider. Production is not approved to use Auth0 while ADR-007 is open. Self-hosted Logto OSS is the preferred candidate, subject to Mainland reachability, protocol, recovery, operations, security, and compliance verification. In either case the provider software owns the credential protocol surface while JobPilot owns its local User, Web sessions, business authorization, account deletion orchestration, PostgreSQL business data, and all future private objects. With Self-hosted Logto, its identity database, logs and backups are also JobPilot-controlled stores; only a managed provider's inaccessible records may be handled through DPA/tenant disclosure.
 
 The design deliberately does not include organizations, teams, roles, administrator matrices, enterprise SSO, a custom password database, or a JobPilot OAuth server.
+
+### 1.1 Active Architecture Change Gate
+
+The hard production constraint is:
+
+> **Core JobPilot workflow must operate without VPN/proxy in Mainland China.**
+
+This includes Web signup/login/session recovery, Extension authorization/token refresh/logout, account recovery delivery, and every runtime dependency. Self-hosting is not itself proof of reachability. Until the project owner accepts ADR-007 and separately authorizes verification/migration, the current code remains unchanged, both real Auth0 and Logto configuration are prohibited, and no live-provider PASS may be claimed.
+
+The proposed provider change must preserve `(issuer, subject) -> User.id`, the Web opaque session, Extension PKCE and trusted storage, `POST /api/v1/auth/session`, `/api/v1/auth/me`, `VerifiedProviderIdentity`, `AuthenticatedUser`, and resource ownership. Exact Logto `resource`, client-auth, claim, refresh/reuse and revoke semantics are compatibility gates, not assumptions.
 
 ## 2. Architecture Summary
 
@@ -21,7 +31,7 @@ flowchart LR
     User((User))
     Web[React Web]
     Extension[Chrome MV3 Extension]
-    IdP[Auth0 Universal Login]
+    IdP[OIDC Provider Adapter]
     Boundary[FastAPI Authentication Boundary]
     Context[AuthenticatedUser Context]
     Services[Application Services]
@@ -54,9 +64,9 @@ The stable mapping is:
 - `email` is a verified, mutable profile/contact attribute. It is not used as the authentication key and never auto-links two provider identities.
 - `display_name`, `locale`, and `time_zone` are local product profile fields, not OIDC authorization claims.
 
-Phase 2B must confirm that Auth0 emits a stable `sub` across the Web and Extension clients in the same tenant/connection. A valid identity without a verified email cannot activate a JobPilot account or access business resources.
+The selected production provider must emit a stable `sub` across the Web and Extension clients in the same tenant/connection. A valid identity without a verified email cannot activate a JobPilot account or access business resources.
 
-Claim sources are explicit: the Web callback validates the signed OIDC ID token and its standard `email`/`email_verified` claims; the Extension API access token must contain Phase 2B-configured, collision-resistant namespaced email and email-verification claims emitted by a reviewed Auth0 Action. FastAPI never assumes that a custom-API access token contains standard profile claims by default. Missing, unverified, or malformed claims fail provisioning.
+Claim sources are explicit: the Web callback validates the signed OIDC ID token and its approved email-verification claims. The current Auth0-compatible Extension profile expects collision-resistant namespaced email and email-verification claims emitted by a reviewed Action; a future Logto adapter must freeze its own exact built-in or custom claim source. FastAPI never assumes that a custom-API access token contains profile claims by default. Missing, unverified, or malformed claims fail provisioning.
 
 JobPilot stores no password, password hash, social-provider access token, security answer, or recovery code in `User`.
 
@@ -106,14 +116,14 @@ sequenceDiagram
     actor User
     participant Web as React Web
     participant API as FastAPI BFF
-    participant IdP as Auth0 Universal Login
+    participant IdP as Configured OIDC Provider
     participant Sessions as Server Session Store
     participant DB as JobPilot User Store
 
     User->>Web: Choose sign in or create account
     Web->>API: GET /api/v1/auth/web/authorize
     API->>API: Create one-time state, nonce, PKCE transaction and hash-bound browser handle
-    API-->>User: Set short HttpOnly transaction cookie; 302 to exact Auth0 authorize URL
+    API-->>User: Set short HttpOnly transaction cookie; 302 to exact provider authorize URL
     User->>IdP: Authenticate / verify email
     IdP-->>API: Authorization code + state
     API->>API: Verify state + transaction cookie; exchange code; validate issuer, nonce and claims
@@ -141,7 +151,7 @@ Only a hash of the identifier is stored server-side. The Task 6 session record c
 
 Before that session exists, `/auth/web/authorize` sets a different one-time cookie containing only a random transaction handle. In production it is `__Host-jobpilot_login_tx` with `HttpOnly; Secure; SameSite=Lax; Path=/; no Domain; Max-Age=600`; the Lax setting permits the top-level OIDC callback while preventing cross-site subrequest use. The server-side record expires no later than the same 10-minute limit. Callback requires both matching `state` and this browser-bound handle; success, denial, expiry, mismatch, or provider error always deletes the cookie with the exact attributes used to create it and invalidates the transaction. A callback URL copied to another browser therefore cannot establish the attacker's session for the victim.
 
-Task 6 implements `intent=login|signup`. Login uses `prompt=login`, so a local JobPilot logout cannot be silently undone by a surviving Auth0 SSO cookie; signup is only a Universal Login hint. Recent reauthentication and revoke-all require a separately frozen session-binding contract and are deferred rather than partially implemented.
+Task 6 implements `intent=login|signup`. Login uses `prompt=login`, so a local JobPilot logout cannot be silently undone by a surviving provider SSO cookie; signup is only a provider-hosted UI hint. The current Auth0 adapter's exact hint remains implementation-specific. Recent reauthentication and revoke-all require a separately frozen session-binding contract and are deferred rather than partially implemented.
 
 Initial targets are a 7-day idle timeout and 30-day absolute lifetime. The identifier rotates after login and security-sensitive renewal; logout/revoke marks the server record invalid before clearing the cookie.
 
@@ -165,7 +175,7 @@ sequenceDiagram
     participant Popup as Extension Popup
     participant Worker as Trusted Service Worker
     participant Chrome as chrome.identity
-    participant IdP as Auth0 Authorization Server
+    participant IdP as Configured OIDC Authorization Server
     participant API as FastAPI
 
     User->>Popup: Choose sign in
@@ -190,22 +200,22 @@ sequenceDiagram
 ### 5.1 Credential acquisition
 
 - Login starts only after a user gesture.
-- The Extension uses a separate Auth0 public client with Authorization Code + PKCE S256. It has no client secret.
+- The Extension uses a separate provider public client with Authorization Code + PKCE S256. It has no client secret.
 - `state` prevents login CSRF, `nonce` binds the identity response, and the PKCE verifier binds the intercepted code to the initiating Extension.
 - Redirect URIs are generated from `chrome.identity.getRedirectURL()` and allowlisted exactly for each stable dev/prod Extension ID. Wildcards and caller-supplied redirects are forbidden.
 - The trusted OIDC client/SDK validates the signed ID token's issuer, client audience, signature, times, and exact nonce, then discards it. The API accepts only the separate access token whose audience is the JobPilot API; an ID token is never accepted as an API bearer.
-- Direct code exchange, refresh, and revoke fetches require an exact Auth0 tenant origin in `host_permissions`, separate from the exact JobPilot API permission. No wildcard Auth0 or general HTTPS permission is allowed.
-- The access token used for first establishment carries reviewed, namespaced verified-email claims; it never relies on Auth0 adding standard email claims to a custom API token by default.
+- Direct code exchange, refresh, and revoke fetches require the exact configured provider origin in `host_permissions`, separate from the exact JobPilot API permission. The current deterministic adapter uses an Auth0-compatible origin; no wildcard provider or general HTTPS permission is allowed.
+- The access token used for first establishment carries reviewed verified-email claims from the selected provider's frozen token profile; the current Auth0-compatible profile uses namespaced claims and never assumes standard email claims in a custom API token.
 - Extension API fetches use `credentials: omit` and explicitly attach the access bearer. CORS allowlists the stable `chrome-extension://<id>` origin and required headers; it never authorizes arbitrary extension IDs.
 - On first login the shared bearer client calls `POST /api/v1/auth/session` and then `GET /api/v1/auth/me`; after a normal worker restart with usable credentials it calls `/auth/me` directly. `/auth/session` is an identity-establishment boundary: it may idempotently resolve/provision the local User and returns `UserView`, but it does not create a Web session, set a cookie, or mint a JobPilot token.
 
 ### 5.2 Credential storage
 
-| Credential/state              | Current implementation location | Rule                                                                                                                                                    |
-| ----------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PKCE verifier, state, nonce   | `chrome.storage.session`        | One bounded, versioned login transaction; delete on success, cancel, timeout, malformed callback, provider error, or launch failure                    |
-| Access token                  | `chrome.storage.session`        | Versioned and generation-bound; maximum accepted lifetime 10 minutes; removed before refresh/revoke and never written to disk-backed local storage     |
-| Rotating refresh token record | `chrome.storage.local`          | Versioned `ready` record; `refresh_in_progress` contains generation/time only and never the old token                                                    |
+| Credential/state              | Current implementation location | Rule                                                                                                                                                  |
+| ----------------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PKCE verifier, state, nonce   | `chrome.storage.session`        | One bounded, versioned login transaction; delete on success, cancel, timeout, malformed callback, provider error, or launch failure                   |
+| Access token                  | `chrome.storage.session`        | Versioned and generation-bound; maximum accepted lifetime 10 minutes; removed before refresh/revoke and never written to disk-backed local storage    |
+| Rotating refresh token record | `chrome.storage.local`          | Versioned `ready` record; `refresh_in_progress` contains generation/time only and never the old token                                                 |
 | Local invalidation marker     | `chrome.storage.local`          | Credential-free `{version: 1, status: "locally_cleared"}` marker used to fail closed when physical removal cannot yet be confirmed                    |
 | Display profile               | popup response/state only       | `id`, `email`, and `displayName`; no persistent profile cache, credential, provider claim, locale/time-zone payload, or provider protocol information |
 
@@ -265,19 +275,19 @@ Routers only request an authenticated context, validate request data, call an ap
 
 ## 7. Session Lifecycle
 
-| Event                           | Web                                                                                                  | Extension                                                                                                            | Server effect                                                                                                                                                        |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Create account                  | Universal Login via FastAPI callback                                                                 | Same hosted identity flow; no separate password form                                                                 | Provision one local User after verified identity                                                                                                                     |
-| Login                           | Authorization Code flow; opaque cookie                                                               | Authorization Code + PKCE public-client flow                                                                         | Resolve same `(issuer, subject)`                                                                                                                                     |
-| Authenticated request           | Cookie automatically sent to exact API host                                                          | Short access bearer explicitly attached by trusted worker                                                            | Produce one `AuthenticatedUser` context                                                                                                                              |
-| Renewal                         | Server-side session/provider renewal                                                                 | Single-flight rotating refresh                                                                                       | Enforce idle/absolute lifetime                                                                                                                                       |
-| Access expiry                   | Session adapter rejects/renews per policy                                                            | Worker refreshes or requires login                                                                                   | Return `401 AUTHENTICATION_REQUIRED` if unavailable                                                                                                                  |
-| Logout current                  | Revoke the JobPilot server session and clear cookie; next login is forced interactive                 | Attempt direct refresh-grant revoke, clear trusted storage, warn if remote status is unknown                         | New local requests fail; Auth0 SSO cookie is not claimed removed; remote Extension grant may survive a failed revoke and stateless access may survive to short `exp` |
-| Revoke all (future capability)  | Revoke all local Web sessions after recent reauthentication                                           | Revoke provider refresh grants; each worker clears local state only on its next observed auth failure or user action | Not implemented in Task 6/7; future contract must bound residual access without claiming remote storage deletion                                                       |
-| Credential reset/security event (future) | Provider handles credential                                                                  | Provider handles credential                                                                                          | Separately approved account-lifecycle capability; not exposed by current Task 6/7 OpenAPI                                                                            |
-| Account deletion (future)        | Recent Web reauthentication required                                                                 | Opens future Web deletion flow                                                                                       | Separately approved restore-ledger/deletion workflow; not implemented by current Task 6/7                                                                             |
+| Event                                    | Web                                                                                   | Extension                                                                                                            | Server effect                                                                                                                                                           |
+| ---------------------------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Create account                           | Universal Login via FastAPI callback                                                  | Same hosted identity flow; no separate password form                                                                 | Provision one local User after verified identity                                                                                                                        |
+| Login                                    | Authorization Code flow; opaque cookie                                                | Authorization Code + PKCE public-client flow                                                                         | Resolve same `(issuer, subject)`                                                                                                                                        |
+| Authenticated request                    | Cookie automatically sent to exact API host                                           | Short access bearer explicitly attached by trusted worker                                                            | Produce one `AuthenticatedUser` context                                                                                                                                 |
+| Renewal                                  | Server-side session/provider renewal                                                  | Single-flight rotating refresh                                                                                       | Enforce idle/absolute lifetime                                                                                                                                          |
+| Access expiry                            | Session adapter rejects/renews per policy                                             | Worker refreshes or requires login                                                                                   | Return `401 AUTHENTICATION_REQUIRED` if unavailable                                                                                                                     |
+| Logout current                           | Revoke the JobPilot server session and clear cookie; next login is forced interactive | Attempt direct refresh-grant revoke, clear trusted storage, warn if remote status is unknown                         | New local requests fail; provider SSO cookie is not claimed removed; remote Extension grant may survive a failed revoke and stateless access may survive to short `exp` |
+| Revoke all (future capability)           | Revoke all local Web sessions after recent reauthentication                           | Revoke provider refresh grants; each worker clears local state only on its next observed auth failure or user action | Not implemented in Task 6/7; future contract must bound residual access without claiming remote storage deletion                                                        |
+| Credential reset/security event (future) | Provider handles credential                                                           | Provider handles credential                                                                                          | Separately approved account-lifecycle capability; not exposed by current Task 6/7 OpenAPI                                                                               |
+| Account deletion (future)                | Recent Web reauthentication required                                                  | Opens future Web deletion flow                                                                                       | Separately approved restore-ledger/deletion workflow; not implemented by current Task 6/7                                                                               |
 
-Phase 2B must freeze exact values after checking current Auth0 tenant capabilities. Values may be made shorter without a new ADR; making them longer requires security review and documentation change.
+Phase 2B must freeze exact values after checking the selected provider's real capabilities. Values may be made shorter without a new ADR; making them longer requires security review and documentation change.
 
 ## 8. Logout / Revocation
 
@@ -285,10 +295,10 @@ Logout and revocation are different:
 
 - **Local Web logout** is immediate because FastAPI controls the opaque session record.
 - Web logout uses a dedicated resolver. **Every** browser logout request, including one with a missing/expired/revoked cookie, first requires the exact allowed Web `Origin` plus compatible Fetch Metadata; failure returns `403` without changing cookies. A valid session additionally requires its CSRF token before revoke. After those gates, a missing/expired/revoked session can receive exact cookie deletion and `204`, preserving idempotency without cross-site forced logout.
-- V1 Web logout is explicitly local. It does not claim to clear the Auth0 SSO cookie; the next JobPilot login sends `prompt=login` so shared-device users cannot be silently restored. A future RP-initiated provider logout is a separate reviewed capability.
+- V1 Web logout is explicitly local. It does not claim to clear the provider SSO cookie; the next JobPilot login sends `prompt=login` so shared-device users cannot be silently restored. A future RP-initiated provider logout is a separate reviewed capability.
 - **Extension logout** first claims the refresh grant so it cannot concurrently rotate, then runs provider revocation and complete local cleanup independently in parallel. `confirmed` means both are confirmed with no unknown in-flight grant; `not_applicable` means no local/in-flight grant existed; `unconfirmed` means local cleanup completed but remote state cannot be proved. Failure to confirm local cleanup is a storage error, not successful logout. An already issued JWT remains valid until its short `exp` unless a provider/local deny mechanism explicitly covers it.
 - **Revoke all sessions** remains deferred after Task 7. It requires recent authentication and reviewed provider capability; the current OpenAPI must not expose a partial route.
-- **Refresh reuse/rejection** is treated locally as authentication failure: clear local credentials and require interactive login without logging token content. Auth0-side refresh-family reuse detection/revocation and any future server security event are provider/account-lifecycle capabilities that must be verified or implemented separately; the current client does not claim them.
+- **Refresh reuse/rejection** is treated locally as authentication failure: clear local credentials and require interactive login without logging token content. Provider-side refresh-family reuse detection/revocation and any future server security event are account-lifecycle capabilities that must be verified or implemented separately; the current client does not claim them.
 - A failed **server-side future Web/revoke-all** deletion step could use its local User/session workflow anchor for durable retry. A failed **Extension direct revoke** cannot: JobPilot never receives that refresh token. The Extension still clears local credentials but warns that remote revocation was not confirmed and that a copied grant may remain renewable. Web recent reauthentication plus revoke-all is the accepted **future** recovery capability, not a currently available Task 6/7 endpoint; no automatic retry or completed remote revoke is claimed.
 
 Access and refresh tokens, cookie values, authorization codes, PKCE verifiers, client secrets, session hashes, full claims, and provider error payloads never enter application logs.
@@ -304,7 +314,7 @@ Account deletion is initiated from Web after recent provider reauthentication an
 3. If the local transition fails after the marker write, return a dependency error and retain the `pending` marker for reconciliation. Any restore that finds a `pending`, `failed`, or `completed` marker quarantines the matching User rather than making it active.
 4. Revoke all Web sessions and provider refresh grants. Use the still-present, non-login-capable User row plus the independent marker as retry anchors; attempts are idempotent and record only step/status metadata needed to resume.
 5. Delete private objects and derived data, then relational child data.
-6. Delete/disable the Auth0 identity, revoke renewable grants, and record the provider acknowledgement/cutoff after which no new JobPilot API token can be issued. If this cannot be proved, keep the local User and marker pending and retry; never restore business access or silently reprovision.
+6. Delete/disable the selected provider identity, revoke renewable grants, and record the provider acknowledgement/cutoff after which no new JobPilot API token can be issued. If this cannot be proved, keep the local User and marker pending and retry; never restore business access or silently reprovision.
 7. Keep the local `(issuer, subject) -> deletion_pending User` mapping through a credential-quarantine interval of at least the configured maximum Extension access-token lifetime plus accepted clock skew, measured from the provider cutoff. Web callback and `POST /api/v1/auth/session` continue to resolve that mapping and reject it, so a residual JWT cannot provision a fresh User.
 8. Only after child cleanup, provider acknowledgement, and the quarantine interval have all completed, hard-delete the local User and update the marker to `completed` with its calculated expiry.
 
@@ -314,17 +324,17 @@ Completed deletion intentionally permits future re-registration as a new account
 
 ### 9.2 Resource policy
 
-| Resource                        | Account deletion policy                                                                                                                                                                  |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Job                             | Hard-delete user-owned snapshots and dedupe data                                                                                                                                         |
-| Application                     | Hard-delete records and internal status events                                                                                                                                           |
-| ResumeVersion                   | Delete private object first/with a recoverable workflow, then metadata and derived text                                                                                                  |
-| Interview                       | Delete records plus future audio/transcript objects and derived evaluations                                                                                                              |
-| Document                        | Delete original objects, metadata, chunks, embeddings, and processing artifacts                                                                                                          |
-| Evidence                        | Delete mappings and dependent derived representations                                                                                                                                    |
-| Logs/metrics                    | Never contain credentials, user content, email, or provider subject; pseudonymous user correlation expires within 30 days and aggregate metrics contain no user-level identifier         |
-| Backups                         | Encrypted, access-controlled, and retained at most 30 days from creation; pre-traffic restore must replay the independent deletion ledger                                                |
-| Auth0 identity/provider records | Request identity deletion and record acknowledgement; provider logs/backups/legal retention follow the reviewed DPA/tenant capability and are not covered by JobPilot's 30-day guarantee |
+| Resource                  | Account deletion policy                                                                                                                                                                                                 |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Job                       | Hard-delete user-owned snapshots and dedupe data                                                                                                                                                                        |
+| Application               | Hard-delete records and internal status events                                                                                                                                                                          |
+| ResumeVersion             | Delete private object first/with a recoverable workflow, then metadata and derived text                                                                                                                                 |
+| Interview                 | Delete records plus future audio/transcript objects and derived evaluations                                                                                                                                             |
+| Document                  | Delete original objects, metadata, chunks, embeddings, and processing artifacts                                                                                                                                         |
+| Evidence                  | Delete mappings and dependent derived representations                                                                                                                                                                   |
+| Logs/metrics              | Never contain credentials, user content, email, or provider subject; pseudonymous user correlation expires within 30 days and aggregate metrics contain no user-level identifier                                        |
+| Backups                   | Encrypted, access-controlled, and retained at most 30 days from creation; pre-traffic restore must replay the independent deletion ledger                                                                               |
+| Provider identity/records | Request identity deletion and record acknowledgement; Self-hosted IdP database/logs/backups enter JobPilot deletion and restore controls, while managed-only inaccessible records follow reviewed DPA/tenant capability |
 
 Normal resource archive/history rules do not override account deletion. Before Phase 4 accepts resume uploads, object-store deletion, orphan recovery, and backup behavior must be implemented and tested.
 
@@ -335,7 +345,7 @@ Normal resource archive/history rules do not override account deletion. Before P
 - The deletion confirmation flow offers the current export before destructive confirmation, but export is optional and deletion cannot be held hostage by export generation. Export includes user-authored/profile data and owned records/files, while excluding credentials, session/provider internals, private object keys, security-only metadata, and the deletion ledger.
 - Generated archives are private, authorization-checked, and short-lived. Phase 3 contract review must obtain project-owner approval for format, asynchronous status, download controls, and artifact TTL before implementation.
 - Active-account business records otherwise follow their resource lifecycle. Direct identifiers and content are prohibited from authentication/security logs; a needed correlation value uses a rotating-key pseudonym and expires within 30 days. Any accidental directly identifying log field is treated as deletion-propagation scope, not as an exemption.
-- The 30-day live-deletion deadline, 30-day maximum backup age, restore replay rule, ledger safety margin, and 30-day pseudonymous-log window apply to JobPilot-controlled stores and are Accepted V1 design limits. Making them longer requires a new security review and explicit project-owner approval. Auth0-side retention must instead be disclosed from the current DPA/tenant settings and explicitly accepted before real integration.
+- The 30-day live-deletion deadline, 30-day maximum backup age, restore replay rule, ledger safety margin, and 30-day pseudonymous-log window apply to JobPilot-controlled stores and are Accepted V1 design limits. A Self-hosted Logto database, logs and backups are JobPilot-controlled and must be brought into these deletion/restore controls; exact schema propagation is frozen before deployment. Only managed-provider records that JobPilot cannot control use DPA/tenant disclosure. Making any accepted limit longer requires a new security review and explicit project-owner approval.
 
 ## 10. Authorization Boundary
 
@@ -354,7 +364,7 @@ The same compound boundary applies to update/delete, list filters, nested resour
 - Never trust `userId` from path, query, body, header, provider metadata, or Extension message.
 - A missing resource and another user's resource both return `404 RESOURCE_NOT_FOUND`.
 - Cross-user relationship creation is rejected by querying every referenced record with the same authenticated user.
-- Business tables reference local `User.id`, never Auth0 `sub`.
+- Business tables reference local `User.id`, never provider `sub`.
 
 V1 has one ordinary-user permission set. A generic RBAC layer would add complexity without solving the actual ownership boundary and is prohibited.
 
@@ -381,14 +391,16 @@ V1 has one ordinary-user permission set. A generic RBAC layer would add complexi
 
 ## 12. Local Development and Configuration
 
+The Auth0-specific items below document the currently implemented adapter and deterministic profile; they are not active instructions to create a real tenant. ADR-007 pauses all real provider configuration.
+
 - Dev and production use separate Auth0 applications/clients and API audiences; production secrets never enter local `.env` or the repository.
 - Web localhost callbacks and the unpacked Extension callback are explicitly allowlisted, not wildcarded.
 - A stable development Extension ID is required before registering its callback. The Auth0 public client ID and the 32-character Chrome Extension ID are distinct values. Current code obtains `https://<extension-id>.chromiumapp.org/` from `chrome.identity.getRedirectURL()` and accepts only that exact root callback shape; the manifest currently has no `key`, so stable dev/prod IDs and exact Allowed Callback URLs remain `USER ACTION REQUIRED`. Only a public manifest key/config may be committed; no signing private key is stored in Git.
 - Public Extension configuration comprises the canonical HTTPS issuer, same-origin fixed authorize/token/JWKS/revoke endpoints, API audience, Auth0 Extension public client ID, validated JobPilot API base URL, and exact Web origin. Remote API/Web values require HTTPS; HTTP is limited to exact `localhost`, `127.0.0.1`, or `[::1]` loopback. No Extension client secret exists.
 - Live Auth0 must use a Native/public application with Authorization Code + PKCE, `offline_access`, Rotating Refresh Token, approved access lifetime, and reviewed namespaced verified-email claims. FastAPI must receive the same public client ID for `azp` validation and exact `chrome-extension://<extension-id>` in `JOBPILOT_CORS_ORIGINS`; provider-side Allowed Web Origin/CORS for direct token/revoke is configured only if the real tenant requires it. Current revoke-only logout does not use an Auth0 hosted logout callback or Allowed Logout URL.
 - Production requires HTTPS and the two `__Host-` cookies. Explicit development mode on loopback may instead use `jobpilot_dev_session` and `jobpilot_dev_login_tx` with `HttpOnly; SameSite=Lax; Path=/; no Domain` and without `Secure`; the transaction cookie retains `Max-Age=600`. Those names are forbidden outside loopback development, and non-loopback insecure startup fails.
-- CI uses a deterministic fake issuer/JWKS and local session fixtures. It does not depend on a live Auth0 tenant. A small manual/integration check against the dev tenant verifies real redirect configuration.
-- Auth0 domain, issuer, audience, client IDs, exact origins, callback URLs, logout URLs, lifetimes, and required claims are validated configuration, not scattered literals.
+- CI uses a deterministic fake issuer/JWKS and local session fixtures. It does not depend on a live provider tenant. After separate approval, a small manual/integration check against the selected non-production IdP verifies real redirect configuration and Mainland ordinary-network behavior.
+- Provider domain, issuer, resource/audience, client IDs, exact origins, callback URLs, logout URLs, lifetimes, and required claims are validated configuration, not scattered literals.
 
 ## 13. Phase 2B Verification Requirements
 
@@ -404,8 +416,8 @@ V1 has one ordinary-user permission set. A generic RBAC layer would add complexi
 
 ### 13.2 Remaining integration and deferred account-lifecycle gates
 
-- Task 8 must complete the final Phase 2B integration/authorization acceptance after explicit project-owner authorization, including the test-only ownership fixture for user A versus user B resources;
-- real Chrome Load unpacked, stable Extension origin/CORS, and live Auth0 redirect/token/rotation/revoke behavior require user-supplied configuration and remain `NOT VERIFIED / BLOCKED`;
+- Task 8 is paused and may resume only after ADR-007 approval plus a separately approved provider deployment/protocol/Mainland verification slice; it still includes the test-only ownership fixture for user A versus user B resources;
+- real Chrome Load unpacked, stable Extension origin/CORS, live provider redirect/token/rotation/revoke behavior, recovery delivery, and Mainland ordinary-network availability remain `NOT VERIFIED / BLOCKED`;
 - production reverse proxies must drop/redact credential-bearing query data and production origins/headers must be verified in the actual deployment;
 - the separately approved future account-deletion implementation must prove write-ahead marker gating, backup-restore quarantine, provider cutoff plus credential quarantine, non-reprovision, complete resource export/deletion, and fresh-User re-registration. These design gates do not claim that Task 6/7 shipped an account-deletion endpoint.
 
@@ -413,10 +425,10 @@ V1 has one ordinary-user permission set. A generic RBAC layer would add complexi
 
 - No auth implementation or dependency in Phase 2A.
 - No local password authentication, custom OAuth authorization server, MFA product, organization, team, RBAC, admin console, or enterprise SSO in V1.
-- No direct Web/Extension access to PostgreSQL or Auth0 Management API.
+- No direct Web/Extension access to PostgreSQL or any provider Management API.
 - No login or account credential inside recruitment-page content scripts.
 - No promise of zero-delay JWT revocation; the maximum bounded window is part of the contract.
 
 ## 15. Open Gate Items
 
-ADR-006 and the deterministic Task 6/7 Phase 2B slices are implemented and reviewed. Actual schemeful-same-site origins, stable Extension IDs, exact redirect URIs/CORS origins, session/access-token lifetimes and clock skew, namespaced claims, provider rotation/token-issuance cutoff semantics, future revoke-all/account-deletion capabilities and minimum Management API scopes, Auth0-side DPA/retention disclosure, tenant/application creation, and server secrets remain `USER ACTION REQUIRED`. Until those values are supplied, tests use a fake issuer/JWKS and the project must report real Auth0 verification as blocked rather than guessing configuration. Chrome Load unpacked remains `NOT VERIFIED` in the current environment. Task 8 and Phase 3 require separate project-owner authorization.
+ADR-006 and the deterministic Task 6/7 Phase 2B slices are implemented and reviewed. ADR-007 is `Proposed`: Self-hosted Logto OSS is the preferred candidate, Auth0 is no longer default-approved for production, and neither provider may be configured yet. Exact deployment region/domain, ordinary-Mainland-network results, recovery connector, issuer/resource/endpoints, client types, stable Extension ID, redirect/CORS, token claims/lifetimes, refresh/reuse/revoke behavior, provider data lifecycle and operations runbook remain `USER ACTION REQUIRED / NOT VERIFIED`. Tests continue to use a fake issuer/JWKS. Chrome Load unpacked remains `NOT VERIFIED`; Task 8 and Phase 3 remain paused pending explicit approval.

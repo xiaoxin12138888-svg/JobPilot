@@ -1,8 +1,8 @@
 # JobPilot Roadmap
 
-> 当前状态：Phase 0–2A 与 Task 6 已获得项目负责人明确批准；当前处于 **Phase 2B — Authentication Implementation & User Boundary**，ADR-006 已 Accepted。Task 7A–7G Extension authentication 已确定性实现，Task 7H 自动化、审查、简化与文档门禁已完成；真实 Chrome/Auth0 验证仍为 `NOT VERIFIED / BLOCKED`。Task 8 与 Phase 3 均未开始。
+> 当前状态：Phase 0–2A 与 Task 6 已获得项目负责人明确批准；当前处于 **Phase 2B — Authentication Implementation & User Boundary** 的 ADR-007 Architecture Change Gate。Task 7 已完成 deterministic implementation 与 Task 7H 门禁；Task 8 真实 provider 工作和 Phase 3 均已暂停。
 >
-> 本文是实施计划；Task 6/7 的 deterministic 完成不表示整个 Phase 2B、真实 Auth0 integration 或后续业务功能已经完成。
+> 本文是实施计划；Task 6/7 的 deterministic 完成不表示整个 Phase 2B、真实 provider integration、中国大陆普通网络可用性或后续业务功能已经完成。
 
 ## 1. 里程碑边界
 
@@ -148,17 +148,17 @@ Phase 0 规格基线
 
 ### Objective
 
-在 ADR-006 获批且 Auth0 tenant/config/依赖范围单独批准后，实现最小可用认证闭环和强制用户级数据边界，为后续个人求职数据提供统一身份基础。
+在 ADR-006 已批准的 provider-neutral contract 下实现最小可用认证闭环和强制用户级数据边界；生产 Identity Provider 现由 ADR-007 重新评审，任何真实配置和联调需单独批准。
 
-当前交付状态：Task 6 Web server-backed authentication 已批准；Task 7 Extension deterministic implementation、自动化测试、独立审查、简化与文档同步已完成。真实 tenant/application、稳定 Extension ID、callback/CORS/claims/rotation 配置与浏览器流程仍是 `USER ACTION REQUIRED`，不以 `.invalid` fixture 冒充 live verification。
+当前交付状态：Task 6 Web server-backed authentication 已批准；Task 7 Extension deterministic implementation、自动化测试、独立审查、简化与文档同步已完成。Task 8 真实 Auth0 工作已暂停。Self-hosted Logto OSS 是首选候选但尚未批准；真实部署、稳定 Extension ID、callback/CORS/claims/rotation/revoke、账号恢复和大陆普通网络流程均是 `USER ACTION REQUIRED / NOT VERIFIED`。
 
 ### Deliverables
 
 - User 与最小 Web session/revocation state 的数据库迁移、领域模型和 API 表达模型；
-- 独立 dev Auth0 tenant 下的 Web confidential client、Extension public client 与 JobPilot API audience 配置；
-- Auth0 provider-managed email/password、验证/恢复与 Web Universal Login 接入；
+- 经 ADR-007 和独立验证 Gate 批准的 IdP 下，配置 Web confidential client、Extension public client 与 JobPilot API resource；
+- provider-managed email/password、验证/恢复与 hosted sign-in 接入；
 - Web Authorization Code/BFF、opaque HttpOnly cookie、CSRF、session rotation/revocation；
-- Extension `launchWebAuthFlow` + PKCE/state/nonce、signed ID-token nonce validation/discard、exact API/Auth0 host permissions、trusted token storage、single-flight rotating refresh 与 logout；
+- Extension `launchWebAuthFlow` + PKCE/state/nonce、signed ID-token nonce validation/discard、exact API/provider host permissions、trusted token storage、single-flight rotating refresh 与 logout；
 - FastAPI cookie/bearer adapters、OIDC/JWT/JWKS 验证和统一 `AuthenticatedUser`；
 - Extension identity-establishment command `POST /api/v1/auth/session`（返回 `UserView`，不创建 Web session/cookie/token）、current-user `/api/v1/auth/me`、Web CSRF 与 local logout 的批准 contract；recent reauthentication、revoke-all 与 account deletion 保留 Accepted design，但不在当前最小闭环实现；
 - `resource_id + authenticated_user_id` repository/service ownership pattern 和跨用户负向 fixture；
@@ -186,6 +186,41 @@ Phase 0 规格基线
 - 不实现岗位、申请或简历业务；
 - 不在当前最小 Phase 2B closure 中实现 recent reauthentication、revoke-all、KMS/backup restore ledger 或 account deletion；这些能力必须作为完整 account-lifecycle task 另行批准，不能拆成不安全的部分实现；
 - 不自建 password database、OAuth authorization server 或通用 IAM 平台。
+
+## Phase 2B Architecture Change Gate — Mainland China Production Identity
+
+### Objective
+
+在继续真实 provider 配置和 Task 8 前，依据新增硬约束重新选择生产 Identity Provider：**Core JobPilot workflow must operate without VPN/proxy in Mainland China.**
+
+### Current Status
+
+- [ADR-007](DECISIONS/ADR-007-mainland-china-identity-provider.md) 为 `Proposed / AWAITING PROJECT-OWNER APPROVAL`；
+- Self-hosted Logto OSS 是首选候选，但尚未部署、迁移或通过中国大陆普通网络验收；
+- Auth0 不再默认批准为生产 provider；现有 adapter 和 deterministic tests 保留；
+- FastAPI self-hosted authentication 不作为 V1 默认方向；
+- Task 8 和 Phase 3 暂停。
+
+### Gate Deliverables
+
+- Self-hosted Logto OSS、当前 Auth0 与 FastAPI self-hosted authentication 的可达性、OIDC/PKCE、复用、安全责任、部署、维护、锁定和 V1 成本比较；
+- 保留 `(issuer, subject) -> User.id`、Web opaque session、Extension PKCE、`/auth/session` 与 `/auth/me` 的最小迁移范围；
+- 固定 Logto 版本的 issuer/resource/claims/client-auth/refresh/revoke compatibility checklist；
+- 中国大陆固定宽带和移动普通网络上的 Web、Extension、账号恢复和 runtime dependency acceptance matrix；矩阵必须在测试前冻结运营商/地域/网络类型、次数/时段/观测窗口、timeout、成功率/P95、邮件或 SMS 送达、脱敏证据及 `FAIL`/`NO-CUTOVER`/回滚标准；
+- Extension 无代理分发门禁：不默认依赖 Chrome Web Store，验证受控签名与稳定 Extension ID、可达的 update manifest/artifact host、全新安装、N-1 更新兼容和回滚；签名私钥不得进入仓库；
+- Self-hosted PostgreSQL/TLS/connector/backup/upgrade/admin/security/monitoring/compliance runbook scope；
+- 项目负责人对 ADR-007 的显式接受、修改或拒绝决定。
+
+### Exit Criteria
+
+本 Gate 的文档完成不等于迁移授权。只有项目负责人接受 ADR-007 并单独批准 provider deployment/protocol/Mainland verification slice 后，才能创建非生产 Logto 资源；只有该验证通过并再次授权，才能迁移 adapter 或恢复 Task 8。Phase 3 仍需 Phase 2B 最终验收。
+
+### Explicit Non-goals
+
+- 不创建或绑定真实 Auth0/Logto tenant、application、ID、origin、redirect、connector 或 secret；
+- 不修改认证业务代码、schema、公共 API 或 Extension manifest；
+- 不删除 Auth0 adapter，不实现多 provider runtime failover；
+- 不进入 Phase 3。
 
 ## Phase 3 — Job Capture & Job Library Vertical Slice
 
@@ -507,4 +542,4 @@ Phase 0 规格基线
 
 ## 4. 当前下一步
 
-Task 7 已完成 deterministic implementation 与 Task 7H 门禁，当前只等待项目负责人明确授权 **Task 8 — Phase 2B Integration & Authentication Acceptance**。真实 Auth0 tenant/application、稳定 Extension IDs、origins、callbacks、claims、rotation capabilities 与 server secrets 仍需项目负责人提供；Chrome Load unpacked 与真实 Auth0 结果必须继续如实标为 `NOT VERIFIED / BLOCKED`，不得猜测或擅自创建。不要开始 Task 8 或 Phase 3。
+当前下一步只有项目负责人评审 [ADR-007](DECISIONS/ADR-007-mainland-china-identity-provider.md)。Task 7 已完成 deterministic implementation 与 Task 7H 门禁；Task 8 的真实 Auth0 配置/联调已暂停，Auth0 不再默认批准为生产 provider。Self-hosted Logto OSS 是 `PREFERRED CANDIDATE / NOT YET APPROVED`，真实部署、协议、Chrome、账号恢复和中国大陆普通网络结果均为 `NOT VERIFIED / BLOCKED`。批准前不要创建 provider 资源、修改认证业务代码、开始 Task 8 或进入 Phase 3。

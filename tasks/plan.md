@@ -2,9 +2,9 @@
 
 ## Objective
 
-Implement the approved minimum authentication closure across React Web, Chrome Manifest V3 Extension, FastAPI, and PostgreSQL. Both credential transports must resolve the same verified `(issuer, subject)` to one local JobPilot `User.id`. This plan stops before Phase 3 and does not implement Job, Application, Resume, AI, RAG, account-management consoles, or enterprise IAM.
+Implement the approved minimum authentication closure across React Web, Chrome Manifest V3 Extension, FastAPI, and PostgreSQL. Both credential transports must resolve the same verified `(issuer, subject)` to one local JobPilot `User.id`. The new production constraint is: **Core JobPilot workflow must operate without VPN/proxy in Mainland China.** Task 8 real-provider work is paused at ADR-007; this plan stops before Phase 3 and does not implement Job, Application, Resume, AI, RAG, account-management consoles, or enterprise IAM.
 
-Phase 2A is preserved in commit `e3c4999` (`docs(auth): define phase 2 authentication architecture`). Task 6 is approved at the clean `ff8593c` baseline, and the project owner has explicitly authorized Task 7. Real Auth0 tenant/application configuration remains a user-action gate; deterministic tests use `.invalid` configuration and local fake protocol responses without guessing real identifiers or secrets.
+Phase 2A is preserved in commit `e3c4999` (`docs(auth): define phase 2 authentication architecture`). Task 6 is approved at the clean `ff8593c` baseline, and Task 7 is complete. ADR-007 now reopens the production Identity Provider choice: Self-hosted Logto OSS is the preferred candidate but not approved, Auth0 is no longer default-approved, and neither provider may be configured. Deterministic tests continue to use `.invalid` configuration and local fake protocol responses.
 
 ## Approved Contract Slice
 
@@ -92,28 +92,28 @@ Extension bearer
 - API tests: missing/malformed/expired/wrong issuer/wrong audience/fixed-algorithm/`azp`/`nbf`/token-type bearer, ID-token-as-bearer, query-token, cookie+bearer ambiguity, bounded unknown-`kid` refresh, unknown identity, deletion-pending non-reprovision, `/auth/me`, Web session, logout, and raw-provider-error suppression.
 - Cross-transport integration: fake Web callback and fake Extension bearer for the same `(issuer, subject)` return the same `User.id`.
 - Authorization fixture: a test-only repository and temporary test table (never a production model, migration, or router) query by both `resource_id` and authenticated local `user_id`; another user's row is indistinguishable from missing.
-- Browser-facing tests: React and popup component/DOM tests plus production builds. A real Auth0 browser flow is not claimed without user-supplied tenant configuration.
+- Browser-facing tests: React and popup component/DOM tests plus production builds. No real selected-provider browser flow may be claimed until ADR-007 and a separate provider-verification slice authorize and validate it.
 
 ## Incremental Tasks
 
 The project owner's current Task 6 instruction supersedes the older Phase-level numbering that split persistence, BFF flow, and Web UI into Tasks 6–8. Current Task 6 is one bounded Web server-backed authentication closure delivered through the following independently tested sub-slices. Recent reauthentication and revoke-all are deferred; Task 7 is Extension Authorization Code + PKCE.
 
-**Current status:** Task 6A–6D are approved. Task 7A–7G and the Task 7H deterministic validation/review/documentation gate are complete on `phase/2-authentication`; Task 8 is not started and requires explicit project-owner authorization. Chrome Load unpacked is `NOT VERIFIED`, while real Auth0 Web/Extension verification remains `BLOCKED / USER ACTION REQUIRED` until exact provider and stable Extension values are supplied.
+**Current status:** Task 6A–6D are approved. Task 7A–7G and the Task 7H deterministic validation/review/documentation gate are complete on `phase/2-authentication`. Task 8 is paused by the ADR-007 Architecture Change Gate. Self-hosted Logto OSS is the preferred candidate but not approved; Auth0 is no longer default-approved for production. Chrome Load unpacked, real provider behavior, account recovery, and Mainland ordinary-network availability remain `NOT VERIFIED / BLOCKED`.
 
 ### Task 7 delivery record
 
-| Slice | Commits | Status |
-| ----- | ------- | ------ |
-| Plan | `a698454` | Complete |
-| 7A — public config/manifest | `e136dac` | Complete |
-| 7B — PKCE authorization attempt | `be9b15c` | Complete |
-| 7C — public-client code exchange | `1624633` | Complete |
-| 7D — trusted credential persistence | `562f7d8` | Complete |
-| 7E — bearer transport/current user | `f10f14b`, `9d762ec` | Complete |
-| 7F — provider/credential lifecycle | `dcb2c2f`, `a43ce6c` | Complete |
-| 7G — typed worker/popup UI | `094dbce`, `efbdac0` | Complete |
-| 7H — independent review remediation | `b503867` | Complete |
-| 7H — docs/final gate | `docs(auth): record extension authentication flow` (this commit) | Complete |
+| Slice                               | Commits                                                          | Status   |
+| ----------------------------------- | ---------------------------------------------------------------- | -------- |
+| Plan                                | `a698454`                                                        | Complete |
+| 7A — public config/manifest         | `e136dac`                                                        | Complete |
+| 7B — PKCE authorization attempt     | `be9b15c`                                                        | Complete |
+| 7C — public-client code exchange    | `1624633`                                                        | Complete |
+| 7D — trusted credential persistence | `562f7d8`                                                        | Complete |
+| 7E — bearer transport/current user  | `f10f14b`, `9d762ec`                                             | Complete |
+| 7F — provider/credential lifecycle  | `dcb2c2f`, `a43ce6c`                                             | Complete |
+| 7G — typed worker/popup UI          | `094dbce`, `efbdac0`                                             | Complete |
+| 7H — independent review remediation | `b503867`                                                        | Complete |
+| 7H — docs/final gate                | `docs(auth): record extension authentication flow` (this commit) | Complete |
 
 ### Task 1: Lock the approved dependencies and configuration contract
 
@@ -222,7 +222,7 @@ The project owner's current Task 6 instruction supersedes the older Phase-level 
 - [x] Bearer and Web cookie API tests pass.
 - [x] Web component tests/typecheck/build and 320px browser runtime verification pass.
 - [x] No provider token reaches React, browser storage, build output, or logs.
-- [x] Real Auth0 Web verification is blocked only on project-owner tenant/application configuration; no live PASS is claimed.
+- [x] At Task 6 completion, real Auth0 Web verification was blocked on project-owner tenant/application configuration and no live PASS was claimed; ADR-007 now additionally pauses that configuration and reopens the production provider choice.
 
 ### Task 7A: Freeze Extension public configuration and manifest boundary
 
@@ -306,7 +306,7 @@ The project owner's current Task 6 instruction supersedes the older Phase-level 
 
 ### Task 8: Phase 2B Integration & Authentication Acceptance
 
-**Status:** Not started. Wait for explicit project-owner authorization after Task 7 acceptance; do not infer approval from deterministic Task 7 completion.
+**Status:** Paused by ADR-007. Do not create/bind real Auth0 or Logto resources and do not resume from deterministic Task 7 completion. Task 8 requires: (1) project-owner approval of ADR-007, (2) a separately approved provider deployment/protocol/Mainland verification slice, and (3) explicit authorization after that slice reports its real results.
 
 **Acceptance:** Web cookie and Extension bearer for one provider identity return the same User ID; unauthorized and cross-user requests reveal no user data; exact CORS/cookie properties pass; secrets/tokens/raw provider errors are absent from tracked files, logs, and responses.
 
@@ -331,7 +331,7 @@ The project owner's current Task 6 instruction supersedes the older Phase-level 
 - Full Python/TypeScript/database gates pass.
 - Independent review has no Critical/Required findings.
 - Simplification and documentation are complete.
-- Real Auth0 is reported blocked until user-supplied configuration; Phase 3 has not started.
+- The selected real provider and Mainland ordinary-network result are reported truthfully as PASS/BLOCKED/NOT VERIFIED; Phase 3 has not started.
 
 ## Checkpoints and Commits
 
@@ -348,12 +348,15 @@ The following advanced future designs remain documented but are not over-enginee
 | Risk                                                         | Impact                                     | Mitigation                                                                                                |
 | ------------------------------------------------------------ | ------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
 | No PostgreSQL runtime is initially available on this machine | Migration acceptance cannot be proven      | Provision a temporary local PostgreSQL instance before database work; never substitute SQLite             |
-| Real Auth0 values are unavailable                            | Live hosted flow cannot be verified        | Complete deterministic code/tests, provide exact setup checklist, report `BLOCKED / USER ACTION REQUIRED` |
+| Production Identity Provider is not approved                 | Live hosted flow cannot be verified        | Complete ADR-007 first; do not configure Auth0/Logto or infer approval from deterministic tests           |
+| Mainland ordinary-network flow is unavailable or untested    | Core JobPilot workflow fails a hard gate   | Verify Web, Extension, recovery and runtime dependencies on approved no-proxy fixed/mobile network matrix |
 | Web/Extension claim drift                                    | Same human could map differently           | Freeze issuer/subject and verified-email claim validation; cross-transport test the same fixture          |
 | Cookie CORS/CSRF misconfiguration                            | Session abuse or broken production login   | Exact schemeful-same-site configuration validation and negative tests                                     |
 | MV3 worker termination during refresh                        | Token replay or forced grant-family revoke | Persist `refresh_in_progress`, never replay an ambiguous old token, require interactive login             |
 | Scope expansion into Phase 3                                 | Invalid phase acceptance                   | Changed-path and terminology review; no Job/Application/Resume code                                       |
 
-## Real Auth0 Configuration Gate
+## Production Identity Provider Architecture Change Gate
 
-Code and deterministic tests are complete without a tenant. Live verification requires the project owner to supply/create a dev Auth0 Regular Web Application, a Native/public Chrome Extension Application, and a custom API audience; freeze distinct Auth0 public client and stable Chrome Extension IDs; register the exact `https://<extension-id>.chromiumapp.org/` callback and `chrome-extension://<extension-id>` API CORS origin; approve namespaced verified-email claims, access lifetime, `offline_access`, and Rotating Refresh Token; and provide non-committed Web server secrets. The current Extension revoke-only logout does not use a hosted logout callback, and the public client never has a client secret. Until those gates are complete the final state is `Real Auth0 Integration — BLOCKED / USER ACTION REQUIRED`; do not begin Task 8 or Phase 3 without separate authorization.
+[ADR-007](../docs/DECISIONS/ADR-007-mainland-china-identity-provider.md) compares Self-hosted Logto OSS, current Auth0, and FastAPI self-hosted authentication. It preserves the implemented provider-neutral boundaries and identifies the minimal future Logto seams: Web provider/composition wiring, Extension `audience` versus RFC 8707 `resource`, exact token/claim/client profile, refresh/reuse/revoke behavior, provider configuration and focused fixtures. Its Mainland Gate also requires objective PASS/FAIL fields to be frozen before testing and covers Extension installation, controlled signing/stable ID, reachable update hosting, N-1 compatibility, and rollback without assuming Chrome Web Store reachability.
+
+Current result: `PROPOSED / AWAITING PROJECT-OWNER APPROVAL`. No Auth0 or Logto tenant/application/configuration is authorized. If the owner approves Logto as the preferred candidate, the next work is a separate deployment/protocol/Mainland verification plan—not immediate business-code migration. Until that verification and a subsequent authorization pass, Task 8 and Phase 3 remain paused.
