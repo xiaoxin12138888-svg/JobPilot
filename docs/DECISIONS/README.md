@@ -53,4 +53,4 @@ Accepted ADR 不应静默改写其历史结论。若事实变化，应新增 ADR
 - [ADR-004：早期不引入 Agent Framework](ADR-004-no-early-agent-framework.md) — Accepted
 - [ADR-005：采用 pnpm 与 uv 作为单一包管理工具链](ADR-005-pnpm-uv-toolchains.md) — Accepted
 - [ADR-006：采用托管 OIDC 身份与双通道会话](ADR-006-authentication-strategy.md) — Accepted
-- [ADR-007：以中国大陆普通网络可用性重选生产身份供应商](ADR-007-mainland-china-identity-provider.md) — Proposed (Architecture Change Gate)
+- [ADR-007：以中国大陆普通网络可用性重选生产身份供应商](ADR-007-mainland-china-identity-provider.md) — Accepted (Provider Direction; production readiness and migration not authorized)

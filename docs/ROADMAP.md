@@ -1,6 +1,6 @@
 # JobPilot Roadmap
 
-> 当前状态：Phase 0–2A 与 Task 6 已获得项目负责人明确批准；当前处于 **Phase 2B — Authentication Implementation & User Boundary** 的 ADR-007 Architecture Change Gate。Task 7 已完成 deterministic implementation 与 Task 7H 门禁；Task 8 真实 provider 工作和 Phase 3 均已暂停。
+> 当前状态：Phase 0–2A 与 Task 6 已获得项目负责人明确批准；ADR-007 已是 `Accepted — Provider Direction`，当前处于 **Phase 2B — Authentication Implementation & User Boundary** 的 `Logto Verification Slice — Protocol & Mainland MVP Gate`。Task 7 已完成 deterministic implementation；Task 8、迁移、Production Release Gate 和 Phase 3 均未授权。
 >
 > 本文是实施计划；Task 6/7 的 deterministic 完成不表示整个 Phase 2B、真实 provider integration、中国大陆普通网络可用性或后续业务功能已经完成。
 
@@ -148,9 +148,9 @@ Phase 0 规格基线
 
 ### Objective
 
-在 ADR-006 已批准的 provider-neutral contract 下实现最小可用认证闭环和强制用户级数据边界；生产 Identity Provider 现由 ADR-007 重新评审，任何真实配置和联调需单独批准。
+在 ADR-006 已批准的 provider-neutral contract 下实现最小可用认证闭环和强制用户级数据边界；ADR-007 已接受 Self-hosted Logto OSS provider 方向，并只授权隔离开发验证 Slice。
 
-当前交付状态：Task 6 Web server-backed authentication 已批准；Task 7 Extension deterministic implementation、自动化测试、独立审查、简化与文档同步已完成。Task 8 真实 Auth0 工作已暂停。Self-hosted Logto OSS 是首选候选但尚未批准；真实部署、稳定 Extension ID、callback/CORS/claims/rotation/revoke、账号恢复和大陆普通网络流程均是 `USER ACTION REQUIRED / NOT VERIFIED`。
+当前交付状态：Task 6 Web server-backed authentication 已批准；Task 7 Extension deterministic implementation、自动化测试、独立审查、简化与文档同步已完成。Self-hosted Logto OSS provider direction 已批准，但真实协议、same identity 和 Mainland MVP smoke 尚未验证；Task 8 与 adapter migration 继续暂停。
 
 ### Deliverables
 
@@ -187,38 +187,43 @@ Phase 0 规格基线
 - 不在当前最小 Phase 2B closure 中实现 recent reauthentication、revoke-all、KMS/backup restore ledger 或 account deletion；这些能力必须作为完整 account-lifecycle task 另行批准，不能拆成不安全的部分实现；
 - 不自建 password database、OAuth authorization server 或通用 IAM 平台。
 
-## Phase 2B Architecture Change Gate — Mainland China Production Identity
+## Phase 2B Logto Verification Slice — Protocol & Mainland MVP Gate
 
 ### Objective
 
-在继续真实 provider 配置和 Task 8 前，依据新增硬约束重新选择生产 Identity Provider：**Core JobPilot workflow must operate without VPN/proxy in Mainland China.**
+在不修改 Task 5–7 provider-neutral contract 的前提下，验证固定版本 Self-hosted Logto OSS 是否满足 JobPilot V1 认证要求。硬约束保持：**Core JobPilot workflow must operate without VPN/proxy in Mainland China.**
 
 ### Current Status
 
-- [ADR-007](DECISIONS/ADR-007-mainland-china-identity-provider.md) 为 `Proposed / AWAITING PROJECT-OWNER APPROVAL`；
-- Self-hosted Logto OSS 是首选候选，但尚未部署、迁移或通过中国大陆普通网络验收；
+- [ADR-007](DECISIONS/ADR-007-mainland-china-identity-provider.md) 为 `Accepted — Provider Direction`；
+- Self-hosted Logto OSS 是正式批准的 V1 provider 方向，但尚未通过 MVP compatibility 或 production readiness 验收；
 - Auth0 不再默认批准为生产 provider；现有 adapter 和 deterministic tests 保留；
-- FastAPI self-hosted authentication 不作为 V1 默认方向；
-- Task 8 和 Phase 3 暂停。
+- FastAPI self-hosted password authentication 不采用；
+- 只允许隔离开发 Logto/PostgreSQL 与 Web confidential、Extension public、API resource 最小配置；
+- adapter migration、Task 8、Production Release Gate 和 Phase 3 暂停。
 
 ### Gate Deliverables
 
-- Self-hosted Logto OSS、当前 Auth0 与 FastAPI self-hosted authentication 的可达性、OIDC/PKCE、复用、安全责任、部署、维护、锁定和 V1 成本比较；
-- 保留 `(issuer, subject) -> User.id`、Web opaque session、Extension PKCE、`/auth/session` 与 `/auth/me` 的最小迁移范围；
-- 固定 Logto 版本的 issuer/resource/claims/client-auth/refresh/revoke compatibility checklist；
-- 中国大陆固定宽带和移动普通网络上的 Web、Extension、账号恢复和 runtime dependency acceptance matrix；矩阵必须在测试前冻结运营商/地域/网络类型、次数/时段/观测窗口、timeout、成功率/P95、邮件或 SMS 送达、脱敏证据及 `FAIL`/`NO-CUTOVER`/回滚标准；
-- Extension 无代理分发门禁：不默认依赖 Chrome Web Store，验证受控签名与稳定 Extension ID、可达的 update manifest/artifact host、全新安装、N-1 更新兼容和回滚；签名私钥不得进入仓库；
-- Self-hosted PostgreSQL/TLS/connector/backup/upgrade/admin/security/monitoring/compliance runbook scope；
-- 项目负责人对 ADR-007 的显式接受、修改或拒绝决定。
+- 固定 Logto OSS 精确版本、官方 release/license、不可变 image/source、PostgreSQL reference 和最小 runtime；不得使用 `latest`；
+- local / isolated development Logto 与独立 Identity PostgreSQL；不与 JobPilot business DB 共用 schema/ownership；
+- 最小 Web confidential application、无 secret Extension public application 和 JobPilot API resource；
+- 真实 Web OIDC 与 Extension Authorization Code + PKCE S256、token profile、refresh replacement/rotation/reuse、revoke/logout；
+- Web/Extension 同一测试账号的 issuer/sub 稳定一致，并通过现有 mapping 得到 same JobPilot `User.id`；
+- 中国大陆固定宽带和移动网络各一次 no-proxy/no-special-DNS Web/Extension MVP smoke；无法切换网络则 `BLOCKED — USER ACTION REQUIRED`；
+- 只在真实差异或 bug 出现时增加最小 regression test，并输出脱敏 Logto Verification Summary 与 Task 5–7 复用/adapter 结论。
+
+### Production Release Gate — DEFERRED
+
+以下保留但不得阻塞当前 MVP 开发，也不得在本 Slice 写成 PASS：多运营商/多地域长期矩阵与 P95/SLA、正式 Extension 签名/生产 ID/分发/update/N-1/staged/forced update/rollback、完整备份恢复和 DR、正式邮件/SMS 恢复 SLA、production monitoring、ICP/数据保护/网络安全/跨境合规、生产 TLS/secret/Admin Console/incident-response 加固。
 
 ### Exit Criteria
 
-本 Gate 的文档完成不等于迁移授权。只有项目负责人接受 ADR-007 并单独批准 provider deployment/protocol/Mainland verification slice 后，才能创建非生产 Logto 资源；只有该验证通过并再次授权，才能迁移 adapter 或恢复 Task 8。Phase 3 仍需 Phase 2B 最终验收。
+本 Slice 完成不等于迁移或生产授权。若 MVP Development Gate PASS，唯一候选下一步是另行批准的 `Minimal Logto Adapter Migration`；不得自动恢复 Task 8 或进入 Phase 3。若协议 `CONTRACT INCOMPATIBLE` 则 FAIL；若固定/移动 smoke 或必要环境证据缺失则 BLOCKED。
 
 ### Explicit Non-goals
 
-- 不创建或绑定真实 Auth0/Logto tenant、application、ID、origin、redirect、connector 或 secret；
-- 不修改认证业务代码、schema、公共 API 或 Extension manifest；
+- 不创建 Auth0、生产或收费 Logto 资源；不配置社交登录、Google/GitHub/微信、企业 SSO、组织、RBAC、MFA 或短信；
+- 不修改认证业务代码、User/Identity schema、公共 API 或生产 Extension manifest；
 - 不删除 Auth0 adapter，不实现多 provider runtime failover；
 - 不进入 Phase 3。
 
@@ -542,4 +547,4 @@ Phase 0 规格基线
 
 ## 4. 当前下一步
 
-当前下一步只有项目负责人评审 [ADR-007](DECISIONS/ADR-007-mainland-china-identity-provider.md)。Task 7 已完成 deterministic implementation 与 Task 7H 门禁；Task 8 的真实 Auth0 配置/联调已暂停，Auth0 不再默认批准为生产 provider。Self-hosted Logto OSS 是 `PREFERRED CANDIDATE / NOT YET APPROVED`，真实部署、协议、Chrome、账号恢复和中国大陆普通网络结果均为 `NOT VERIFIED / BLOCKED`。批准前不要创建 provider 资源、修改认证业务代码、开始 Task 8 或进入 Phase 3。
+当前下一步只有执行并报告 [ADR-007](DECISIONS/ADR-007-mainland-china-identity-provider.md) 已授权的 `Logto Verification Slice — Protocol & Mainland MVP Gate`。只允许隔离开发资源；真实协议、Chrome、same identity 和固定/移动 no-proxy smoke 均须如实报告。Production Release Gate 为 `DEFERRED`；不要迁移 adapter、开始 Task 8 或进入 Phase 3。

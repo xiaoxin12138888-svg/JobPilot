@@ -1,6 +1,6 @@
 # JobPilot 总体架构
 
-> 文档状态：Phase 0–2A 已批准；Task 6 Web 与 Task 7 Extension 的最小 deterministic Phase 2B authentication slices 已实现并通过 Task 7H 门禁。ADR-007 正在重新评审生产 Identity Provider，Task 8 与 Phase 3 暂停。认证边界见 [AUTH_ARCHITECTURE.md](AUTH_ARCHITECTURE.md)。
+> 文档状态：Phase 0–2A 已批准；Task 6 Web 与 Task 7 Extension 的最小 deterministic Phase 2B authentication slices 已实现并通过 Task 7H 门禁。ADR-007 已接受 Self-hosted Logto OSS provider 方向，当前仅执行隔离开发 Verification Slice；Task 8、迁移与 Phase 3 暂停。认证边界见 [AUTH_ARCHITECTURE.md](AUTH_ARCHITECTURE.md)。
 >
 > 架构风格：Monorepo + Modular Monolith（模块化单体）  
 > 核心原则：Simple architecture first；数据库是业务事实来源；外部输入一律在边界校验。
@@ -22,19 +22,19 @@ JobPilot 是面向求职者的跨招聘平台 AI 求职工作台。招聘平台�
 
 ## 2. 关键架构决策与提案
 
-| 决策                 | 结论                                                      | 主要理由                                                                |
-| -------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------- |
-| 仓库形态             | Monorepo                                                  | Web、Extension、API、契约和文档可以原子演进，便于作品集展示和端到端测试 |
-| 后端形态             | Modular Monolith                                          | 当前规模不需要分布式复杂度，同时用模块边界避免“大泥球”                  |
-| API 风格             | `/api/v1` 下的 contract-first REST                        | Web 与 Extension 共用稳定契约；DTO 不泄漏 ORM 或供应商结构              |
-| 事实来源             | PostgreSQL                                                | 所有持久业务状态由 API 写入数据库；客户端仅保存临时 UI/采集草稿         |
-| 向量检索             | PostgreSQL + pgvector                                     | 在早期数据规模内复用同一数据边界和权限模型                              |
-| 文件存储             | S3-compatible `ObjectStore` 端口                          | 数据库仅保存对象键和元数据，避免绑定具体云厂商                          |
-| AI 集成              | 应用层端口 + Provider Adapter                             | 核心业务不依赖模型厂商、Prompt 或原始 LLM 响应                          |
-| 插件采集             | 平台 Adapter Registry + 三级兜底                          | 各平台解析隔离，失败时仍允许用户完成保存                                |
-| 认证边界（Accepted） | OIDC；Web opaque HttpOnly session + Extension PKCE bearer | 同一 provider identity 映射本地 User，FastAPI 保持唯一业务授权边界      |
-| 生产 IdP（Proposed） | 首选 Self-hosted Logto OSS；Auth0 不再默认批准            | 核心流程必须在中国大陆普通网络、无 VPN/代理条件下通过真实验收           |
-| 异步基础设施         | 暂不选型                                                  | 真正出现长任务后再评估同一单体内的后台任务；不提前引入消息系统          |
+| 决策                      | 结论                                                      | 主要理由                                                                |
+| ------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------- |
+| 仓库形态                  | Monorepo                                                  | Web、Extension、API、契约和文档可以原子演进，便于作品集展示和端到端测试 |
+| 后端形态                  | Modular Monolith                                          | 当前规模不需要分布式复杂度，同时用模块边界避免“大泥球”                  |
+| API 风格                  | `/api/v1` 下的 contract-first REST                        | Web 与 Extension 共用稳定契约；DTO 不泄漏 ORM 或供应商结构              |
+| 事实来源                  | PostgreSQL                                                | 所有持久业务状态由 API 写入数据库；客户端仅保存临时 UI/采集草稿         |
+| 向量检索                  | PostgreSQL + pgvector                                     | 在早期数据规模内复用同一数据边界和权限模型                              |
+| 文件存储                  | S3-compatible `ObjectStore` 端口                          | 数据库仅保存对象键和元数据，避免绑定具体云厂商                          |
+| AI 集成                   | 应用层端口 + Provider Adapter                             | 核心业务不依赖模型厂商、Prompt 或原始 LLM 响应                          |
+| 插件采集                  | 平台 Adapter Registry + 三级兜底                          | 各平台解析隔离，失败时仍允许用户完成保存                                |
+| 认证边界（Accepted）      | OIDC；Web opaque HttpOnly session + Extension PKCE bearer | 同一 provider identity 映射本地 User，FastAPI 保持唯一业务授权边界      |
+| 生产 IdP 方向（Accepted） | Self-hosted Logto OSS；Auth0 不再是生产默认               | 方向已批准；MVP compatibility 与 production readiness 仍需分层验证      |
+| 异步基础设施              | 暂不选型                                                  | 真正出现长任务后再评估同一单体内的后台任务；不提前引入消息系统          |
 
 ## 3. 总体架构
 
@@ -408,4 +408,4 @@ Phase 7 实施规格必须在真实启用前给出可测试的处理与检索预
 
 ## 14. 当前实施边界
 
-Phase 0–2A 已获项目负责人批准，ADR-006 的 provider-neutral Phase 2B contract 已实现。Task 6 Web 与 Task 7 Extension 的 deterministic authentication、User/Identity/session persistence 与统一用户边界已通过 Task 7H 门禁。新增硬约束是 **Core JobPilot workflow must operate without VPN/proxy in Mainland China.** [ADR-007](DECISIONS/ADR-007-mainland-china-identity-provider.md) 处于 Proposed：Self-hosted Logto OSS 是首选候选，但真实部署、协议和大陆网络均未验证；Auth0 不再默认批准。当前不创建或绑定任何真实 provider 资源、不修改认证业务代码。Task 8 与 Phase 3 均暂停并等待单独授权。
+Phase 0–2A 已获项目负责人批准，ADR-006 的 provider-neutral Phase 2B contract 已实现。Task 6 Web 与 Task 7 Extension 的 deterministic authentication、User/Identity/session persistence 与统一用户边界已通过 Task 7H 门禁。新增硬约束是 **Core JobPilot workflow must operate without VPN/proxy in Mainland China.** [ADR-007](DECISIONS/ADR-007-mainland-china-identity-provider.md) 已是 `Accepted — Provider Direction`：当前只允许固定版本、隔离开发 Logto/PostgreSQL 与最小 Web/Extension/API resource 的 Protocol & Mainland MVP 验证。Production Release Gate、adapter migration、Task 8 与 Phase 3 均未授权。

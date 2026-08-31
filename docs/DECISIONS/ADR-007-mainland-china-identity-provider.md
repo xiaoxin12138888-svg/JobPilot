@@ -1,7 +1,8 @@
 # ADR-007：以中国大陆普通网络可用性重选生产身份供应商
 
-- **Status**：Proposed — Architecture Change Gate
+- **Status**：Accepted — Provider Direction
 - **Date**：2026-08-31
+- **Accepted**：2026-08-31（含 MVP / Production Gate 分层修正）
 - **Decision owner**：JobPilot 项目负责人
 - **Related decision**：[ADR-006](ADR-006-authentication-strategy.md)
 
@@ -17,11 +18,12 @@ JobPilot 的目标用户主要使用 BOSS 直聘、牛客、实习僧、猎聘�
 
 [ADR-006](ADR-006-authentication-strategy.md) 在当时信息下接受 Auth0 作为 V1 参考实现，并成功冻结了 provider-isolated identity、双 transport 和安全边界。Task 5–7 已按该决定完成 deterministic 实现，但项目尚未创建或接入真实 Auth0 tenant，也没有真实生产用户或已验证的中国大陆普通网络结果。新的可达性约束使“Auth0 作为默认生产 Identity Provider”必须重新评估。
 
-本 ADR 只提出生产 provider 方向和影响范围，不批准迁移。当前立即生效的 Gate 是：
+本 ADR 现已批准生产 provider 方向，但**不批准 adapter 迁移、生产 cutover、Task 8 或 Phase 3**。当前唯一获批的实施范围是 `Logto Verification Slice — Protocol & Mainland MVP Gate`：
 
 - 暂停 Task 8 的真实 Auth0 配置和联调；
 - 不创建 Auth0 tenant，不绑定真实 Client ID、Extension ID、audience、origin、redirect 或 secret；
-- 不创建或配置真实 Logto 生产实例，除非项目负责人另行批准验证切片；
+- 只允许创建 local / isolated development Logto 实例、独立 Logto PostgreSQL、Web confidential application、Extension public application 和 JobPilot API resource；
+- 不创建生产或收费资源，不配置社交登录、Google/GitHub/微信、企业 SSO、组织、RBAC、MFA 或短信；
 - 不修改认证业务代码，不删除现有 Auth0 adapter；
 - 不进入 Phase 3。
 
@@ -76,22 +78,20 @@ JobPilot 的目标用户主要使用 BOSS 直聘、牛客、实习僧、猎聘�
 | Vendor lock-in                             | **低到中**：MPL-2.0 开源、自有部署且使用标准协议；仍绑定 Logto schema、Console、connector 和 token semantics                         | **中高**：标准 OIDC 降低协议锁定，但 hosted UI、Actions/claims、Management API、tenant export 和定价形成锁定 | **低 vendor / 高 custom lock-in**：不依赖供应商，但自有协议和安全债务可能更难迁移                                  |
 | V1 成本                                    | 无按用户的软件许可费预期；需要大陆可达基础设施、数据库、邮件/SMS、备份监控和持续运维时间。官方建议的基础资源也必须计入               | 早期现金成本可能较低，但实际套餐、配额、增长价格和大陆可用性未获批准；即使免费也不能绕过硬约束               | 软件许可费低，但工程、安全评审、邮件/SMS、值守和事件响应使 V1 总拥有成本最高                                       |
 
-## Proposed Decision
+## Decision
 
-待项目负责人审批后，建议：
-
-1. 将 **Self-hosted Logto OSS** 设为 JobPilot V1 生产 Identity Provider 的首选候选。
+1. 将 **Self-hosted Logto OSS** 正式批准为 JobPilot V1 生产 Identity Provider 的首选方向。
 2. 将 **中国大陆无代理普通网络可用性** 设为不可豁免的生产验收条件。
 3. Auth0 不再是默认批准的生产 provider。现有 Auth0 adapter 与 deterministic fixtures 保留，用于历史可追溯、回归和退出选择；本 ADR 不授权删除。
-4. 不选择 FastAPI self-hosted authentication 作为 V1 默认方案。除非 Logto 验证失败且项目负责人重新打开本 ADR，否则不把 JobPilot 演变成自建 OAuth/IAM 产品。
+4. 不采用 FastAPI self-hosted password authentication。除非 Logto 验证失败且项目负责人重新打开本 ADR，否则不把 JobPilot 演变成自建 OAuth/IAM 产品。
 5. 继续保留 ADR-006 中与 provider 无关的 identity、transport、session、authorization、storage、CSRF、CORS、生命周期和数据边界。
 6. 不实现 runtime 多 provider 自动 failover。未设计的 provider 切换可能把同一个人映射成多个本地用户，也会扩大 token/配置攻击面。
 
-因为本 ADR 状态仍是 `Proposed`，上述 provider 选择不是实施授权。ADR-006 继续保留 `Accepted` 历史状态，但其“Auth0 为生产默认”部分被本 Architecture Change Gate 暂停执行。如果本 ADR 获批，ADR-006 仍作为 provider-neutral identity/session/security contract 保持 Accepted；其生产 provider selection 将在 metadata 和 ADR index 中明确标为 `amended / superseded in part by ADR-007`。不得把整个 ADR-006 标成失效，也不得借 provider 迁移删除其余已接受边界。
+`Accepted — Provider Direction` 只批准方向和本 ADR 明示的验证切片，不代表 Logto production readiness、生产资源或迁移授权。ADR-006 继续保留 `Accepted` 历史状态并作为 provider-neutral identity/session/security contract；其 Auth0 production-provider selection 由本 ADR 标记为 `amended / superseded in part`。不得把整个 ADR-006 标成失效，也不得借验证或未来迁移删除其余已接受边界。
 
 ## Preserved Interfaces and Invariants
 
-若 Logto 通过 Gate，以下边界必须原样保留：
+当前验证和任何未来 Logto 迁移都必须原样保留：
 
 - exact `(identity_issuer, identity_subject) -> JobPilot User.id`；
 - provider `sub`、token 或 credential 不进入业务表外键；
@@ -104,55 +104,42 @@ JobPilot 的目标用户主要使用 BOSS 直聘、牛客、实习僧、猎聘�
 - 所有业务资源继续使用 `resource_id + authenticated_user_id` 授权；
 - email 仍只是已验证的可变联系属性，不得用于跨 issuer 自动合并。
 
-## Minimum Migration Scope After Approval
+## Authorized Verification Scope
 
-只有项目负责人接受本 ADR 并单独授权迁移切片后，才执行以下最小范围：
+当前 `Logto Verification Slice — Protocol & Mainland MVP Gate` 只允许：
 
-1. **冻结部署规格**：选定 Logto OSS 精确版本、许可审查结果、部署区域/域名、PostgreSQL、TLS、镜像来源、connector、备份、监控和升级/回滚 runbook；禁止直接使用浮动 `latest` 作为可重复生产基线。
-2. **创建隔离应用**：在批准的非生产 Logto 实例中配置独立 Web confidential application，以及作为 OAuth public client、无 secret 的 Logto SPA application 供 Extension 使用；冻结 exact redirect、CORS origin、API resource 和 scopes。当前 Web 是 local logout、Extension 是 direct revoke，不要求 hosted post-logout URI；只有另行批准 RP-initiated/provider logout 时才增加该配置。
-3. **验证 discovery 和 token profile**：记录 exact issuer、authorize/token/JWKS/revoke endpoint、alg/`typ`、audience、`client_id` 或 `azp`、nonce、`auth_time`、email/verification claim 来源和 access lifetime；end-session 只在未来 provider logout 获批时验证。
-4. **替换 Web adapter wiring**：新增 Logto-specific `WebAuthProvider` 实现并在 composition root 切换；保留 application service、login transaction、Web session 和 routers。
-5. **适配 Extension request/config**：将 Auth0-specific `audience` 请求语义按实测替换为 Logto RFC 8707 `resource` 等精确参数；冻结 resource 在 authorize、code exchange 和 refresh grant/token request 中的精确位置、与 scopes 的绑定、首次 code exchange 是否直接得到 JobPilot API JWT（而不是仅用于 `userinfo` 的 opaque token），以及 refresh 后是否仍返回同一 resource 的 access token。任何额外 resource-token grant 还必须纳入现有 crash-safe storage/rotation 状态机。保留 oauth4webapi、PKCE、callback、trusted storage、worker 和 Popup 边界。
-6. **收紧而非放宽 bearer validation**：建立 Logto-specific token profile/adapter，精确校验 issuer、resource audience、authorized client、signature、time、token type 和 verified-email source；不得为了通过测试接受模糊 issuer、任意 claim 或任意 algorithm。
-7. **验证 refresh/revoke**：证明 public client 无 secret、`offline_access`、resource-bound grant、每次成功 refresh 都返回不同 replacement refresh token、reuse-family 行为、crash-safe rotation、direct revoke 或 grant revocation，以及 logout UI 的真实语义符合现有安全契约；不兼容时不得降级现有 fail-closed lifecycle，必须重新开 Gate。
-8. **最小回归**：保留全部 provider-neutral tests，只替换或新增 provider-specific fixtures；证明 Web 与 Extension 的同一 Logto identity 映射同一 `User.id`，且 `/auth/session`、`/auth/me` 和用户隔离无变化。
-9. **真实大陆验收**：完成下述网络、恢复、部署和安全 Gate 后才允许把生产 provider 状态改为 `APPROVED`。
-10. **延后清理**：Auth0-specific adapter/config 的删除必须是另一个经批准的 cleanup；本迁移切片不顺手删除退出路径。
+1. 从官方来源选择并记录 Logto OSS 精确固定版本、许可、不可变镜像/源码和最小运行要求；禁止 `latest`。
+2. 使用最简单可重复方案创建 local / isolated development Logto 与独立 PostgreSQL；Logto Identity DB 不与 JobPilot business DB 共用 schema 或 ownership boundary。
+3. 最小配置 Web confidential application、无 client secret 的 Extension public application 和 JobPilot API resource；只使用本地 email/password 测试账号。
+4. 真实验证 Web OIDC、Extension Authorization Code + PKCE S256、API token profile、refresh replacement/rotation/reuse、revoke/logout、same issuer/subject 和 same JobPilot `User.id`。
+5. 在不修改认证业务代码的前提下，把差异分类为 `COMPATIBLE`、`ADAPTER CHANGE REQUIRED` 或 `CONTRACT INCOMPATIBLE`；不得放宽 validator 或 fail-closed lifecycle。
+6. 在中国大陆普通固定宽带和移动网络/热点上各完成一次关闭 VPN、代理和特殊 DNS 的 MVP smoke；当前执行环境不能切换时如实标记 `BLOCKED — USER ACTION REQUIRED`。
+7. 只在真实协议与 fixture 不一致或发现真实 bug 时增加最小 regression test；不以测试数量为目标。
+8. 按 [Logto Verification Summary](../LOGTO_VERIFICATION_SUMMARY.md) 输出脱敏结果，给出 `UNCHANGED`、`MINOR ADAPTER CHANGE` 或 `MAJOR CONTRACT CHANGE`，然后停止等待迁移授权。
+
+## Candidate Minimal Migration Scope After Verification
+
+以下只记录未来可能的最小迁移影响面，**不是本 Slice 的实施授权**。即使 MVP Development Gate 通过，下一步也只能是另行批准的 `Minimal Logto Adapter Migration`：
+
+1. 新增 Logto-specific `WebAuthProvider` 实现并在 composition root 切换；保留 application service、login transaction、Web session 和 routers。
+2. 将 Auth0-specific `audience` 请求语义按实测替换为 Logto RFC 8707 `resource` 等精确参数；冻结 resource 在 authorize、code exchange 和 refresh grant/token request 中的位置、与 scopes 的绑定，以及首次与刷新后的 API resource token 语义。任何额外 grant 都必须进入现有 crash-safe storage/rotation 状态机。
+3. 建立 Logto-specific token profile/adapter，精确校验 issuer、resource audience、authorized client、signature、time、token type 和 verified-email source；不得接受模糊 issuer、任意 claim 或任意 algorithm。
+4. 保留全部 provider-neutral tests，只替换或新增必要的 provider-specific fixtures，证明 `/auth/session`、`/auth/me`、Web session、Extension lifecycle 和用户隔离无变化。
+5. Auth0-specific adapter/config 的删除必须是更晚的单独 cleanup；迁移切片不得顺手删除退出路径。
 
 当前仓库状态和项目负责人本轮指令没有提供已创建的 Auth0 tenant、真实用户或 provider identity 数据证据，因此迁移估算暂不包含生产用户搬迁；这不是持久架构事实。任何 cutover 计划开始前必须重新审计真实 tenant、Identity rows、有效 Web sessions 和外部环境。如果发现任何真实 Auth0 用户或有效会话，必须设计旧 provider 重新认证/显式绑定、会话撤销和审计方案，**绝不能按相同 email 自动链接**。
 
-## Required Verification Gates
+## Verification Gate Layers
 
-### 1. Mainland ordinary-network acceptance
+### 1. MVP Development Gate — ACTIVE
 
-项目负责人必须先批准可重复的测试矩阵；至少覆盖相互独立的中国大陆消费级固定宽带和移动网络，且测试设备不得配置 VPN、代理或特殊 DNS。一次开发机成功不代表生产 PASS。
+本轮只验证开发可行性，不宣称 production readiness。必须覆盖：固定 Logto 版本、独立 PostgreSQL、最小 Web/Extension/API resource 配置、Web OIDC、Extension PKCE/no-secret、FastAPI 精确 token profile、refresh/revoke、same identity、same JobPilot `User.id`、核心 runtime dependency，以及中国大陆固定宽带和移动网络各一次 no-proxy smoke。
 
-测试矩阵必须在任何验收执行前冻结客观判定字段，并由项目负责人批准；不得在看到结果后为了“通过”回填或放宽。当前 ADR 不替负责人猜测具体数值，但矩阵至少必须明确：
+`ADAPTER CHANGE REQUIRED` 在 provider-neutral contract 与 fail-closed lifecycle 均未削弱时可以支持 MVP PASS；`CONTRACT INCOMPATIBLE` 必须使本 Gate 为 `FAIL`。
 
-- 覆盖的运营商、地域、消费级固定宽带/移动数据网络组合，以及支持的浏览器、操作系统和版本范围；
-- 每条流程的执行次数、测试时段、连续观测窗口和故障重试规则；
-- 分步骤 timeout、端到端成功率和 P95 延迟阈值；
-- 邮件/SMS 验证与恢复消息的送达成功率、送达时延和超时阈值；
-- 脱敏证据的留存格式、时间戳、provider/应用版本和网络环境元数据；
-- 单项与总体 `FAIL`、`NO-CUTOVER`、回滚触发和重新测试标准。
+Mainland MVP smoke 只能证明记录的时间、地点范围、运营商/网络类型、设备、OS/浏览器/Extension 版本、Logto 固定版本和当前构建下，用户无需 VPN/代理/特殊 DNS 即可完成被实际执行的流程。它不证明多地域、多运营商长期可用性、P95/SLA、正式分发、恢复消息送达、生产运维、合规或 DR。无法切换到真实固定宽带或移动网络时，对应结果必须为 `BLOCKED — USER ACTION REQUIRED`，MVP Development Gate 也保持 `BLOCKED`；不得用 synthetic probe、`.invalid` fixture 或推测替代。
 
-一次或少量偶然成功不得判定为 `PASS`；缺少预先冻结的阈值或可审计证据时，结果只能是 `NOT VERIFIED`。
-
-必须验证：
-
-- public DNS、TLS chain、Web、API 和 self-hosted Logto endpoint；
-- OIDC discovery、authorize、callback、token、JWKS、refresh 和 direct revoke；只有另行批准 provider logout 时才验证 end-session；
-- Web signup/login/session restore/local logout；
-- Extension `launchWebAuthFlow`、`chromiumapp.org` redirect interception、首次 `/auth/session`、`/auth/me`、refresh 与 logout；
-- Extension 在中国大陆普通网络上的完整分发生命周期：支持的 Chromium 浏览器必须有无需代理可达的安装渠道，不得默认假设 Chrome Web Store 可用；发布包必须由受控私钥签名并保持稳定 Extension ID，签名私钥不得进入仓库、构建日志或分发主机；
-- Extension 的 update manifest 与 artifact host 必须无需代理可达，并验证包完整性、版本固定、分阶段发布、失败回滚、N-1 客户端兼容以及旧版本最低支持/强制升级语义；验收必须覆盖全新安装、N-1 升级和回滚，而不只是已安装开发包；
-- 邮箱或 SMS 验证、忘记密码和账号恢复的实际送达；
-- 新用户运行时不依赖 Auth0、Logto Cloud、GitHub/GHCR、Google service、Have I Been Pwned、境外 CAPTCHA/CDN 或其他未批准且可能不可达的域名；构建/升级 artifact 应使用可审计镜像或缓存；
-- 失败时清晰降级且不泄露 raw provider error、token 或用户枚举信息。
-
-大陆区域 synthetic probe 可作为持续监控，但不能替代真实 Chrome/Web 普通网络验收。
-
-### 2. Protocol compatibility
+### 2. Protocol compatibility — ACTIVE
 
 针对固定 Logto 版本用真实响应证明：
 
@@ -166,18 +153,17 @@ JobPilot 的目标用户主要使用 BOSS 直聘、牛客、实习僧、猎聘�
 
 任何不匹配都必须通过明确 adapter 或重新审批的 contract 解决，不能静默削弱 JWT、PKCE、storage、session 或 identity 校验。
 
-### 3. Self-hosted operations and security
+### 3. Production Release Gate — DEFERRED
 
-上线前必须具备：
+以下要求全部保留，但不得阻塞当前 MVP 开发，也不得在本轮写成 PASS：
 
-- Logto 与 JobPilot 业务数据库的清晰 ownership/backup 边界，恢复演练和数据库 alteration runbook；
-- 固定版本、漏洞/安全公告跟踪、可审计镜像、升级回滚和 connector 供应链管理；
-- HTTPS、key/secret vault、签名密钥轮换、最小化 Admin Console 暴露和单管理员恢复流程；
-- 登录/恢复限流、防枚举、密码策略、邮件/SMS sender reputation 与滥用告警；
-- 可用性、延迟、错误率、证书/DNS、邮件/SMS delivery 和备份监控；
-- provider 数据、日志、备份、删除和事故响应责任说明；
-- Self-hosted Logto 的 identity database、audit/security logs 与 backups 属于 JobPilot-controlled stores，必须进入删除传播、backup expiry、restore quarantine/ledger 和 incident-response scope；不能沿用 managed-SaaS DPA 例外；
-- 根据实际部署位置完成适用的 ICP、数据保护、网络安全和跨境依赖合规评估。本文记录工程门禁，不构成法律意见。
+- 多运营商、多地域、重复运行、长期观测窗口，以及预先冻结的 timeout、成功率、P95 和正式 SLA 矩阵；
+- Extension 正式签名、稳定生产 ID、无代理分发渠道、update manifest/artifact host、N-1 compatibility、staged rollout、forced upgrade 和 production rollback；
+- 完整生产数据库备份/恢复演练、backup expiry、restore quarantine/ledger 和 disaster recovery；
+- 正式邮件/SMS 验证与账号恢复送达 SLA；本 MVP Slice 不配置 SMS；
+- production monitoring/alerting、证书/DNS、secret/key vault、Admin Console 加固、漏洞/升级/回滚、connector 供应链和事故响应；
+- Self-hosted Logto identity database、credential store、audit/security logs 与 backups 的删除传播、数据生命周期和安全响应；
+- ICP、数据保护、网络安全和跨境依赖合规评估。本文记录工程门禁，不构成法律意见。
 
 ## Impact Analysis
 
@@ -210,7 +196,7 @@ Self-hosted Logto 的 identity records、credential store、audit/security logs 
 
 ### Delivery and schedule
 
-Task 8 保持暂停。若本 ADR 获批，应先执行独立的 Logto deployment/protocol/Mainland verification slice，再决定是否授权认证 adapter 迁移和最终 Phase 2B acceptance。Phase 3 必须继续等待 Phase 2B 生产 identity decision 和验收，不得并行绕过。
+Task 8 保持暂停。当前先执行已授权的 Logto deployment/protocol/Mainland MVP Verification Slice；其 Summary 完成后，再由项目负责人决定是否另行授权 Minimal Logto Adapter Migration 和最终 Phase 2B acceptance。Phase 3 必须继续等待 Phase 2B 生产 identity decision 和验收，不得并行绕过。
 
 ## Rejected or Deferred Alternatives
 
@@ -241,13 +227,16 @@ Task 8 保持暂停。若本 ADR 获批，应先执行独立的 Logto deployment
 
 ## Approval Gate Outcome
 
-**Current result: `PROPOSED / AWAITING PROJECT-OWNER APPROVAL`.**
+**Current result: `ACCEPTED — PROVIDER DIRECTION / VERIFICATION SLICE ACTIVE`.**
 
 - Task 8 real-provider configuration and integration: `PAUSED`.
 - Real Auth0 production selection: `NOT APPROVED`.
-- Self-hosted Logto OSS production selection: `PREFERRED CANDIDATE / NOT YET APPROVED`.
-- Mainland ordinary-network verification: `NOT VERIFIED`.
-- Authentication business-code migration: `NOT STARTED`.
+- Self-hosted Logto OSS provider direction: `ACCEPTED`.
+- Logto Verification Slice: `AUTHORIZED / ACTIVE`.
+- Logto Production Readiness: `NOT VERIFIED`.
+- MVP Mainland ordinary-network smoke: `NOT VERIFIED`.
+- Production Release Gate: `DEFERRED`.
+- Authentication business-code migration: `NOT AUTHORIZED`.
 - Phase 3: `NOT AUTHORIZED`.
 
-批准前到此停止。项目负责人可以接受本 ADR、要求修改比较/验收门槛，或拒绝首选方向；任何一种决定都必须先记录，再开始真实资源配置或代码迁移。
+本 Slice 完成后必须输出脱敏 Verification Summary 并停止。若 MVP Development Gate 为 PASS，唯一候选下一步是 `Minimal Logto Adapter Migration`，仍须项目负责人单独授权；不得自动开始 Task 8、迁移或 Phase 3。

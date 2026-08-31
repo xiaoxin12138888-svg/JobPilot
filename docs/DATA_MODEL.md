@@ -1,6 +1,6 @@
 # JobPilot MVP 核心数据模型（Phase 1–4）
 
-> 文档状态：Phase 0 已批准的概念/逻辑模型；User/Identity 与 Task 6 最小 WebSession/LoginTransaction schema 已在 Phase 2B 实现。ADR-007 重开生产 IdP 选择，但不改变 `(issuer, subject) -> User.id` 或当前 schema（本文仍不是迁移文件或公共 API DTO）
+> 文档状态：Phase 0 已批准的概念/逻辑模型；User/Identity 与 Task 6 最小 WebSession/LoginTransaction schema 已在 Phase 2B 实现。ADR-007 已接受 Self-hosted Logto OSS provider 方向并授权隔离验证，但不改变 `(issuer, subject) -> User.id` 或当前 schema（本文仍不是迁移文件或公共 API DTO）
 >
 > 展开范围：`User`、`Job`、`Application`、`ResumeVersion` 四个核心实体，以及 `Application` 内部的最小状态事件子记录  
 > 仅预留：`Interview`、`Document`、`Evidence`

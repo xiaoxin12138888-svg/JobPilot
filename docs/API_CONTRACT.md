@@ -1,6 +1,6 @@
 # JobPilot API Contract
 
-> 状态：Phase 0–2A 已批准；Task 6 Web session endpoints 与 Task 7 Extension public-client contract 已确定性实现并通过 Task 7H 门禁。ADR-007 正在重选生产 IdP；公共 `/auth/session`、`/auth/me` 与双 transport contract 不变，真实 Auth0/Logto 配置均暂停
+> 状态：Phase 0–2A 已批准；Task 6 Web session endpoints 与 Task 7 Extension public-client contract 已确定性实现并通过 Task 7H 门禁。ADR-007 已接受 Self-hosted Logto OSS provider 方向并授权隔离验证 Slice；公共 `/auth/session`、`/auth/me` 与双 transport contract 不变，迁移/生产/Task 8 仍暂停
 >
 > 覆盖范围：Roadmap Phase 1–4  
 > 路径：业务 API 使用 `/api/v1`；基础设施探针使用 `/health`
@@ -159,14 +159,14 @@ Phase 1–4 **不包含** interviews、documents、analytics、RAG、模拟面�
 
 ## 3. 认证机制与传输：Phase 2A Accepted Contract
 
-[ADR-006](DECISIONS/ADR-006-authentication-strategy.md) 的当前已实现 reference adapter 使用 Auth0 Universal Login + OIDC/OAuth 2.0，并按运行环境采用两种传输。ADR-007 已暂停真实 Auth0 配置并重开生产 IdP 选择；以下公共 transport 和 JobPilot endpoint 边界继续有效：
+[ADR-006](DECISIONS/ADR-006-authentication-strategy.md) 的当前已实现 reference adapter 使用 Auth0 Universal Login + OIDC/OAuth 2.0，并按运行环境采用两种传输。ADR-007 已接受 Self-hosted Logto OSS provider 方向并授权隔离 Verification Slice，但未授权迁移或生产 release；以下公共 transport 和 JobPilot endpoint 边界继续有效：
 
 - **Web**：FastAPI/BFF 完成 Authorization Code 流并签发 opaque、服务端可撤销的 host-only HttpOnly session cookie。React 不接收 provider access/refresh token。
 - **Extension**：`chrome.identity.launchWebAuthFlow` + Authorization Code + PKCE S256；可信 service worker 使用短生命周期 provider API-resource access bearer，并通过 rotating refresh token 续期。当前 deterministic token profile 与 Auth0 兼容，未来 provider 必须通过独立 compatibility Gate。
 - **FastAPI**：cryptographic provider proof 先生成不能访问业务资源的 `VerifiedProviderIdentity`；只有 Web callback 与 `POST /api/v1/auth/session` 可以用它 provision。本地 active User 映射成功后，Web session adapter 与 Extension bearer adapter 才生成同一种 `AuthenticatedUser`。Bearer 必须校验固定 issuer、audience、algorithm、token type、authorized party、JWKS、时间与 `sub`；ID token、query token 和冲突双凭据均被拒绝。
 - **本地 User**：唯一映射为 `(identity_issuer, identity_subject) -> User.id`；email 仅是 provider 已验证的可变属性，不能自动合并 identity。
 
-当前 Auth0 reference adapter 假定 IdP 承担注册/登录页面、provider-managed email/password、邮箱验证、密码恢复、Extension authorize/token/revoke 等 provider 协议。若 ADR-007 后续批准 Logto，责任仍由独立 IdP software surface 承担，但部署、补丁、数据库、connector 和事故响应转由 JobPilot 运维。无论选择哪个 provider，JobPilot 业务 API 都不复制 `/register`、password `/login`、`/refresh`、`/verify-email` 或 `/reset-password` endpoint，也不接收用户密码。
+当前 Auth0 reference adapter 假定 IdP 承担注册/登录页面、provider-managed email/password、邮箱验证、密码恢复、Extension authorize/token/revoke 等 provider 协议。经 ADR-007 接受的 Logto 方向继续由独立 IdP software surface 承担这些协议责任，但部署、补丁、数据库、connector 和事故响应转由 JobPilot 运维。无论选择哪个 provider，JobPilot 业务 API 都不复制 `/register`、password `/login`、`/refresh`、`/verify-email` 或 `/reset-password` endpoint，也不接收用户密码。
 
 Web cookie-authenticated unsafe request 必须提供 session-bound `X-CSRF-Token` 并通过精确 `Origin`/Fetch Metadata 校验。Extension bearer 只由 trusted service worker 附加，不进入 popup DOM、content script、页面、URL、日志或 `storage.sync`。生产 CORS 只允许精确 Web origin 与稳定的 `chrome-extension://<id>` origin；不得使用 `*`。
 
@@ -662,7 +662,7 @@ Phase 4 不提供覆盖文件、对象存储直链、解析文本、AI 评分或
 
 - [x] Managed/self-hosted/OAuth-centric 选项、Web/Extension transport、FastAPI identity/authorization boundary 和账号删除政策已形成并获批准。
 - [x] Provisional password `/register`/`/login` contract 已移除；provider 与 JobPilot endpoint ownership 已明确。
-- [x] 项目负责人批准 ADR-006、Auth0 reference adapter 与 deterministic Phase 2B 实施范围；ADR-007 后续暂停真实 Auth0 配置并重开生产 IdP 选择。
+- [x] 项目负责人批准 ADR-006、Auth0 reference adapter 与 deterministic Phase 2B 实施范围；ADR-007 后续接受 Self-hosted Logto OSS provider 方向，并只授权隔离 Verification Slice。
 
 ### Task 7 当前确定性验收
 
@@ -704,4 +704,4 @@ Phase 4 不提供覆盖文件、对象存储直链、解析文本、AI 评分或
 
 ## 12. 当前开放的 live-integration 与 account-lifecycle 决策
 
-ADR-006 的 deterministic Task 6/7 实现、依赖与 public-client/no-secret boundary 已完成。ADR-007 现暂停真实 Auth0 配置并重开生产 IdP 选择；Self-hosted Logto OSS 是首选候选但尚未批准。真实 integration/production acceptance 要求项目负责人先批准 provider 方向，再验证中国大陆普通网络可达性、部署/增长成本、数据处理与 retention，并冻结 dev/prod issuer、resource/audience、authorized-party/public client-ID allowlist、schemeful-same-site Web/API origins、稳定 Extension IDs、精确 chromiumapp callback、Extension CORS origin、claim allowlist、session/access-token lifetimes、clock skew、rotation/reuse/token-cutoff 语义及 server secret storage。Extension 永远不使用 client secret。Recent reauthentication、revoke-all、restore-ledger KMS/key retention、account deletion provider capability 与最小 Management API scopes 仍需未来单独批准。其他新增资源、AI/RAG 能力和简历内容访问均由后续 Roadmap Phase 按需扩展。
+ADR-006 的 deterministic Task 6/7 实现、依赖与 public-client/no-secret boundary 已完成。ADR-007 已接受 Self-hosted Logto OSS provider 方向，但当前只授权隔离开发 Verification Slice。该 Slice 必须冻结真实 issuer、resource/audience、authorized-client claim、Web confidential 与 Extension public-client profile、精确 callback/CORS、claim allowlist、access-token lifetime、clock skew、rotation/reuse/revoke 语义，并证明公共 `/auth/session`、`/auth/me` 和 local `User.id` 映射不变；Extension 永远不使用 client secret。Production Release Gate、adapter migration、Task 8、recent reauthentication、revoke-all、restore-ledger KMS/key retention、account deletion provider capability 与任何 Management API scopes 仍需未来单独批准。其他新增资源、AI/RAG 能力和简历内容访问均由后续 Roadmap Phase 按需扩展。

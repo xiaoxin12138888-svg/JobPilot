@@ -4,7 +4,7 @@
 - **Date**：2026-08-30
 - **Decision owner**：JobPilot 项目负责人
 
-> **Architecture change notice（2026-08-31）**：[ADR-007](ADR-007-mainland-china-identity-provider.md) 因新增“中国大陆普通网络无代理可用”硬约束，重新打开生产 Identity Provider 选择。真实 Auth0 配置和联调已暂停。本 ADR 保留 Accepted 状态，其 provider-neutral identity、Web session、Extension PKCE、FastAPI authorization 与数据安全边界继续有效；不得把本记录解释为继续创建或绑定真实 Auth0 资源的授权。若 ADR-007 获批，只把本 ADR 的生产 provider selection 标为 `amended / superseded in part by ADR-007`，不废止其余边界。
+> **Architecture change notice（2026-08-31）**：[ADR-007](ADR-007-mainland-china-identity-provider.md) 因新增“中国大陆普通网络无代理可用”硬约束，已接受 Self-hosted Logto OSS 作为 V1 provider direction，并将本 ADR 的 Auth0 production selection 标为 `amended / superseded in part`。本 ADR 继续以 Accepted 状态保留 provider-neutral identity、Web session、Extension PKCE、FastAPI authorization 与数据安全边界；不得把方向批准解释为迁移、生产资源、Task 8 或 Phase 3 授权。
 
 ## Context
 

@@ -2,9 +2,9 @@
 
 ## Objective
 
-Implement the approved minimum authentication closure across React Web, Chrome Manifest V3 Extension, FastAPI, and PostgreSQL. Both credential transports must resolve the same verified `(issuer, subject)` to one local JobPilot `User.id`. The new production constraint is: **Core JobPilot workflow must operate without VPN/proxy in Mainland China.** Task 8 real-provider work is paused at ADR-007; this plan stops before Phase 3 and does not implement Job, Application, Resume, AI, RAG, account-management consoles, or enterprise IAM.
+Implement and verify the approved minimum authentication closure across React Web, Chrome Manifest V3 Extension, FastAPI, and PostgreSQL. Both credential transports must resolve the same verified `(issuer, subject)` to one local JobPilot `User.id`. ADR-007 is `Accepted — Provider Direction`; the active work is the isolated `Logto Verification Slice — Protocol & Mainland MVP Gate`. This plan stops before migration, Task 8 and Phase 3 and does not implement Job, Application, Resume, AI, RAG, account-management consoles, or enterprise IAM.
 
-Phase 2A is preserved in commit `e3c4999` (`docs(auth): define phase 2 authentication architecture`). Task 6 is approved at the clean `ff8593c` baseline, and Task 7 is complete. ADR-007 now reopens the production Identity Provider choice: Self-hosted Logto OSS is the preferred candidate but not approved, Auth0 is no longer default-approved, and neither provider may be configured. Deterministic tests continue to use `.invalid` configuration and local fake protocol responses.
+Phase 2A is preserved in commit `e3c4999` (`docs(auth): define phase 2 authentication architecture`). Task 6 is approved at the clean `ff8593c` baseline, and Task 7 is complete. ADR-007 accepts Self-hosted Logto OSS as the V1 provider direction, keeps Auth0 adapter/fixtures, and authorizes only fixed-version isolated development verification. Deterministic tests continue to use `.invalid` configuration except for explicitly recorded live Logto evidence.
 
 ## Approved Contract Slice
 
@@ -98,7 +98,7 @@ Extension bearer
 
 The project owner's current Task 6 instruction supersedes the older Phase-level numbering that split persistence, BFF flow, and Web UI into Tasks 6–8. Current Task 6 is one bounded Web server-backed authentication closure delivered through the following independently tested sub-slices. Recent reauthentication and revoke-all are deferred; Task 7 is Extension Authorization Code + PKCE.
 
-**Current status:** Task 6A–6D are approved. Task 7A–7G and the Task 7H deterministic validation/review/documentation gate are complete on `phase/2-authentication`. Task 8 is paused by the ADR-007 Architecture Change Gate. Self-hosted Logto OSS is the preferred candidate but not approved; Auth0 is no longer default-approved for production. Chrome Load unpacked, real provider behavior, account recovery, and Mainland ordinary-network availability remain `NOT VERIFIED / BLOCKED`.
+**Current status:** Task 6A–6D are approved. Task 7A–7G and the Task 7H deterministic validation/review/documentation gate are complete on `phase/2-authentication`. ADR-007 accepts Self-hosted Logto OSS as the provider direction and authorizes only the isolated Verification Slice. Task 8, adapter migration, Production Release Gate and Phase 3 remain paused; Chrome, real protocol, same identity and Mainland fixed/mobile smoke remain `NOT VERIFIED / BLOCKED`.
 
 ### Task 7 delivery record
 
@@ -304,9 +304,23 @@ The project owner's current Task 6 instruction supersedes the older Phase-level 
 
 **Dependencies:** Tasks 7A–7G.
 
+### Logto Verification Slice: Protocol & Mainland MVP Gate
+
+**Status:** Authorized and active. This is a risk-first verification slice, not adapter migration.
+
+**Acceptance:** Pin one official Logto OSS version and immutable artifact; run local/isolated Logto with independent PostgreSQL; configure only Web confidential, Extension public/no-secret and JobPilot API resource; verify Web OIDC, Extension PKCE, API JWT profile, refresh/revoke, same identity and point-in-time fixed/mobile no-proxy smoke without weakening Task 5–7 contracts.
+
+**Verify:** Record official sources and redacted runtime evidence; classify refresh/revoke as `COMPATIBLE | ADAPTER CHANGE REQUIRED | CONTRACT INCOMPATIBLE`; classify reuse as `UNCHANGED | MINOR ADAPTER CHANGE | MAJOR CONTRACT CHANGE`; publish [Logto Verification Summary](../docs/LOGTO_VERIFICATION_SUMMARY.md). Missing fixed/mobile network switching is `BLOCKED — USER ACTION REQUIRED`, never inferred PASS.
+
+**Dependencies:** Tasks 5, 6 and 7 plus ADR-007 acceptance.
+
+**Likely files:** ADR/architecture/roadmap/tasks, an isolated development Compose/config template if the runtime is available, ignored local evidence/config, and only minimal regression fixtures if a real mismatch or bug is found.
+
+**Explicitly deferred:** multi-carrier/region long-window matrix, production Extension distribution/update/rollback, backup/restore/DR, recovery SLA, production monitoring and compliance.
+
 ### Task 8: Phase 2B Integration & Authentication Acceptance
 
-**Status:** Paused by ADR-007. Do not create/bind real Auth0 or Logto resources and do not resume from deterministic Task 7 completion. Task 8 requires: (1) project-owner approval of ADR-007, (2) a separately approved provider deployment/protocol/Mainland verification slice, and (3) explicit authorization after that slice reports its real results.
+**Status:** Paused. ADR-007 direction approval and Verification Slice authorization do not authorize Task 8. Resume requires the Slice summary plus a separate project-owner decision on Minimal Logto Adapter Migration/Task 8.
 
 **Acceptance:** Web cookie and Extension bearer for one provider identity return the same User ID; unauthorized and cross-user requests reveal no user data; exact CORS/cookie properties pass; secrets/tokens/raw provider errors are absent from tracked files, logs, and responses.
 
@@ -348,7 +362,7 @@ The following advanced future designs remain documented but are not over-enginee
 | Risk                                                         | Impact                                     | Mitigation                                                                                                |
 | ------------------------------------------------------------ | ------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
 | No PostgreSQL runtime is initially available on this machine | Migration acceptance cannot be proven      | Provision a temporary local PostgreSQL instance before database work; never substitute SQLite             |
-| Production Identity Provider is not approved                 | Live hosted flow cannot be verified        | Complete ADR-007 first; do not configure Auth0/Logto or infer approval from deterministic tests           |
+| Logto verification runtime is unavailable locally            | Live protocol evidence cannot be produced  | Report the exact runtime blocker; do not install system software or use production resources implicitly   |
 | Mainland ordinary-network flow is unavailable or untested    | Core JobPilot workflow fails a hard gate   | Verify Web, Extension, recovery and runtime dependencies on approved no-proxy fixed/mobile network matrix |
 | Web/Extension claim drift                                    | Same human could map differently           | Freeze issuer/subject and verified-email claim validation; cross-transport test the same fixture          |
 | Cookie CORS/CSRF misconfiguration                            | Session abuse or broken production login   | Exact schemeful-same-site configuration validation and negative tests                                     |
@@ -359,4 +373,4 @@ The following advanced future designs remain documented but are not over-enginee
 
 [ADR-007](../docs/DECISIONS/ADR-007-mainland-china-identity-provider.md) compares Self-hosted Logto OSS, current Auth0, and FastAPI self-hosted authentication. It preserves the implemented provider-neutral boundaries and identifies the minimal future Logto seams: Web provider/composition wiring, Extension `audience` versus RFC 8707 `resource`, exact token/claim/client profile, refresh/reuse/revoke behavior, provider configuration and focused fixtures. Its Mainland Gate also requires objective PASS/FAIL fields to be frozen before testing and covers Extension installation, controlled signing/stable ID, reachable update hosting, N-1 compatibility, and rollback without assuming Chrome Web Store reachability.
 
-Current result: `PROPOSED / AWAITING PROJECT-OWNER APPROVAL`. No Auth0 or Logto tenant/application/configuration is authorized. If the owner approves Logto as the preferred candidate, the next work is a separate deployment/protocol/Mainland verification plan—not immediate business-code migration. Until that verification and a subsequent authorization pass, Task 8 and Phase 3 remain paused.
+Current result: `ACCEPTED — PROVIDER DIRECTION / VERIFICATION SLICE ACTIVE`. Only isolated development Logto/PostgreSQL and the three minimal verification resources are authorized. Production Release Gate is `DEFERRED`; adapter migration, Task 8 and Phase 3 remain paused regardless of direction approval.

@@ -6,13 +6,14 @@ JobPilot 不替代招聘网站，也不建设或批量抓取招聘职位数据�
 
 ## 当前阶段
 
-Phase 0、Phase 1 和 Phase 2A 已完成评审并获得项目负责人明确批准。项目当前严格处于 **Phase 2B — Authentication Implementation & User Boundary** 的 Architecture Change Gate。
+Phase 0、Phase 1 和 Phase 2A 已完成评审并获得项目负责人明确批准。项目当前严格处于 **Phase 2B — Authentication Implementation & User Boundary** 的 `Logto Verification Slice — Protocol & Mainland MVP Gate`。
 
-- [ADR-006](docs/DECISIONS/ADR-006-authentication-strategy.md) 是已实现认证边界的 Accepted 历史记录；新增 [ADR-007](docs/DECISIONS/ADR-007-mainland-china-identity-provider.md) 正在评审生产 Identity Provider。
+- [ADR-006](docs/DECISIONS/ADR-006-authentication-strategy.md) 的 provider-neutral 认证边界继续 Accepted；[ADR-007](docs/DECISIONS/ADR-007-mainland-china-identity-provider.md) 已是 `Accepted — Provider Direction`。
 - 新增硬约束：**Core JobPilot workflow must operate without VPN/proxy in Mainland China.**
 - Task 6 已获项目负责人批准；Task 7A–7G 的 Extension Authorization Code + PKCE 确定性实现及 Task 7H 自动化、审查、简化和文档门禁均已完成。Task 8 的真实 provider 配置和联调现已暂停。
 - 当前实现覆盖 Web 与 Extension 两种认证 transport、FastAPI/PostgreSQL 的最小认证闭环，以及由 Task 5 建立的 `issuer + subject -> JobPilot User.id` 服务端边界。
-- Self-hosted Logto OSS 是当前首选候选，但尚未批准或迁移；Auth0 不再默认批准为生产 provider。不得创建真实 Auth0/Logto 资源或绑定 IDs、origins、redirects、connectors 与 secrets。
+- Self-hosted Logto OSS 已批准为 V1 首选 provider 方向，但尚未证明 MVP compatibility 或 production readiness；Auth0 不再是生产默认，现有 adapter/fixtures 保留。
+- 当前只允许创建隔离开发 Logto、独立 Identity DB、Web confidential app、Extension public app 与 JobPilot API resource；不允许生产/收费资源、迁移、社交登录、MFA、RBAC 或短信。
 - 自动化继续使用 deterministic fake issuer/JWKS；Chrome Load unpacked、真实 provider flow 和中国大陆普通网络可用性均为 `NOT VERIFIED / BLOCKED`。
 - 本阶段不实现 Job、Application、Resume、AI、RAG 或其他 Phase 3+ 能力；Phase 2B 验收前不得进入 Phase 3。
 
@@ -25,7 +26,7 @@ Phase 0、Phase 1 和 Phase 2A 已完成评审并获得项目负责人明确批�
 - `packages/shared-types`：共享 health、批准的 `UserView` 与 CSRF response 类型。
 - `packages/api-client`：分别封装 Web cookie transport 与 Extension bearer transport；Extension 首次登录依次调用 `/auth/session` 和 `/auth/me`，请求固定使用 `credentials: omit`，并只投影批准的 User 字段。
 
-当前仓库仍没有 Job、Application、Resume 等 Phase 3+ 业务 persistence、招聘网站解析或 AI/RAG。当前 Auth0-compatible deterministic implementation 保留不变；任何真实 provider flow 都必须等待 ADR-007 和后续 provider verification/migration slice 获得项目负责人批准。
+当前仓库仍没有 Job、Application、Resume 等 Phase 3+ 业务 persistence、招聘网站解析或 AI/RAG。当前 Auth0-compatible deterministic implementation 保留不变；本轮只验证真实 Logto 协议并记录最小 adapter 影响，不实施迁移。
 
 ## 目标技术栈
 
@@ -126,13 +127,13 @@ pnpm dev:extension
 - 多个 CORS origin 使用逗号分隔；任何环境都拒绝 `*`。生产环境必须在启动 API 的运行环境中显式注入精确 origin。
 - 生产 Web host 必须把 `/auth/error` rewrite 到 SPA entry，并在部署层配置经评审的 CSP 与安全响应头；仓库不使用宽松的 meta CSP 伪装生产配置。
 
-真实 Extension 登录当前受 ADR-007 Architecture Change Gate 阻断：
+真实 Extension 登录当前仅允许在 ADR-007 的隔离验证 Slice 中执行：
 
 1. 不执行原 Auth0 tenant/application/API audience setup checklist，不绑定真实 Auth0 Client ID 或 Extension ID。
-2. 不直接创建 Self-hosted Logto OSS 生产实例或迁移代码；先等待项目负责人审批 ADR-007。
-3. 若 Logto 方向获批，后续独立 Gate 必须冻结 exact issuer/resource、Web confidential client、Extension public/SPA client、callback/CORS、claims、5–10 分钟 access-token 上限、refresh rotation/reuse/revoke 语义与 connector。
-4. Web、Extension、账号恢复和全部运行时依赖必须在中国大陆普通网络、无 VPN/代理条件下实测；`.invalid` fixture 不构成可达性证据。
-5. 在真实 provider 和 Mainland acceptance 通过前，不开始 Task 8 或 Phase 3。
+2. 只创建 local / isolated development Logto、独立 PostgreSQL、Web confidential client、Extension public client 和 API resource；不创建生产资源或迁移代码。
+3. 冻结 exact issuer/resource、callback/CORS、claims、5–10 分钟 access-token 上限及 refresh rotation/reuse/revoke 语义；发现差异只分类，不放宽现有安全契约。
+4. Web/Extension 核心登录链路必须在中国大陆固定宽带和移动网络、无 VPN/代理/特殊 DNS 条件下各做一次 MVP smoke；`.invalid` fixture 不构成证据。完整矩阵和正式分发/恢复/运维/合规为 Production Release Gate。
+5. 即使 MVP Gate 通过，也只能提交 `Minimal Logto Adapter Migration` 授权请求；未经另行批准，不开始 migration、Task 8 或 Phase 3。
 
 ### 验证命令
 

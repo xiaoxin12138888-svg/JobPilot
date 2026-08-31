@@ -109,7 +109,7 @@
 - [x] Report Chrome Load unpacked as `NOT VERIFIED` and real Auth0 Web/Extension as `BLOCKED / USER ACTION REQUIRED`.
 - [x] Stop before Task 8 and Phase 3; wait for explicit project-owner approval.
 
-## ADR-007 Architecture Change Gate
+## ADR-007 Decision & Logto Verification Slice
 
 - [x] Pause Task 8 real Auth0 configuration/integration and keep Phase 3 out of scope.
 - [x] Record the hard constraint: **Core JobPilot workflow must operate without VPN/proxy in Mainland China.**
@@ -119,9 +119,21 @@
 - [x] Add ADR-007 as `Proposed` and synchronize architecture/roadmap/task status.
 - [x] Require the future Mainland acceptance matrix to freeze carrier/region/network coverage, runs/windows, timeout, success/P95, recovery-delivery, redacted evidence, `FAIL`, `NO-CUTOVER`, and rollback criteria before testing; one accidental success is never `PASS`.
 - [x] Add a no-proxy Extension distribution Gate for installation, controlled signing/stable Extension ID, reachable update manifest/artifact hosting, N-1 compatibility, and rollback; do not assume Chrome Web Store reachability and never commit the signing private key.
-- [ ] Obtain explicit project-owner approval, requested changes, or rejection for ADR-007.
-- [ ] If approved, separately authorize and complete fixed-version Logto deployment/protocol/Mainland ordinary-network and Extension distribution verification before any migration.
-- [ ] Resume Task 8 only after the selected provider passes its Gate and the project owner explicitly authorizes implementation.
+- [x] Obtain explicit project-owner approval with gate-layer correction; ADR-007 is `Accepted — Provider Direction`.
+- [x] Authorize only `Logto Verification Slice — Protocol & Mainland MVP Gate`; keep migration, Task 8 and Phase 3 paused.
+- [ ] Pin an official Logto OSS version, release/license, immutable image/source, PostgreSQL reference and minimum runtime; never use `latest`.
+- [ ] Run local/isolated Logto with an independent Identity PostgreSQL and no production/paid resources.
+- [ ] Configure only Web confidential application, Extension public/no-secret application and JobPilot API resource; no social/MFA/RBAC/SMS.
+- [ ] Verify real Web OIDC and record exact issuer/discovery/endpoints/client-auth/ID-token profile without secrets.
+- [ ] Verify Extension Authorization Code + PKCE S256, exact callback, resource token, offline access, replacement refresh and revoke; classify compatibility.
+- [ ] Prove Web/Extension issuer+subject equality and same JobPilot `User.id` through existing `/auth/session` and `/auth/me` boundaries.
+- [ ] Run one no-proxy/no-special-DNS fixed-broadband smoke and one mobile/hotspot smoke, or mark each `BLOCKED — USER ACTION REQUIRED`.
+- [ ] Prove the core runtime has no unapproved/uncontrolled dependency host; retain only a redacted dependency-host list and never raw token/code/verifier/secret evidence.
+- [ ] Publish the redacted Logto Verification Summary, Task 5–7 reuse grade, bugs and security review; do not implement adapter changes in this Slice.
+- `DEFERRED TO PRODUCTION RELEASE GATE`: multi-carrier/region long-window matrix and timeout/success/P95/SLA thresholds.
+- `DEFERRED TO PRODUCTION RELEASE GATE`: formal Extension signing/distribution/update host, N-1, staged/forced update and rollback.
+- `DEFERRED TO PRODUCTION RELEASE GATE`: full backup/restore/DR, formal recovery-delivery SLA, monitoring, ICP/compliance and production operations hardening.
+- [ ] If the MVP Gate passes, stop and request separate authorization for `Minimal Logto Adapter Migration`; do not automatically resume Task 8 or Phase 3.
 
 ## Integration, Authorization, and Security
 

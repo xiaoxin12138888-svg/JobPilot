@@ -1,16 +1,16 @@
 # JobPilot Authentication Architecture
 
-> **Status**：Phase 2A provider-neutral boundaries remain Accepted; Task 6 Web server-backed session and Task 7 Extension Authorization Code + PKCE are deterministically implemented. Task 8 real-provider work is paused at the ADR-007 Architecture Change Gate.
+> **Status**：Phase 2A provider-neutral boundaries remain Accepted; ADR-007 is `Accepted — Provider Direction`. The isolated Logto Protocol & Mainland MVP Verification Slice is active; migration, Task 8, production release and Phase 3 remain paused.
 >
-> **Decision records**：[ADR-006](DECISIONS/ADR-006-authentication-strategy.md)（implemented historical strategy）; [ADR-007](DECISIONS/ADR-007-mainland-china-identity-provider.md)（Proposed production-provider change）
+> **Decision records**：[ADR-006](DECISIONS/ADR-006-authentication-strategy.md)（Accepted provider-neutral contract）; [ADR-007](DECISIONS/ADR-007-mainland-china-identity-provider.md)（Accepted provider direction）
 >
-> **Implementation gate**：Satisfied for the Task 6 Web and Task 7 Extension deterministic code/test slices. Do not create or bind real Auth0/Logto resources, migrate authentication code, start Task 8, or enter Phase 3 until ADR-007 and a separate provider verification slice are approved. Chrome Load unpacked and Mainland ordinary-network availability are not verified.
+> **Implementation gate**：Only local/isolated Logto verification resources are authorized. Do not create production/paid provider resources, migrate authentication code, start Task 8, or enter Phase 3. Chrome and Mainland ordinary-network results remain unverified until this Slice records real evidence.
 
 ## 1. Scope
 
-This document defines how the Web app, Chrome Extension, and FastAPI share one user identity while using transports appropriate to each runtime. It is both the accepted Phase 2B provider-neutral boundary and the implementation contract: Task 6 implements the Web/BFF/session portions and Task 7 implements the deterministic Extension public-client lifecycle. The current infrastructure adapter and fake protocol profile are Auth0-compatible; the production Identity Provider is reopened by ADR-007.
+This document defines how the Web app, Chrome Extension, and FastAPI share one user identity while using transports appropriate to each runtime. It is both the accepted Phase 2B provider-neutral boundary and the implementation contract: Task 6 implements the Web/BFF/session portions and Task 7 implements the deterministic Extension public-client lifecycle. The current infrastructure adapter and fake protocol profile are Auth0-compatible; ADR-007 accepts Self-hosted Logto OSS as the provider direction while leaving migration and production readiness gated.
 
-The implemented reference uses Auth0 as a managed OIDC identity provider. Production is not approved to use Auth0 while ADR-007 is open. Self-hosted Logto OSS is the preferred candidate, subject to Mainland reachability, protocol, recovery, operations, security, and compliance verification. In either case the provider software owns the credential protocol surface while JobPilot owns its local User, Web sessions, business authorization, account deletion orchestration, PostgreSQL business data, and all future private objects. With Self-hosted Logto, its identity database, logs and backups are also JobPilot-controlled stores; only a managed provider's inaccessible records may be handled through DPA/tenant disclosure.
+The implemented reference uses Auth0 as a managed OIDC identity provider. ADR-007 amends that production selection: Self-hosted Logto OSS is the accepted V1 provider direction, while Auth0 is retained only as the current adapter/fixture history and is not production-default. Protocol compatibility, Mainland MVP smoke and production readiness remain separate evidence gates. In either case the provider software owns the credential protocol surface while JobPilot owns its local User, Web sessions, business authorization, account deletion orchestration, PostgreSQL business data, and all future private objects. With Self-hosted Logto, its identity database, logs and backups are also JobPilot-controlled stores; only a managed provider's inaccessible records may be handled through DPA/tenant disclosure.
 
 The design deliberately does not include organizations, teams, roles, administrator matrices, enterprise SSO, a custom password database, or a JobPilot OAuth server.
 
@@ -20,9 +20,9 @@ The hard production constraint is:
 
 > **Core JobPilot workflow must operate without VPN/proxy in Mainland China.**
 
-This includes Web signup/login/session recovery, Extension authorization/token refresh/logout, account recovery delivery, and every runtime dependency. Self-hosting is not itself proof of reachability. Until the project owner accepts ADR-007 and separately authorizes verification/migration, the current code remains unchanged, both real Auth0 and Logto configuration are prohibited, and no live-provider PASS may be claimed.
+This includes Web signup/login/session recovery, Extension authorization/token refresh/logout, account recovery delivery, and every runtime dependency. Self-hosting is not itself proof of reachability. ADR-007 now authorizes only a fixed-version local/isolated Logto, independent Identity DB and minimal Web/Extension/API resource for verification. The current code remains unchanged unless a later migration is separately authorized; production resources and live-provider PASS without recorded evidence remain prohibited.
 
-The proposed provider change must preserve `(issuer, subject) -> User.id`, the Web opaque session, Extension PKCE and trusted storage, `POST /api/v1/auth/session`, `/api/v1/auth/me`, `VerifiedProviderIdentity`, `AuthenticatedUser`, and resource ownership. Exact Logto `resource`, client-auth, claim, refresh/reuse and revoke semantics are compatibility gates, not assumptions.
+The accepted provider direction and any future migration must preserve `(issuer, subject) -> User.id`, the Web opaque session, Extension PKCE and trusted storage, `POST /api/v1/auth/session`, `/api/v1/auth/me`, `VerifiedProviderIdentity`, `AuthenticatedUser`, and resource ownership. Exact Logto `resource`, client-auth, claim, refresh/reuse and revoke semantics are compatibility gates, not assumptions.
 
 ## 2. Architecture Summary
 
@@ -391,7 +391,7 @@ V1 has one ordinary-user permission set. A generic RBAC layer would add complexi
 
 ## 12. Local Development and Configuration
 
-The Auth0-specific items below document the currently implemented adapter and deterministic profile; they are not active instructions to create a real tenant. ADR-007 pauses all real provider configuration.
+The Auth0-specific items below document the currently implemented adapter and deterministic profile; they are not active instructions to create a real tenant. ADR-007 permits only isolated Logto verification configuration.
 
 - Dev and production use separate Auth0 applications/clients and API audiences; production secrets never enter local `.env` or the repository.
 - Web localhost callbacks and the unpacked Extension callback are explicitly allowlisted, not wildcarded.
@@ -399,7 +399,7 @@ The Auth0-specific items below document the currently implemented adapter and de
 - Public Extension configuration comprises the canonical HTTPS issuer, same-origin fixed authorize/token/JWKS/revoke endpoints, API audience, Auth0 Extension public client ID, validated JobPilot API base URL, and exact Web origin. Remote API/Web values require HTTPS; HTTP is limited to exact `localhost`, `127.0.0.1`, or `[::1]` loopback. No Extension client secret exists.
 - Live Auth0 must use a Native/public application with Authorization Code + PKCE, `offline_access`, Rotating Refresh Token, approved access lifetime, and reviewed namespaced verified-email claims. FastAPI must receive the same public client ID for `azp` validation and exact `chrome-extension://<extension-id>` in `JOBPILOT_CORS_ORIGINS`; provider-side Allowed Web Origin/CORS for direct token/revoke is configured only if the real tenant requires it. Current revoke-only logout does not use an Auth0 hosted logout callback or Allowed Logout URL.
 - Production requires HTTPS and the two `__Host-` cookies. Explicit development mode on loopback may instead use `jobpilot_dev_session` and `jobpilot_dev_login_tx` with `HttpOnly; SameSite=Lax; Path=/; no Domain` and without `Secure`; the transaction cookie retains `Max-Age=600`. Those names are forbidden outside loopback development, and non-loopback insecure startup fails.
-- CI uses a deterministic fake issuer/JWKS and local session fixtures. It does not depend on a live provider tenant. After separate approval, a small manual/integration check against the selected non-production IdP verifies real redirect configuration and Mainland ordinary-network behavior.
+- CI uses a deterministic fake issuer/JWKS and local session fixtures. It does not depend on a live provider tenant. The authorized isolated Verification Slice performs the bounded manual/integration check against development Logto and records real redirect/protocol/Mainland evidence.
 - Provider domain, issuer, resource/audience, client IDs, exact origins, callback URLs, logout URLs, lifetimes, and required claims are validated configuration, not scattered literals.
 
 ## 13. Phase 2B Verification Requirements
@@ -416,7 +416,7 @@ The Auth0-specific items below document the currently implemented adapter and de
 
 ### 13.2 Remaining integration and deferred account-lifecycle gates
 
-- Task 8 is paused and may resume only after ADR-007 approval plus a separately approved provider deployment/protocol/Mainland verification slice; it still includes the test-only ownership fixture for user A versus user B resources;
+- The authorized Logto Verification Slice must finish and report its real protocol/Mainland results before any migration proposal; Task 8 remains paused and still includes the test-only ownership fixture for user A versus user B resources;
 - real Chrome Load unpacked, stable Extension origin/CORS, live provider redirect/token/rotation/revoke behavior, recovery delivery, and Mainland ordinary-network availability remain `NOT VERIFIED / BLOCKED`;
 - production reverse proxies must drop/redact credential-bearing query data and production origins/headers must be verified in the actual deployment;
 - the separately approved future account-deletion implementation must prove write-ahead marker gating, backup-restore quarantine, provider cutoff plus credential quarantine, non-reprovision, complete resource export/deletion, and fresh-User re-registration. These design gates do not claim that Task 6/7 shipped an account-deletion endpoint.
@@ -431,4 +431,4 @@ The Auth0-specific items below document the currently implemented adapter and de
 
 ## 15. Open Gate Items
 
-ADR-006 and the deterministic Task 6/7 Phase 2B slices are implemented and reviewed. ADR-007 is `Proposed`: Self-hosted Logto OSS is the preferred candidate, Auth0 is no longer default-approved for production, and neither provider may be configured yet. Exact deployment region/domain, ordinary-Mainland-network results, recovery connector, issuer/resource/endpoints, client types, stable Extension ID, redirect/CORS, token claims/lifetimes, refresh/reuse/revoke behavior, provider data lifecycle and operations runbook remain `USER ACTION REQUIRED / NOT VERIFIED`. Tests continue to use a fake issuer/JWKS. Chrome Load unpacked remains `NOT VERIFIED`; Task 8 and Phase 3 remain paused pending explicit approval.
+ADR-006 and the deterministic Task 6/7 Phase 2B slices are implemented and reviewed. ADR-007 is `Accepted — Provider Direction`: Self-hosted Logto OSS is selected for verification, Auth0 is no longer production-default, and only isolated development resources are authorized. Exact issuer/resource/endpoints, client types, development Extension callback, token claims/lifetimes, refresh/reuse/revoke behavior, same identity and point-in-time Mainland fixed/mobile smoke remain `NOT VERIFIED`. Formal Extension distribution, long-window network matrix, recovery SLA, production operations/compliance and DR are `DEFERRED TO PRODUCTION RELEASE GATE`. Tests continue to use fake fixtures unless explicitly running the isolated Slice; Task 8 and Phase 3 remain paused.
