@@ -1,6 +1,6 @@
 # ADR-006：采用托管 OIDC 身份与双通道会话
 
-- **Status**：Accepted
+- **Status**：Superseded by ADR-008; scheduled for removal from the active working tree
 - **Date**：2026-08-30
 - **Decision owner**：JobPilot 项目负责人
 

@@ -1,6 +1,6 @@
 # ADR-007：以中国大陆普通网络可用性重选生产身份供应商
 
-- **Status**：Accepted — Provider Direction
+- **Status**：Superseded by ADR-008; scheduled for removal from the active working tree
 - **Date**：2026-08-31
 - **Accepted**：2026-08-31（含 MVP / Production Gate 分层修正）
 - **Decision owner**：JobPilot 项目负责人
