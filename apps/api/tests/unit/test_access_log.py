@@ -24,10 +24,7 @@ def test_uvicorn_access_log_keeps_path_and_redacts_every_query_value() -> None:
             '%s - "%s %s HTTP/%s" %d',
             "127.0.0.1:54321",
             "GET",
-            (
-                "/api/v1/auth/web/callback?code=private-code&state=private-state"
-                "&error_description=private-provider-detail"
-            ),
+            "/health?probe=private-value&detail=private-detail",
             "1.1",
             303,
         )
@@ -38,7 +35,6 @@ def test_uvicorn_access_log_keeps_path_and_redacts_every_query_value() -> None:
         access_logger.propagate = previous_propagate
 
     rendered = output.getvalue()
-    assert "/api/v1/auth/web/callback" in rendered
-    assert "private-code" not in rendered
-    assert "private-state" not in rendered
-    assert "private-provider-detail" not in rendered
+    assert "/health" in rendered
+    assert "private-value" not in rendered
+    assert "private-detail" not in rendered

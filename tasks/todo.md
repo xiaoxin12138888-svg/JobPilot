@@ -9,14 +9,14 @@
 
 ## API and persistence cleanup
 
-- [ ] Write RED tests for `/health`-only OpenAPI, loopback-only launcher and exact credential-free CORS.
-- [ ] Delete Auth0/OIDC/JWT/JWKS/Web auth/session/identity API, application, domain and infrastructure code.
-- [ ] Delete User/Identity/WebSession/LoginTransaction models, repositories and auth-only Alembic revisions.
-- [ ] Delete auth-only API tests; keep generic health/error/log/CORS/database/migration infrastructure coverage.
-- [ ] Reduce `ApiSettings` to current local settings and reject every non-loopback bind host.
-- [ ] Keep `/health` startup database-free and reject non-loopback PostgreSQL URLs in retained engine/migration tooling.
-- [ ] Add the supported loopback Uvicorn launcher and route `pnpm api:dev` through it.
-- [ ] Remove PyJWT/crypto/auth-only dependencies; keep `httpx2` only as a test dependency if required by TestClient.
+- [x] Write RED tests for `/health`-only OpenAPI, loopback-only launcher and exact credential-free CORS.
+- [x] Delete Auth0/OIDC/JWT/JWKS/Web auth/session/identity API, application, domain and infrastructure code.
+- [x] Delete User/Identity/WebSession/LoginTransaction models, repositories and auth-only Alembic revisions.
+- [x] Delete auth-only API tests; keep generic health/error/log/CORS/database/migration infrastructure coverage.
+- [x] Reduce `ApiSettings` to current local settings and reject every non-loopback bind host.
+- [x] Keep `/health` startup database-free and reject non-loopback PostgreSQL URLs in retained engine/migration tooling.
+- [x] Add the supported loopback Uvicorn launcher and route `pnpm api:dev` through it.
+- [x] Remove PyJWT/crypto/auth-only dependencies; keep `httpx2` only as a test dependency if required by TestClient.
 
 ## Shared client and Web cleanup
 

@@ -11,7 +11,6 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-AUTH_API_PREFIX = "/api/v1/auth"
 LOGGER = logging.getLogger(__name__)
 REQUEST_ID_PATTERN = re.compile(r"[A-Za-z0-9._:-]{1,128}")
 
@@ -184,9 +183,6 @@ def _unexpected_error_response(request: Request, error: Exception) -> JSONRespon
 
 def _attach_public_headers(request: Request, response: Response) -> None:
     response.headers["X-Request-Id"] = request.state.request_id
-    path = request.url.path
-    if path == AUTH_API_PREFIX or path.startswith(f"{AUTH_API_PREFIX}/"):
-        response.headers["Cache-Control"] = "no-store"
 
 
 def _new_request_id() -> str:

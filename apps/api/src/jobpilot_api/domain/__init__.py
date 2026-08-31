@@ -1,1 +1,0 @@
-"""Provider-neutral domain values."""

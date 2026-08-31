@@ -1,1 +1,1 @@
-"""Adapters for databases and external providers."""
+"""Adapters for local infrastructure."""

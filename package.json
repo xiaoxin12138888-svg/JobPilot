@@ -20,7 +20,7 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "api:dev": "uv run --project apps/api uvicorn jobpilot_api.main:app --app-dir apps/api/src --reload",
+    "api:dev": "uv run --project apps/api python apps/api/run_server.py",
     "api:test": "uv run --project apps/api pytest apps/api/tests",
     "api:import:check": "uv run --project apps/api python -c \"import sys; sys.path.insert(0, 'apps/api/src'); import jobpilot_api.main\"",
     "api:lint": "uv run --project apps/api ruff check apps/api",
