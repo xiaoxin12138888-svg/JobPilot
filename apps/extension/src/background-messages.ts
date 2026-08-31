@@ -48,7 +48,7 @@ export function isTrustedPopupSender(
     sender.id === runtime.id &&
     sender.url === popupUrl &&
     sender.tab === undefined &&
-    (sender.origin === undefined || sender.origin === extensionOrigin)
+    sender.origin === extensionOrigin
   );
 }
 

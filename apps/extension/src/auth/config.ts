@@ -1,4 +1,4 @@
-import { validateApiBaseUrl } from '@jobpilot/api-client';
+import { validateExtensionBearerApiBaseUrl } from '@jobpilot/api-client';
 
 export interface ExtensionAuthConfig {
   issuer: string;
@@ -35,7 +35,7 @@ export function loadExtensionConfig(environment: ExtensionEnvironment): Extensio
   const webAppUrl = exactWebOrigin(requiredValue(environment, 'VITE_WEB_APP_URL'));
 
   return {
-    apiBaseUrl: validateApiBaseUrl(apiBaseUrl).toString(),
+    apiBaseUrl: validateExtensionBearerApiBaseUrl(apiBaseUrl).toString(),
     auth: {
       issuer: issuer.toString(),
       authorizationEndpoint,
@@ -104,5 +104,12 @@ function exactWebOrigin(value: string): string {
   ) {
     throw new Error('VITE_WEB_APP_URL must be an exact HTTP or HTTPS origin');
   }
+  if (parsed.protocol !== 'https:' && !isLoopbackHostname(parsed.hostname)) {
+    throw new Error('VITE_WEB_APP_URL must use HTTPS or loopback HTTP');
+  }
   return parsed.toString();
+}
+
+function isLoopbackHostname(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
 }

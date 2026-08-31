@@ -34,6 +34,17 @@ describe('loadExtensionConfig', () => {
     expect(config.auth).not.toHaveProperty('clientSecret');
   });
 
+  it('accepts HTTPS production API and Web origins', () => {
+    const config = loadExtensionConfig({
+      ...validEnvironment,
+      VITE_API_BASE_URL: 'https://api.jobpilot.example.invalid/base',
+      VITE_WEB_APP_URL: 'https://jobpilot.example.invalid',
+    });
+
+    expect(config.apiBaseUrl).toBe('https://api.jobpilot.example.invalid/base');
+    expect(config.webAppUrl).toBe('https://jobpilot.example.invalid/');
+  });
+
   it.each([
     'VITE_API_BASE_URL',
     'VITE_AUTH_ISSUER',
@@ -87,5 +98,33 @@ describe('loadExtensionConfig', () => {
         VITE_WEB_APP_URL: 'https://jobpilot.example.invalid/dashboard?token=no',
       }),
     ).toThrow('VITE_WEB_APP_URL must be an exact HTTP or HTTPS origin');
+  });
+
+  it.each([
+    'http://api.example.invalid',
+    'http://localhost.example.invalid',
+    'http://127.0.0.2:8000',
+    'http://192.168.1.20:8000',
+  ])('rejects a non-loopback cleartext API origin: %s', (apiBaseUrl) => {
+    expect(() =>
+      loadExtensionConfig({
+        ...validEnvironment,
+        VITE_API_BASE_URL: apiBaseUrl,
+      }),
+    ).toThrow('Extension bearer API base URL must use HTTPS or loopback HTTP');
+  });
+
+  it.each([
+    'http://jobpilot.example.invalid',
+    'http://localhost.example.invalid',
+    'http://127.0.0.2:5173',
+    'http://192.168.1.20:5173',
+  ])('rejects a non-loopback cleartext Web origin: %s', (webAppUrl) => {
+    expect(() =>
+      loadExtensionConfig({
+        ...validEnvironment,
+        VITE_WEB_APP_URL: webAppUrl,
+      }),
+    ).toThrow('VITE_WEB_APP_URL must use HTTPS or loopback HTTP');
   });
 });

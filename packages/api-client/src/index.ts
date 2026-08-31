@@ -218,7 +218,7 @@ export function createExtensionBearerApiClient(
   };
 }
 
-function validateExtensionBearerApiBaseUrl(baseUrl: string): URL {
+export function validateExtensionBearerApiBaseUrl(baseUrl: string): URL {
   const parsedBaseUrl = validateApiBaseUrl(baseUrl);
   const isLoopbackHttp =
     parsedBaseUrl.protocol === 'http:' &&

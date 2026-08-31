@@ -50,15 +50,13 @@ function trustedSender(): chrome.runtime.MessageSender {
 afterEach(() => vi.restoreAllMocks());
 
 describe('isTrustedPopupSender', () => {
-  it('accepts only the extension popup top-level context', () => {
+  it('accepts the exact extension popup top-level context', () => {
     expect(isTrustedPopupSender(trustedSender(), runtime)).toBe(true);
-    const senderWithoutOrigin = trustedSender();
-    delete senderWithoutOrigin.origin;
-    expect(isTrustedPopupSender(senderWithoutOrigin, runtime)).toBe(true);
   });
 
   it.each([
     ['missing id', { url: runtime.getURL('popup.html') }],
+    ['missing origin', { id: runtime.id, url: runtime.getURL('popup.html') }],
     ['wrong id', { ...trustedSender(), id: 'b'.repeat(32) }],
     ['another extension page', { ...trustedSender(), url: runtime.getURL('options.html') }],
     ['wrong origin', { ...trustedSender(), origin: 'https://attacker.example.invalid' }],
