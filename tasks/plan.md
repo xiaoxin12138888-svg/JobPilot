@@ -4,7 +4,7 @@
 
 Implement the approved minimum authentication closure across React Web, Chrome Manifest V3 Extension, FastAPI, and PostgreSQL. Both credential transports must resolve the same verified `(issuer, subject)` to one local JobPilot `User.id`. This plan stops before Phase 3 and does not implement Job, Application, Resume, AI, RAG, account-management consoles, or enterprise IAM.
 
-Phase 2A is preserved in commit `e3c4999` (`docs(auth): define phase 2 authentication architecture`). Real Auth0 tenant/application configuration remains a user-action gate; deterministic tests use a local fake issuer/JWKS and never guess real identifiers or secrets.
+Phase 2A is preserved in commit `e3c4999` (`docs(auth): define phase 2 authentication architecture`). Task 6 is approved at the clean `ff8593c` baseline, and the project owner has explicitly authorized Task 7. Real Auth0 tenant/application configuration remains a user-action gate; deterministic tests use `.invalid` configuration and local fake protocol responses without guessing real identifiers or secrets.
 
 ## Approved Contract Slice
 
@@ -98,7 +98,7 @@ Extension bearer
 
 The project owner's current Task 6 instruction supersedes the older Phase-level numbering that split persistence, BFF flow, and Web UI into Tasks 6–8. Current Task 6 is one bounded Web server-backed authentication closure delivered through the following independently tested sub-slices. Recent reauthentication and revoke-all are deferred; Task 7 is Extension Authorization Code + PKCE.
 
-**Current status:** Task 6A–6D implementation and deterministic gates are complete; real Auth0 Web verification remains `BLOCKED / USER ACTION REQUIRED`, and Task 7 has not started.
+**Current status:** Task 6A–6D are approved. Task 7 is authorized from clean commit `ff8593c`; real Auth0 Web/Extension verification remains `BLOCKED / USER ACTION REQUIRED` until exact provider and stable Extension values are supplied.
 
 ### Task 1: Lock the approved dependencies and configuration contract
 
@@ -209,37 +209,85 @@ The project owner's current Task 6 instruction supersedes the older Phase-level 
 - [x] No provider token reaches React, browser storage, build output, or logs.
 - [x] Real Auth0 Web verification is blocked only on project-owner tenant/application configuration; no live PASS is claimed.
 
-### Task 7A: Add Extension configuration and login transaction
+### Task 7A: Freeze Extension public configuration and manifest boundary
 
-**Acceptance:** deterministic test/build config uses explicit `.invalid` issuer/IDs and is never described as real. Production configuration fails fast when required values are absent. Manifest adds only `identity`, `storage`, exact API/Auth0 origins, and a module service worker. User-gesture login validates authorization response state and signed ID-token issuer/audience/signature/nonce, discards the ID token, and cleans transaction state on success/cancel/timeout/error.
+**Acceptance:** deterministic test/build configuration uses explicit `.invalid` issuer/IDs and is never described as live. Missing or malformed API, Web, issuer, authorize, token, JWKS, revoke, audience, or public-client values fail before runtime use. Manifest uses a module service worker, keeps MV3 CSP free of `unsafe-eval`, and grants only `identity`, `storage`, and exact API/provider origins required by Task 7. The obsolete Phase 1 current-tab diagnostic and its `activeTab` permission are removed with the Task 7 popup replacement. No client-secret input exists.
 
-**Verify:** manifest/config/login tests, typecheck, Extension build.
+**Verify:** RED -> GREEN config/manifest tests, typecheck, and deterministic Extension build artifact inspection.
 
 **Dependencies:** Tasks 1 and 5.
 
-**Likely files:** Extension config/manifest/Vite input, auth transaction module, background entry/tests.
+**Likely files:** Extension config, manifest, Vite input, `.env.example`, focused tests.
 
-### Task 7B: Add Extension trusted credential lifecycle
+### Task 7B: Add PKCE attempt and `launchWebAuthFlow` boundary
 
-**Acceptance:** storage access becomes `TRUSTED_CONTEXTS` before exchange; access token stays in memory/session storage; refresh record is versioned in local storage. Expiry triggers current-worker single-flight refresh; `refresh_in_progress`, ambiguous outcomes, worker restart, explicit reuse, and one failed refresh clear state and require interactive login without retry loops. Logout attempts revoke, always clears local state, and truthfully reports unconfirmed remote status.
+**Acceptance:** a user intent creates an unpredictable state, nonce, RFC 7636 verifier, S256 challenge, and runtime `chrome.identity.getRedirectURL()` value. Before persisting the attempt or reading any secret, the worker awaits successful `TRUSTED_CONTEXTS` restriction for both Chrome storage areas. One versioned attempt is then stored only in trusted session state with a bounded lifetime. The worker validates exact callback shape/state and consumes the attempt on success, missing/mismatched/stale state, missing code, provider error, cancellation, malformed callback, or launch failure.
 
-**Verify:** deterministic storage/refresh/revoke state-machine tests.
+**Verify:** RED -> GREEN PKCE/attempt/callback/launch tests, including injected cryptographic-randomness boundary and known S256 vector.
 
 **Dependencies:** Task 7A.
 
-**Likely files:** trusted token store, Extension auth service, provider client, focused tests.
+**Likely files:** auth attempt/PKCE module, Chrome identity adapter, tests.
 
-### Task 7C: Add minimal Extension popup state
+### Task 7C: Exchange and validate the public-client authorization code
 
-**Acceptance:** signed-out popup offers login; signed-in popup renders only profile state, opens JobPilot Web, and logs out via typed worker messages. Popup contains no verifier, token, refresh, or provider protocol logic; expired credentials return to signed-out state and `/me` errors remain bounded.
+**Acceptance:** after the trusted-storage gate, `oauth4webapi` uses public-client `none` authentication and the stored verifier. The authorize request freezes `response_type=code`, `code_challenge_method=S256`, the JobPilot API audience, and minimum `openid profile email offline_access` scope. The worker validates token-endpoint responses plus the signed ID token issuer, client audience, RS256 signature, times, and exact nonce, then discards the ID token. Only `token_type=bearer`, bounded `expires_in`, a short-lived access token, and a replacement-capable rotating refresh token enter the credential boundary; missing/malformed material fails closed.
 
-**Verify:** popup DOM/message tests and Extension build.
+**Verify:** RED -> GREEN deterministic fake token/JWKS tests for success, malformed response, wrong signature/issuer/audience/nonce, missing access/refresh/ID token, and excessive/invalid expiry.
 
-**Dependencies:** Tasks 7A and 7B.
+**Dependencies:** Task 7B.
 
-**Likely files:** popup HTML/controller/styles/main/tests.
+**Likely files:** provider protocol adapter and focused tests.
 
-### Task 8: Prove unified identity, authorization, and security boundaries
+### Task 7D: Add trusted crash-consistent credential storage
+
+**Acceptance:** every secret read/write is behind the awaited `TRUSTED_CONTEXTS` gate. Access state uses worker memory/`chrome.storage.session`; one versioned `ready` or credential-free `refresh_in_progress` record uses `chrome.storage.local`. Initial exchange and every rotation persist the new `ready` refresh record before access state. Normal restart restores a valid `ready` record. Corrupt state, `refresh_in_progress` observed after restart, request-start interruption, ambiguous network outcome, response interruption, or unacknowledged ready/access write clears credentials and requires interaction without replaying the old token.
+
+**Verify:** RED -> GREEN storage/bootstrap/ordering/corruption/restart tests, including each crash boundary and positive ready-record restoration.
+
+**Dependencies:** Task 7C.
+
+**Likely files:** trusted credential store and focused tests.
+
+### Task 7E: Establish and restore the local user through the shared API client
+
+**Acceptance:** the shared `packages/api-client` owns bearer injection, `credentials: omit`, URL construction, error parsing, and `UserView` validation. Initial login calls `POST /auth/session` before `GET /auth/me`; restart with a usable access token calls `/auth/me` directly. Local expiry/near-expiry can trigger one current-worker single-flight rotation before a request. An arbitrary API `401` is not treated as proof of expiry and instead clears credentials; no refresh/retry loop exists.
+
+**Verify:** RED -> GREEN API-client and auth-service tests for establishment order, direct restore, local expiry, concurrent callers, invalid/revoked bearer, and bounded failures.
+
+**Dependencies:** Task 7D.
+
+**Likely files:** shared API client, Extension auth service, focused tests.
+
+### Task 7F: Add refresh failure and truthful logout handling
+
+**Acceptance:** a locally expired token rotates exactly once through the current worker's shared in-flight promise. Rotation persists `refresh_in_progress` without the old token before the request, accepts only a replacement refresh token, and never replays an ambiguous or rejected token. `invalid_grant`, provider/network failure, malformed response, and persistence failure clear state. Logout attempts direct revoke and always clears local access, refresh, attempt, and profile state; its popup-safe result distinguishes confirmed, not-applicable, and unconfirmed remote revocation without claiming server retry.
+
+**Verify:** RED -> GREEN rotation/single-flight/`invalid_grant`/outage/ambiguous/revoke-result tests.
+
+**Dependencies:** Task 7E.
+
+**Likely files:** auth service/provider boundary and focused tests.
+
+### Task 7G: Add the typed worker boundary and minimal popup UI
+
+**Acceptance:** runtime message parsing uses an exact schema and trusted popup sender/context allowlist; unknown types, extra fields, other extension/page contexts, and credential-shaped payloads are rejected. Responses contain only popup-safe state. The popup renders signed-out, authenticating, signed-in, error, and revoke-unconfirmed states; signed-in state shows only approved `UserView` fields and can open the configured Web home. Popup code contains no URL literal, PKCE, callback parsing, token, storage, refresh, or provider protocol logic and uses accessible native controls.
+
+**Verify:** RED -> GREEN worker-message and popup DOM tests for all states, unknown/untrusted messages, credential-free payloads, keyboard/accessibility semantics, and Web opening.
+
+**Dependencies:** Task 7F.
+
+**Likely files:** background entry/message contract, popup HTML/controller/styles/main/tests.
+
+### Task 7H: Validate, review, simplify, and document Task 7
+
+**Acceptance:** rerun the existing deterministic Web-cookie/Extension-bearer `(issuer, subject) -> same User.id` integration invariant; inspect minimum permissions/CSP and built artifacts; run the complete TypeScript/Python gates and security scans; resolve all Critical/Required review findings; simplify only changed code; synchronize Task 7 documentation; leave a clean worktree without entering Task 8 or Phase 3.
+
+**Verify:** `pnpm install --frozen-lockfile`; `uv sync --project apps/api --locked`; `pnpm test`; `pnpm lint`; `pnpm format:check`; `pnpm typecheck`; `pnpm build:extension`; `pnpm build:web`; `pnpm api:test`; `pnpm api:lint`; `pnpm api:format:check`; `pnpm api:import:check`; package audits and repository secret/token/storage/layer/manifest/CSP scans; `git diff --check`; `git status --short`. Real Chrome/Auth0 results remain truthfully gated when unavailable.
+
+**Dependencies:** Tasks 7A–7G.
+
+### Task 8: Phase 2B Integration & Authentication Acceptance
 
 **Acceptance:** Web cookie and Extension bearer for one provider identity return the same User ID; unauthorized and cross-user requests reveal no user data; exact CORS/cookie properties pass; secrets/tokens/raw provider errors are absent from tracked files, logs, and responses.
 

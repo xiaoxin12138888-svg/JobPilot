@@ -7,6 +7,7 @@
 - [x] Phase 2A is committed as `e3c4999`.
 - [x] ADR numbering is continuous through Accepted ADR-006.
 - [x] Git author and committer identities resolve to the repository-local GitHub noreply identity.
+- [x] Task 6 is approved at `ff8593c`; Task 7 is explicitly authorized from a clean `phase/2-authentication` worktree.
 
 ## Decisions
 
@@ -73,19 +74,39 @@
 
 ## Extension Authentication
 
-- [ ] Add only `identity`, `storage`, and exact API/Auth0 host permissions needed for auth.
-- [ ] Build a trusted MV3 service worker; popup sends typed intents only.
-- [ ] Implement Authorization Code + PKCE/state/nonce with no client secret.
-- [ ] Validate the signed Extension ID token issuer/audience/signature/nonce and discard it immediately.
-- [ ] Clean Extension login transaction state on every terminal path.
-- [ ] Apply `TRUSTED_CONTEXTS` before secret storage.
-- [ ] Keep access token in memory/session storage and versioned rotating refresh state in local storage.
-- [ ] Fail closed on `refresh_in_progress`, worker restart, or ambiguous refresh outcome.
-- [ ] Refresh expired access tokens on demand with current-worker single-flight and no retry loop after failure.
-- [ ] Call `/auth/session` and `/auth/me` through bearer transport.
-- [ ] Clear local credentials on logout and distinguish remote revoke failure.
-- [ ] Render only minimal signed-out/signed-in popup state.
-- [ ] Prove popup `/me` behavior and token-expiry transition.
+- [ ] Validate every public Extension auth/API/Web endpoint, audience, and client-ID input; no client-secret input exists.
+- [ ] Add only `identity`, `storage`, exact API/Auth0 host permissions, a module service worker, and strict MV3 CSP needed for auth.
+- [ ] Generate a secure RFC 7636 verifier, S256 challenge, unpredictable state/nonce, and runtime redirect from `chrome.identity.getRedirectURL()`.
+- [ ] Persist one bounded, versioned login attempt in trusted session state and reject missing, mismatched, stale, reused, or malformed callbacks.
+- [ ] Keep `chrome.identity.launchWebAuthFlow` behind a user-initiated worker boundary and map cancellation/provider failure without leaking callback data.
+- [ ] Exchange the code as a public client through `oauth4webapi` with no client secret.
+- [ ] Validate token-response shape and signed Extension ID token issuer/audience/RS256 signature/times/nonce, then discard the ID token.
+- [ ] Require a bounded short-lived bearer access token and rotating refresh-token replacement.
+- [ ] Await `TRUSTED_CONTEXTS` for local and session storage before every secret read/write or token exchange.
+- [ ] Keep access token in worker memory/session storage and versioned rotating refresh state in local storage.
+- [ ] Persist each new refresh record before access state; `refresh_in_progress` contains no old refresh token.
+- [ ] Restore a valid `ready` record after normal worker restart; fail closed only on corrupt, in-progress, unacknowledged, or ambiguous state.
+- [ ] Cover termination before refresh request, during unknown network outcome, after response, before ready-write acknowledgement, and before access-write acknowledgement; never replay the old token.
+- [ ] Refresh locally expired/near-expiry access at most once with current-worker single-flight; an arbitrary API 401 clears state instead of triggering a speculative refresh loop.
+- [ ] On first login call `/auth/session` then `/auth/me`; on normal restore call `/auth/me` directly through the shared bearer boundary with `credentials: omit`.
+- [ ] Clear local credentials on logout and distinguish confirmed from unconfirmed remote revoke.
+- [ ] Validate typed popup/worker intents and reject untrusted or malformed messages.
+- [ ] Render minimal signed-out, authenticating, signed-in, error, and logout-result popup states; no OAuth/token/storage logic enters the popup.
+- [ ] Prove popup `/me`, token-expiry, logout, open-Web, and accessible-control behavior.
+- [ ] Remove the obsolete current-tab diagnostic and `activeTab` permission because Task 7 does not read page/tab content.
+- [ ] Re-run the existing Web/Extension same-identity integration test and confirm identical local `User.id`.
+- [ ] Inspect the built manifest/CSP/bundle and attempt isolated load-unpacked verification where the environment permits it.
+
+## Task 7 Review and Acceptance
+
+- [ ] Run `code-review-and-quality` across correctness, readability, architecture, security, performance, and dependency health.
+- [ ] Resolve every Task 7 Critical and Required finding.
+- [ ] Run `code-simplification` on Task 7 changes without altering behavior.
+- [ ] Synchronize README, auth/overall architecture, API contract, roadmap, `.env.example`, and tasks with the Extension implementation.
+- [ ] Run frozen pnpm install, locked uv sync, all tests, lint, format, typecheck, both builds, API import/startup, and dependency audit.
+- [ ] Run secret/token/storage/manifest/CSP/layer/scope scans, `git diff --check`, and final `git status`.
+- [ ] Report Chrome load-unpacked and real Auth0 verification truthfully as PASS, BLOCKED, or NOT VERIFIED.
+- [ ] Stop before Task 8 and Phase 3; wait for explicit project-owner approval.
 
 ## Integration, Authorization, and Security
 
