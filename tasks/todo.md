@@ -34,18 +34,18 @@
 
 ## Health client TDD
 
-- [ ] RED: a hanging health request is aborted after a small default timeout.
-- [ ] GREEN: implement one AbortController-based timeout without automatic retry.
-- [ ] Preserve Web and Extension unavailable/manual retry behavior.
+- [x] RED: a hanging health request is aborted after a small default timeout.
+- [x] GREEN: implement one AbortController-based timeout without automatic retry.
+- [x] Preserve Web and Extension unavailable/manual retry behavior.
 
 ## Extension artifact and real runtime
 
-- [ ] Build `apps/extension/dist` and validate its required structure.
-- [ ] Add an automated artifact gate for remote code, CSP, permissions, hosts, background, and content scripts.
+- [x] Build `apps/extension/dist` and validate its required structure.
+- [x] Add an automated artifact gate for remote code, CSP, permissions, hosts, background, and content scripts.
 - [ ] Attempt real Chrome Load unpacked and report PASS/BLOCKED truthfully.
 - [ ] Verify real Popup ready → unavailable → retry → ready when tooling permits.
 - [ ] Determine whether users still need to copy the Extension ID into CORS settings.
-- [ ] Keep wildcard CORS forbidden.
+- [x] Keep wildcard CORS forbidden.
 - [ ] Verify no-proxy local runtime when tooling permits.
 
 ## Documentation

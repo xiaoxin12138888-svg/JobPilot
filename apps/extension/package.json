@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite build --watch --mode development",
-    "build": "vite build",
+    "build": "vite build && node scripts/verify-artifact.mjs",
+    "verify:artifact": "node scripts/verify-artifact.mjs",
     "test": "vitest run",
     "typecheck": "tsc --project tsconfig.json"
   },
