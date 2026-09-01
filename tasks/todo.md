@@ -1,65 +1,73 @@
-# Local-first Single-user Cleanup Checklist
+# Phase 2.5 — Local Runtime Foundation Checklist
 
-## Safety and decision
+## Safety and scope
 
-- [x] Confirm clean `phase/2-authentication` at `9a3e79a7e134142d800bf94a78ecafcad0cf9302`.
-- [x] Create annotated checkpoint tag `pre-local-first-cleanup` without rewriting history.
-- [x] Add ADR-008 and synchronize the active agent/task boundaries.
-- [x] Keep Phase 3 and all Job/Application/Resume/Adapter/content-script/AI/RAG work out of scope.
+- [x] Confirm clean `phase/2-authentication` at `bab46af18c6c060082bc47bacfb6dedc26822755`.
+- [x] Create `phase/2.5-local-runtime` without deleting the old branch or rewriting history.
+- [x] Preserve checkpoint `pre-local-first-cleanup`.
+- [x] Keep Phase 3, business models/APIs, recruitment adapters, content scripts, AI, and RAG out of scope.
 
-## API and persistence cleanup
+## Storage decision
 
-- [x] Write RED tests for `/health`-only OpenAPI, loopback-only launcher and exact credential-free CORS.
-- [x] Delete Auth0/OIDC/JWT/JWKS/Web auth/session/identity API, application, domain and infrastructure code.
-- [x] Delete User/Identity/WebSession/LoginTransaction models, repositories and auth-only Alembic revisions.
-- [x] Delete auth-only API tests; keep generic health/error/log/CORS/database/migration infrastructure coverage.
-- [x] Reduce `ApiSettings` to current local settings and reject every non-loopback bind host.
-- [x] Keep `/health` startup database-free and reject non-loopback PostgreSQL URLs in retained engine/migration tooling.
-- [x] Add the supported loopback Uvicorn launcher and route `pnpm api:dev` through it.
-- [x] Remove PyJWT/crypto/auth-only dependencies; keep `httpx2` only as a test dependency if required by TestClient.
+- [x] Add ADR-009 and compare SQLite/PostgreSQL on the approved criteria.
+- [x] Accept SQLite as the only current runtime database and supersede the PostgreSQL storage choice.
+- [x] Keep SQLAlchemy 2.x and Alembic; do not add a database strategy or dual mode.
 
-## Shared client and Web cleanup
+## SQLite TDD and implementation
 
-- [x] Write RED health/client/Web tests for loopback-only `checking / ready / unavailable` and retry-action behavior.
-- [x] Add credential-free loopback `GET /health` with untrusted-response validation while temporarily retaining Extension-consumed auth exports.
-- [x] Delete `use-auth-session.ts` and every login/logout/account/auth-error UI path.
-- [x] Make Web start directly in the local workspace shell and bind its dev server to loopback.
-- [x] Prove Web builds without provider configuration and contains no remote runtime dependency.
+- [ ] RED: default database resolves to `runtime-data/jobpilot.db` without `DATABASE_URL`.
+- [ ] RED: initialization creates the directory/database and restart preserves existing data.
+- [ ] RED: every connection has `foreign_keys=ON` and a bounded busy timeout.
+- [ ] RED: supported API startup initializes SQLite before Uvicorn.
+- [ ] GREEN: implement the smallest SQLite engine/path/initialization flow.
+- [ ] Prove Alembic connects to an explicit temporary SQLite database.
+- [ ] Prove tests do not create or modify the real runtime database.
+- [ ] Keep rollback journal mode unless present evidence justifies WAL.
 
-## Extension cleanup
+## PostgreSQL removal
 
-- [x] Write RED manifest/config/Popup tests for exact `127.0.0.1` health-only behavior.
-- [x] Delete the entire Extension auth directory, OAuth background worker/messages and credential lifecycle tests.
-- [x] Remove `chrome.identity`, `storage`, background, provider hosts and `oauth4webapi`.
-- [x] Atomically delete the last UserView/CSRF/session/login/logout/Extension bearer exports and tests after Extension no longer consumes them.
-- [x] Implement a bundled Popup with `checking / available / unavailable` and retry-action behavior using only local `/health`.
-- [x] Freeze manifest to exact loopback host/CSP with no content script, proxy, telemetry or remote executable code.
-- [x] Prove build output has no provider/auth/token/CDN/remote-script/background artifacts.
+- [ ] Remove psycopg from `pyproject.toml` and `uv.lock`.
+- [ ] Remove PostgreSQL/libpq/PGHOSTADDR URL logic and tests.
+- [ ] Remove PostgreSQL-only environment variables and active documentation.
+- [ ] Confirm no runtime PostgreSQL consumer remains.
 
-## Documentation and repository cleanup
+## Health client TDD
 
-- [x] Delete Logto verification infrastructure/evidence/summary and `docs/AUTH_ARCHITECTURE.md`.
-- [x] Remove hosted-auth ADR-006/ADR-007 from the working tree; history remains at `pre-local-first-cleanup`.
-- [x] Rewrite README, architecture, API contract, data model, product spec, roadmap and engineering principles for local-first single-user use.
-- [x] Record the P0 no-proxy runtime and per-adapter future acceptance gate.
-- [x] Remove all provider/auth environment variables and test fixtures.
-- [x] Expand `.gitignore` for current caches, logs, local secrets and a scoped local runtime-data directory.
-- [x] Audit tracked files for generated builds, caches, logs, screenshots and obsolete evidence.
-- [x] Document that pre-release databases containing removed auth revisions must be recreated; no in-place migration is supported.
+- [ ] RED: a hanging health request is aborted after a small default timeout.
+- [ ] GREEN: implement one AbortController-based timeout without automatic retry.
+- [ ] Preserve Web and Extension unavailable/manual retry behavior.
 
-## Rebuild and validation
+## Extension artifact and real runtime
 
-- [x] Remove old local `node_modules`, builds, coverage, caches, bytecode, temporary logs/browser artifacts and rebuildable `.venv` before the clean reinstall.
-- [x] Run `pnpm install --frozen-lockfile` and `uv sync --project apps/api --locked` from the cleaned state.
-- [x] Run all TypeScript tests, ESLint, Prettier, strict typecheck, Web build and Extension build.
-- [x] Run all Pytest, Ruff lint/format, API import/startup and `/health` checks.
-- [x] Run lock/dependency, secret, remote-runtime, proxy, manifest/CSP, loopback/CORS, tracked-artifact and `git diff --check` scans.
-- [x] Verify Web ready/unavailable/retry and responsive layouts in the isolated in-app browser; Chrome DevTools MCP / Extension Load unpacked remains truthfully `BLOCKED / NOT VERIFIED`.
+- [ ] Build `apps/extension/dist` and validate its required structure.
+- [ ] Add an automated artifact gate for remote code, CSP, permissions, hosts, background, and content scripts.
+- [ ] Attempt real Chrome Load unpacked and report PASS/BLOCKED truthfully.
+- [ ] Verify real Popup ready → unavailable → retry → ready when tooling permits.
+- [ ] Determine whether users still need to copy the Extension ID into CORS settings.
+- [ ] Keep wildcard CORS forbidden.
+- [ ] Verify no-proxy local runtime when tooling permits.
 
-## Mandatory review
+## Documentation
 
-- [x] Run `code-review-and-quality`; resolve every Critical and Required finding.
-- [x] Run `code-simplification`; remove every confirmed dead wrapper/interface/DTO/helper/comment/TODO.
-- [x] Re-run affected gates after every review fix or simplification.
-- [x] Commit coherent increments and finish with a clean worktree.
-- [x] Stop before Phase 3 and wait for explicit project-owner approval.
+- [ ] Update README first-run flow and local configuration.
+- [ ] Update architecture, data model, engineering principles, roadmap, decision index, and active ADR amendments.
+- [ ] Update product/API/agent context where old PostgreSQL or Extension-ID statements would otherwise conflict.
+- [ ] Keep unsupported future capabilities explicitly unimplemented.
+
+## Complete validation
+
+- [ ] `pnpm install --frozen-lockfile`.
+- [ ] `uv sync --project apps/api --locked`.
+- [ ] `pnpm test`, lint, format check, typecheck, Web build, Extension build.
+- [ ] API tests, lint, format check, import check.
+- [ ] SQLite clean-temp initialization, restart persistence, Alembic connection.
+- [ ] API startup and `GET /health`.
+- [ ] Secret, remote-runtime, proxy/telemetry, manifest/CSP, loopback, tracked-artifact scans.
+- [ ] `git diff --check` and final `git status`.
+
+## Review and delivery
+
+- [ ] Run `code-review-and-quality`; resolve Critical and Required findings.
+- [ ] Run `code-simplification`; remove confirmed dead Phase 2.5 code only.
+- [ ] Commit coherent, verified increments.
+- [ ] Produce the required Phase 2.5 Summary and stop before Phase 3.

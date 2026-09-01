@@ -5,6 +5,10 @@
 - **Decision owner**：JobPilot 项目负责人
 - **Recovery checkpoint**：`pre-local-first-cleanup`（`9a3e79a7e134142d800bf94a78ecafcad0cf9302`）
 
+> **Storage amendment（2026-09-01）**：[ADR-009](ADR-009-local-sqlite-storage.md)
+> 以 SQLite 取代本 ADR 第 5 项保留 PostgreSQL runtime skeleton 的决定。Local-first、
+> single-user、no-account、loopback 与 no-proxy 边界不变。
+
 ## Context
 
 JobPilot 的长期产品形态收缩为中国大陆用户自行安装的个人求职 Desktop Companion。用户从代码发布渠道取得安装包，在自己的电脑启动 Web、FastAPI、本地数据库和 Chrome Extension，并在自己主动打开的招聘网站页面上使用后续岗位采集能力。当前不建设 SaaS、公网账户、远程数据同步或多人协作。

@@ -29,8 +29,9 @@ ADR-008 完全取代了旧远程身份方向。ADR-006、ADR-007 及其实现/�
 ## Current records
 
 - [ADR-001：采用 Monorepo 与模块化单体](ADR-001-monorepo.md) — Accepted
-- [ADR-002：采用 FastAPI 与 PostgreSQL 作为后端基础](ADR-002-fastapi-postgresql.md) — Accepted（含 ADR-008 local-first amendment）
+- [ADR-002：采用 FastAPI 与 PostgreSQL 作为后端基础](ADR-002-fastapi-postgresql.md) — Partially Superseded（PostgreSQL storage 由 ADR-009 取代；FastAPI 决定保留）
 - [ADR-003：岗位采集必须由用户主动触发](ADR-003-user-triggered-job-capture.md) — Accepted
 - [ADR-004：早期不引入 Agent Framework](ADR-004-no-early-agent-framework.md) — Accepted
 - [ADR-005：采用 pnpm 与 uv 作为单一包管理工具链](ADR-005-pnpm-uv-toolchains.md) — Accepted
 - [ADR-008：采用 Local-first Single-user 无认证架构](ADR-008-local-first-single-user-no-authentication.md) — Accepted
+- [ADR-009：采用本地 SQLite 作为唯一 Runtime Database](ADR-009-local-sqlite-storage.md) — Accepted

@@ -1,9 +1,13 @@
 # ADR-002：采用 FastAPI 与 PostgreSQL 作为后端基础
 
-- **Status**：Accepted
+- **Status**：Partially Superseded by [ADR-009](ADR-009-local-sqlite-storage.md)
 - **Date**：2026-08-30
 
 > **Local-first amendment（2026-09-01）**：[ADR-008](ADR-008-local-first-single-user-no-authentication.md) 保留 FastAPI + PostgreSQL 决定，但将其限定为本机 loopback/self-hosted 基础。本文对 pgvector 和 S3-compatible object storage 的表述只是未来候选，不是当前 runtime、云存储或远程服务授权；任何对象存储必须重新审批，并且不能成为本地核心的强制远程依赖。
+
+> **Storage supersession（2026-09-01）**：[ADR-009](ADR-009-local-sqlite-storage.md)
+> 以 SQLite 取代本文的 PostgreSQL runtime 选择。FastAPI、关系型数据、SQLAlchemy/Alembic、
+> 迁移评审和不提前引入分布式系统的原则继续有效；PostgreSQL 与 pgvector 不再是当前承诺。
 
 ## Context
 

@@ -1,107 +1,167 @@
-# Implementation Plan: Local-first Single-user Cleanup
+# Implementation Plan: Phase 2.5 — Local Runtime Foundation Finalization
 
 ## Objective
 
-Rescope JobPilot to a local-first, single-user, self-hosted desktop companion. One installation is one local workspace. Remove the hosted authentication stack and its dead code, tests, dependencies, infrastructure and documentation while preserving the Web, Chrome Extension, FastAPI, PostgreSQL/Alembic, shared packages and engineering toolchains.
+Finalize the local runtime foundation without entering Phase 3. Replace the unused local
+PostgreSQL skeleton with one SQLite database at `runtime-data/jobpilot.db`, keep SQLAlchemy 2.x
+and Alembic, add a bounded health request timeout, and prove the Chrome Extension artifact is
+minimal and safe. Real Chrome verification is required when tooling permits; otherwise the gate
+must remain `BLOCKED / NOT VERIFIED` until the project owner performs the documented steps.
 
-The cleanup starts from clean branch `phase/2-authentication` at `9a3e79a7e134142d800bf94a78ecafcad0cf9302`. Annotated tag `pre-local-first-cleanup` is the recovery checkpoint. Do not rewrite history, force push, start Phase 3, or implement Job, Application, Resume, recruitment-site adapters, content scripts, AI or RAG.
+This work starts from clean `phase/2-authentication` at
+`bab46af18c6c060082bc47bacfb6dedc26822755` on branch `phase/2.5-local-runtime`. The
+`pre-local-first-cleanup` checkpoint and `phase/2-authentication` branch remain untouched. Do not
+implement Job, Application, ResumeVersion, recruitment adapters, content scripts, AI, RAG, or
+any other Phase 3 capability.
 
-## Accepted Runtime Contract
+## Architecture Decisions
 
-- JobPilot has no account, login, identity provider, OAuth/OIDC/PKCE, JWT, session, refresh token, recovery or multi-user authorization.
-- Web and Extension communicate only with the local JobPilot API. The default API origin is `http://127.0.0.1:8000`.
-- The supported API launcher binds only an IP-literal loopback address and rejects `0.0.0.0`, `::`, LAN addresses and hostnames before Uvicorn starts.
-- Current public API surface is only `GET /health`. CORS uses exact configured origins, never wildcard or regex, and sends no credential allowance.
-- Extension code is fully bundled. The Popup performs only a credential-free local `/health` check. No service worker, `identity`, `storage`, proxy, telemetry, remote script or provider host is needed.
-- GitHub, package registries and mirrors are development/download channels only. Installed runtime must not depend on GitHub, CDNs, remote fonts/scripts, foreign telemetry, remote IdP or foreign AI APIs.
-- PostgreSQL/Alembic infrastructure remains, but current auth-only tables and revisions are removed. A future `LocalProfile` requires a separate product need; no placeholder User model remains.
-- Future recruitment-site access stays in the user's browser. A future content script must be user-triggered, current-page-only and limited to separately approved exact host permissions.
+- SQLite is the only runtime database. There is no dual-database mode, strategy factory, or
+  PostgreSQL compatibility layer.
+- The repository-relative default is `runtime-data/jobpilot.db`; the supported launcher creates
+  the directory and database on first run and reuses them on later runs.
+- Tests always pass an explicit temporary database path and never read, replace, or delete the
+  real runtime database.
+- SQLAlchemy owns connections and transaction boundaries. Every SQLite connection enables
+  `PRAGMA foreign_keys=ON` and a small busy timeout. WAL is enabled only if runtime evidence shows
+  a present need; the current empty, single-process foundation defaults to the simpler rollback
+  journal.
+- Alembic remains the schema migration mechanism and uses the same SQLite URL resolution as the
+  supported runtime.
+- The health client gets one small request timeout with user-triggered retry; no retry framework
+  or background polling is introduced.
+- The Extension remains Popup-only with one exact loopback host permission and no remote code,
+  background worker, content script, privileged permission, proxy, storage, identity, or
+  telemetry surface.
 
-## Incremental Slices
+## Ordered Tasks
 
-### Slice 0 — Decision, checkpoint and executable cleanup plan
+### Task 1 — Record the SQLite storage decision
 
-**Status:** Complete.
+**Acceptance criteria:**
 
-**Acceptance:** ADR-008 records the local-first decision; the checkpoint tag resolves to the clean pre-cleanup HEAD; AGENTS and task files constrain all subsequent work.
+- ADR-009 compares SQLite and PostgreSQL on the requested criteria and accepts SQLite as the only
+  current runtime database.
+- ADR-002 and ADR-008 are explicitly superseded only where they selected PostgreSQL.
+- Phase 3 remains unstarted.
 
-**Verification:** `git show pre-local-first-cleanup`; Markdown format/link checks; `git diff --check`.
+**Verification:** Markdown formatting, decision links, `git diff --check`.
 
-### Slice 1 — Remove API authentication and enforce loopback runtime
+**Dependencies:** None.
 
-**Status:** Complete.
+### Task 2 — TDD the SQLite runtime contract
 
-**Acceptance:** delete provider/auth/User/Identity/session/transaction code, routes, revisions and tests; OpenAPI contains only `/health`; retain generic request IDs/errors/query redaction, PostgreSQL engine, empty SQLAlchemy metadata and Alembic scaffolding. `/health` startup creates no database connection. Add a tested launcher that rejects non-loopback bind hosts before calling Uvicorn, and restrict supported PostgreSQL URLs to loopback hosts. CORS is exact, GET-only and credential-free. Pre-release development/test databases containing removed auth revisions must be recreated; no in-place compatibility is claimed.
+**Acceptance criteria:**
 
-**TDD:** first change tests to require `/health`-only OpenAPI, loopback launcher rejection and exact credential-free CORS; confirm targeted RED; then make the smallest API/config/main changes and delete obsolete tests/files.
+- Failing tests first require the default repository-local path, automatic directory/database
+  creation, restart persistence, `foreign_keys=ON`, hidden SQL parameters, and temp-only test data.
+- The supported server initializes the configured/default database before Uvicorn starts.
+- Initialization is idempotent and uses explicit SQLAlchemy transaction boundaries.
 
-**Dependencies:** Slice 0.
+**Verification:** Targeted Pytest RED, minimal GREEN, then all API tests/lint/format/import checks.
 
-### Slice 2 — Reduce shared contracts and Web to local health
+**Dependencies:** Task 1.
 
-**Status:** Complete.
+### Task 3 — Remove PostgreSQL-only runtime surface
 
-**Acceptance:** add a loopback-only health client and migrate Web to it; Web has no login/logout/account/auth-error state and directly renders local API `checking / ready / unavailable` with retry as an unavailable-state action. Temporarily retain only the auth exports still consumed by the not-yet-migrated Extension so this increment remains buildable. Web dev server binds loopback and build needs no provider config.
+**Acceptance criteria:**
 
-**TDD:** replace auth tests with health pending/success/failure/retry/stale-result and loopback URL tests; confirm RED before implementation.
+- Remove psycopg and all libpq/PGHOSTADDR/PostgreSQL URL helpers, tests, environment variables,
+  and active documentation.
+- Keep SQLAlchemy 2.x and Alembic with one SQLite URL contract and no database strategy layer.
+- Regenerate `uv.lock` and prove locked installation.
 
-**Dependencies:** Slice 1 contract.
+**Verification:** PostgreSQL residual scan, locked uv sync, API gates.
 
-### Slice 3 — Replace Extension OAuth lifecycle with local health Popup
+**Dependencies:** Task 2.
 
-**Status:** Complete.
+### Checkpoint — Storage foundation
 
-**Acceptance:** delete OAuth/PKCE/token/storage/background/message code and tests; remove `oauth4webapi`; Popup directly uses the bundled local health client. In the same atomic increment, delete the now-last auth exports (`UserView`, CSRF, Web session/login/logout and Extension bearer contracts/tests) from shared-types/api-client. Manifest has no permissions, background, content script, remote host, telemetry or proxy capability; its only host permission and `connect-src` are the exact loopback API origin.
+- SQLite tests and API gates pass.
+- A clean temporary database initializes twice without replacement.
+- Alembic connects to the same temporary database.
+- The real `runtime-data/jobpilot.db` is untouched by tests.
 
-**TDD:** first rewrite manifest/config/Popup tests for local-only behavior and confirm RED; then implement `checking / available / unavailable` with retry as an unavailable-state action and rebuild. Inspect unpacked artifacts for no provider/auth/remote executable code.
+### Task 4 — TDD a bounded health request
 
-**Dependencies:** Slice 2 health client.
+**Acceptance criteria:**
 
-### Slice 4 — Remove obsolete provider infrastructure and rebaseline documentation
+- Failing client test proves an overlong request is aborted after a small default timeout.
+- Web and Extension keep their existing checking/ready-or-available/unavailable and manual retry
+  behavior.
+- No automatic retry framework or remote dependency is added.
 
-**Status:** Complete.
+**Verification:** api-client, Web, and Extension tests plus typecheck/build.
 
-**Acceptance:** delete `infra/logto`, Logto summary, AUTH_ARCHITECTURE and hosted-auth ADRs; rewrite README, product/architecture/API/data/roadmap/principles around local-first single-user operation and P0 no-proxy runtime. `.env.example` and `.gitignore` contain only current local settings and rebuildable/runtime exclusions.
+**Dependencies:** None.
 
-**Dependencies:** Slices 1–3.
+### Task 5 — Make Extension artifact checks executable
 
-### Slice 5 — Repository cleanup, clean install and complete validation
+**Acceptance criteria:**
 
-**Status:** Complete.
+- A small automated gate builds and inspects `apps/extension/dist`.
+- The gate rejects remote scripts, `unsafe-eval`, proxy/auth/storage/tab permissions, unexpected
+  hosts, content scripts, and background workers.
+- The built artifact contains only bundled local runtime assets and the exact loopback target.
 
-**Acceptance:** remove generated caches/builds/logs and any tracked generated artifact; regenerate pnpm/uv locks after dependency removal; perform frozen/locked installs and the complete new test/build/lint/typecheck/import/startup/health/security suite. Run real browser verification when Chrome DevTools MCP is available.
+**Verification:** Extension tests, production build, artifact gate, manifest/CSP scan.
 
-**Dependencies:** Slices 1–4.
+**Dependencies:** Task 4.
 
-### Slice 6 — Mandatory review and simplification
+### Task 6 — Real Chrome and CORS verification
 
-**Status:** Complete — Critical 0 / Required 0.
+**Acceptance criteria:**
 
-**Acceptance:** `code-review-and-quality` reports Critical 0 / Required 0 across correctness, readability, architecture, security, performance and dependencies. `code-simplification` removes orphan interfaces, empty wrappers, dead DTOs/helpers/comments/TODOs and duplicate local-mode checks without adding speculative abstractions.
+- Attempt Load unpacked using available browser tooling and truthfully report PASS/BLOCKED.
+- Verify ready, unavailable, and retry recovery against the real local FastAPI process when
+  possible.
+- Determine from real Chrome behavior whether an Extension ID must be copied into CORS config;
+  never replace exact origins with wildcard CORS.
 
-**Dependencies:** Slice 5.
+**Verification:** Real Popup console/network/runtime evidence, or explicit `USER ACTION REQUIRED`.
 
-## Commit Strategy
+**Dependencies:** Tasks 2 and 5.
 
-Use a small number of meaningful, buildable commits:
+### Task 7 — Synchronize local-runtime documentation
 
-1. `docs: adopt local-first single-user architecture`
-2. `refactor(auth): remove hosted authentication stack`
-3. `refactor(extension): replace oauth with local health check`
-4. `chore: remove dead auth dependencies and generated caches`
+**Acceptance criteria:**
 
-Adjust boundaries only when needed to keep each commit coherent and verified. Do not collapse everything into one unexplained commit or mechanically create dozens of commits.
+- README first run no longer requires `.env`, PostgreSQL, Docker, cloud accounts, VPN, or proxy.
+- Canonical architecture/data/principles/roadmap/decision/task documents describe SQLite and the
+  real Extension/CORS finding.
+- No active document presents Job/Application/Adapter/AI as implemented.
+
+**Verification:** Stale-reference/link/format scans and manual cross-document review.
+
+**Dependencies:** Tasks 3 and 6.
+
+### Task 8 — Full validation, review, and simplification
+
+**Acceptance criteria:**
+
+- All requested frozen/locked install, test, lint, format, typecheck, build, API, SQLite, runtime,
+  security, Extension, and Git gates run with recorded results.
+- `code-review-and-quality` reaches Critical 0 / Required 0.
+- `code-simplification` removes only confirmed Phase 2.5 dead code and adds no abstraction.
+- Commits are coherent, branch/HEAD are reported, and Phase 3 is not started.
+
+**Verification:** Final validation matrix and clean working tree.
+
+**Dependencies:** Tasks 1–7.
+
+## Risks and Mitigations
+
+- **User data deletion:** all automated database tests use temporary directories; cleanup commands
+  never target `runtime-data/`.
+- **CORS assumptions:** only real Chrome evidence can mark the Extension/CORS gate PASS; otherwise
+  keep it blocked and request the exact manual test.
+- **SQLite concurrency:** keep the single-process default simple, enable foreign keys and a bounded
+  busy timeout, and defer WAL until actual concurrent writes exist.
+- **Scope drift:** no business tables or APIs are created; empty metadata and migration history are
+  valid until Phase 3 is separately approved.
 
 ## Final Gate
 
-- Auth0 runtime dependency: 0
-- Logto runtime dependency: 0
-- OAuth/OIDC/PKCE/JWT/session runtime code: 0
-- Remote executable script/CDN/font/telemetry/update dependency: 0
-- Extension proxy manipulation: 0
-- API default bind: loopback; supported non-loopback config fails before start
-- Extension and Web builds: PASS without provider configuration
-- OpenAPI: only `/health`
-- Full automated and browser/runtime checks: PASS or truthfully BLOCKED with evidence
-- Working tree: clean
-- Phase 3: not started; requires separate project-owner approval
+Phase 2.5 can pass only with Critical 0 / Required 0 and real Chrome evidence for the requested
+manual gates. If Chrome cannot be controlled, report
+`PHASE 2.5 BLOCKED — USER ACTION REQUIRED` and stop without entering Phase 3.
