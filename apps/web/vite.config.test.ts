@@ -5,8 +5,13 @@ import { describe, expect, it } from 'vitest';
 import { createWebConfig, validateWebEnvironment } from './vite.config';
 
 describe('validateWebEnvironment', () => {
-  it('rejects a missing API base URL before Web build or startup', () => {
-    expect(() => validateWebEnvironment({})).toThrow('API base URL must be a valid absolute URL');
+  it('uses the exact IPv4 loopback API when no environment override is provided', () => {
+    const config = createWebConfig({});
+
+    expect(() => validateWebEnvironment({})).not.toThrow();
+    expect(config.define).toEqual({
+      'import.meta.env.VITE_API_BASE_URL': JSON.stringify('http://127.0.0.1:8000'),
+    });
   });
 
   it.each(['http://localhost:8000', 'http://127.0.0.1:8000', 'http://[::1]:8000'])(

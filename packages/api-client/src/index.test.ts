@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import * as apiClientModule from './index';
 import { createApiClient } from './index';
@@ -7,6 +7,10 @@ const healthyPayload = {
   status: 'ok',
   service: 'jobpilot-api',
 } as const;
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe('createApiClient', () => {
   it('exports only the health-only client surface at runtime', () => {
@@ -33,6 +37,7 @@ describe('createApiClient', () => {
       headers: { Accept: 'application/json' },
       method: 'GET',
       redirect: 'error',
+      signal: expect.any(AbortSignal),
     });
   });
 
@@ -99,5 +104,27 @@ describe('createApiClient', () => {
     const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
 
     await expect(client.getHealth()).rejects.toThrow('invalid health response');
+  });
+
+  it('aborts a health request that remains pending for five seconds', async () => {
+    vi.useFakeTimers();
+    const fetchImplementation = vi.fn<typeof fetch>((_input, init) => {
+      return new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener(
+          'abort',
+          () => reject(new DOMException('The operation was aborted', 'AbortError')),
+          { once: true },
+        );
+      });
+    });
+    const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
+
+    const healthRequest = client.getHealth();
+    expect(fetchImplementation.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal);
+    const timeoutExpectation = expect(healthRequest).rejects.toThrow(
+      'JobPilot API health request timed out',
+    );
+    await vi.advanceTimersByTimeAsync(5_000);
+    await timeoutExpectation;
   });
 });

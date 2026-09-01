@@ -2,6 +2,8 @@ import type { ApiHealthResponse } from '@jobpilot/shared-types';
 
 export type { ApiHealthResponse } from '@jobpilot/shared-types';
 
+const HEALTH_REQUEST_TIMEOUT_MILLISECONDS = 5_000;
+
 export interface ApiClient {
   getHealth(): Promise<ApiHealthResponse>;
 }
@@ -40,28 +42,47 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
 
   return {
     async getHealth(): Promise<ApiHealthResponse> {
-      const response = await fetchImplementation(healthUrl, {
-        cache: 'no-store',
-        credentials: 'omit',
-        headers: { Accept: 'application/json' },
-        method: 'GET',
-        redirect: 'error',
-      });
+      const abortController = new AbortController();
+      const timeout = setTimeout(
+        () => abortController.abort(),
+        HEALTH_REQUEST_TIMEOUT_MILLISECONDS,
+      );
 
-      if (response.status !== 200) {
-        throw new Error(`JobPilot API health request failed with status ${response.status}`);
-      }
-
-      let payload: unknown;
       try {
-        payload = await response.json();
-      } catch {
-        throw new Error('JobPilot API returned an invalid health response');
+        const response = await fetchImplementation(healthUrl, {
+          cache: 'no-store',
+          credentials: 'omit',
+          headers: { Accept: 'application/json' },
+          method: 'GET',
+          redirect: 'error',
+          signal: abortController.signal,
+        });
+
+        if (response.status !== 200) {
+          throw new Error(`JobPilot API health request failed with status ${response.status}`);
+        }
+
+        let payload: unknown;
+        try {
+          payload = await response.json();
+        } catch {
+          if (abortController.signal.aborted) {
+            throw new Error('JobPilot API health request timed out');
+          }
+          throw new Error('JobPilot API returned an invalid health response');
+        }
+        if (!isApiHealthResponse(payload)) {
+          throw new Error('JobPilot API returned an invalid health response');
+        }
+        return payload;
+      } catch (error) {
+        if (abortController.signal.aborted) {
+          throw new Error('JobPilot API health request timed out', { cause: error });
+        }
+        throw error;
+      } finally {
+        clearTimeout(timeout);
       }
-      if (!isApiHealthResponse(payload)) {
-        throw new Error('JobPilot API returned an invalid health response');
-      }
-      return payload;
     },
   };
 }
