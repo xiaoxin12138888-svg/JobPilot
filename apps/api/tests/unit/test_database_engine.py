@@ -1,75 +1,102 @@
 from __future__ import annotations
 
-import pytest
+from pathlib import Path
 
-import jobpilot_api.infrastructure.database.engine as engine_module
+from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
+
 from jobpilot_api.infrastructure.database.engine import (
+    DEFAULT_DATABASE_PATH,
+    SQLITE_BUSY_TIMEOUT_MILLISECONDS,
     create_database_engine,
-    parse_postgresql_url,
+    initialize_database,
+    sqlite_database_url,
 )
 
 
-@pytest.mark.parametrize(
-    ("database_url", "expected_hostaddr"),
-    [
-        ("postgresql+psycopg://postgres:secret@localhost/jobpilot", "127.0.0.1"),
-        ("postgresql+psycopg://postgres:secret@127.0.0.2/jobpilot", "127.0.0.2"),
-        ("postgresql+psycopg://postgres:secret@[::1]/jobpilot", "::1"),
-    ],
-)
-def test_database_engine_pins_the_validated_loopback_hostaddr(
-    monkeypatch: pytest.MonkeyPatch,
-    database_url: str,
-    expected_hostaddr: str,
-) -> None:
-    captured: dict[str, object] = {}
+def test_default_database_path_is_the_ignored_repository_runtime_data_file() -> None:
+    repository_root = Path(__file__).resolve().parents[4]
 
-    def capture_create_engine(url: object, **kwargs: object) -> object:
-        captured.update(url=url, **kwargs)
-        return object()
-
-    monkeypatch.setattr(engine_module, "create_engine", capture_create_engine)
-
-    create_database_engine(database_url)
-
-    assert captured["connect_args"] == {"hostaddr": expected_hostaddr}
+    assert DEFAULT_DATABASE_PATH == repository_root / "runtime-data" / "jobpilot.db"
+    assert (
+        "runtime-data/" in (repository_root / ".gitignore").read_text(encoding="utf-8").splitlines()
+    )
 
 
-@pytest.mark.parametrize(
-    "database_url",
-    [
-        "postgresql+psycopg://postgres:secret@localhost:5432/jobpilot",
-        "postgresql+psycopg://postgres:secret@127.0.0.1:5432/jobpilot",
-        "postgresql+psycopg://postgres:secret@[::1]:5432/jobpilot",
-    ],
-)
-def test_database_url_accepts_only_local_postgresql_hosts(database_url: str) -> None:
-    assert parse_postgresql_url(database_url).database == "jobpilot"
+def test_initialization_creates_the_parent_directory_and_database(tmp_path: Path) -> None:
+    database_path = tmp_path / "nested" / "runtime-data" / "jobpilot.db"
+
+    initialized_path = initialize_database(database_path)
+
+    assert initialized_path == database_path.resolve()
+    assert database_path.is_file()
 
 
-@pytest.mark.parametrize(
-    "database_url",
-    [
-        "sqlite+pysqlite:///:memory:",
-        "postgresql+psycopg://postgres:secret@db.example.invalid/jobpilot",
-        "postgresql+psycopg://postgres:secret@192.168.1.20/jobpilot",
-        "postgresql+psycopg:///jobpilot",
-        "postgresql+psycopg://postgres:secret@127.0.0.1/jobpilot?host=db.example.invalid",
-        "postgresql+psycopg://postgres:secret@127.0.0.1/jobpilot?hostaddr=192.168.1.20",
-        "postgresql+psycopg://postgres:secret@127.0.0.1/jobpilot?service=remote-service",
-    ],
-)
-def test_database_url_rejects_non_postgresql_or_non_loopback_hosts(
-    database_url: str,
-) -> None:
-    with pytest.raises(ValueError, match="loopback PostgreSQL"):
-        parse_postgresql_url(database_url)
-
-
-def test_database_engine_hides_bound_parameters() -> None:
-    engine = create_database_engine("postgresql+psycopg://postgres:password@localhost/jobpilot")
-
+def test_second_initialization_reuses_the_database_without_overwriting_data(tmp_path: Path) -> None:
+    database_path = tmp_path / "runtime-data" / "jobpilot.db"
+    initialize_database(database_path)
+    first_engine = create_database_engine(database_path)
     try:
-        assert engine.hide_parameters is True
+        with first_engine.begin() as connection:
+            connection.execute(text("CREATE TABLE restart_marker (value TEXT NOT NULL)"))
+            connection.execute(
+                text("INSERT INTO restart_marker (value) VALUES (:value)"),
+                {"value": "preserved"},
+            )
+    finally:
+        first_engine.dispose()
+
+    initialize_database(database_path)
+    second_engine = create_database_engine(database_path)
+    try:
+        with second_engine.connect() as connection:
+            value = connection.scalar(text("SELECT value FROM restart_marker"))
+    finally:
+        second_engine.dispose()
+
+    assert value == "preserved"
+
+
+def test_every_sqlite_connection_enables_foreign_keys_and_busy_timeout(tmp_path: Path) -> None:
+    database_path = tmp_path / "jobpilot.db"
+    engine = create_database_engine(database_path)
+    try:
+        with engine.begin() as connection:
+            foreign_keys = connection.exec_driver_sql("PRAGMA foreign_keys").scalar_one()
+            busy_timeout = connection.exec_driver_sql("PRAGMA busy_timeout").scalar_one()
+            connection.exec_driver_sql("CREATE TABLE parent (id INTEGER PRIMARY KEY)")
+            connection.exec_driver_sql(
+                "CREATE TABLE child (parent_id INTEGER REFERENCES parent(id))"
+            )
+
+        with engine.begin() as connection:
+            try:
+                connection.exec_driver_sql("INSERT INTO child (parent_id) VALUES (999)")
+            except IntegrityError:
+                pass
+            else:
+                raise AssertionError("SQLite foreign key enforcement was not enabled")
     finally:
         engine.dispose()
+
+    assert foreign_keys == 1
+    assert busy_timeout == SQLITE_BUSY_TIMEOUT_MILLISECONDS
+
+
+def test_database_engine_hides_bound_parameters_and_keeps_default_journal_mode(
+    tmp_path: Path,
+) -> None:
+    engine = create_database_engine(tmp_path / "jobpilot.db")
+    try:
+        with engine.connect() as connection:
+            journal_mode = connection.exec_driver_sql("PRAGMA journal_mode").scalar_one()
+        assert engine.hide_parameters is True
+        assert journal_mode == "delete"
+    finally:
+        engine.dispose()
+
+
+def test_sqlite_database_url_uses_an_absolute_file_path(tmp_path: Path) -> None:
+    database_path = tmp_path / "jobpilot.db"
+
+    assert sqlite_database_url(database_path).database == str(database_path.resolve())

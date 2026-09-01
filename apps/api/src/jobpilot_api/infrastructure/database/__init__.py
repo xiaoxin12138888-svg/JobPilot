@@ -1,1 +1,1 @@
-"""PostgreSQL persistence infrastructure."""
+"""Local SQLite persistence infrastructure."""

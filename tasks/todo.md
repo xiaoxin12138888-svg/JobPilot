@@ -15,21 +15,22 @@
 
 ## SQLite TDD and implementation
 
-- [ ] RED: default database resolves to `runtime-data/jobpilot.db` without `DATABASE_URL`.
-- [ ] RED: initialization creates the directory/database and restart preserves existing data.
-- [ ] RED: every connection has `foreign_keys=ON` and a bounded busy timeout.
-- [ ] RED: supported API startup initializes SQLite before Uvicorn.
-- [ ] GREEN: implement the smallest SQLite engine/path/initialization flow.
-- [ ] Prove Alembic connects to an explicit temporary SQLite database.
-- [ ] Prove tests do not create or modify the real runtime database.
-- [ ] Keep rollback journal mode unless present evidence justifies WAL.
+- [x] RED: default database resolves to `runtime-data/jobpilot.db` without `DATABASE_URL`.
+- [x] RED: initialization creates the directory/database and restart preserves existing data.
+- [x] RED: every connection has `foreign_keys=ON` and a bounded busy timeout.
+- [x] RED: supported API startup initializes SQLite before Uvicorn.
+- [x] GREEN: implement the smallest SQLite engine/path/initialization flow.
+- [x] Prove Alembic connects to an explicit temporary SQLite database.
+- [x] Prove tests do not create or modify the real runtime database.
+- [x] Keep rollback journal mode unless present evidence justifies WAL.
 
 ## PostgreSQL removal
 
-- [ ] Remove psycopg from `pyproject.toml` and `uv.lock`.
-- [ ] Remove PostgreSQL/libpq/PGHOSTADDR URL logic and tests.
-- [ ] Remove PostgreSQL-only environment variables and active documentation.
-- [ ] Confirm no runtime PostgreSQL consumer remains.
+- [x] Remove psycopg from `pyproject.toml` and `uv.lock`.
+- [x] Remove PostgreSQL/libpq/PGHOSTADDR URL logic and tests.
+- [x] Remove PostgreSQL-only environment variables.
+- [ ] Remove PostgreSQL-only statements from active documentation.
+- [x] Confirm no runtime PostgreSQL consumer remains.
 
 ## Health client TDD
 
