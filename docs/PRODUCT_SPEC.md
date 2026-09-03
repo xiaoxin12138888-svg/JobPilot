@@ -1,6 +1,6 @@
 # JobPilot 产品规格
 
-> 状态：Phase 2.5 Local Runtime Foundation Finalization。Phase 3 尚未开始；未来能力只描述产品边界，不代表已经实现。
+> 状态：Phase 2.5 Local Runtime Foundation Finalization 已完成，等待负责人验收。Phase 3 尚未开始；未来能力只描述产品边界，不代表已经实现。
 
 ## 1. 产品定位
 

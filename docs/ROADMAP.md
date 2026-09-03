@@ -1,6 +1,6 @@
 # JobPilot Roadmap
 
-> 当前阶段：Phase 2.5 Local Runtime Foundation Finalization。Phase 3 尚未开始，必须等待项目负责人单独批准。
+> 当前阶段：Phase 2.5 Local Runtime Foundation Finalization 已完成，等待负责人验收。Phase 3 尚未开始，必须等待项目负责人单独批准。
 
 ## 1. Global gates
 
@@ -67,7 +67,7 @@ Phase 2.5 把未使用的 PostgreSQL skeleton 替换为 `runtime-data/jobpilot.d
 
 Extension 仍为 Popup-only，并由自动 artifact gate 拒绝 remote code、额外权限、background、content script 与非 loopback host。真实 Chrome 已验证 Load unpacked、API unavailable/retry/recovery 和无需 Extension-ID CORS；无代理本地运行也已由项目负责人确认。
 
-完成全部 frozen/locked install、测试、构建、SQLite、API runtime、安全扫描、审查、简化与文档门禁后，Phase 2.5 才能标记完成。此阶段不得实现任何 Phase 3 业务能力。
+全部 frozen/locked install、测试、构建、SQLite、API runtime、安全扫描、审查、简化与文档门禁均已通过，Phase 2.5 标记完成。此阶段没有实现任何 Phase 3 业务能力。
 
 ## 5. Future product phases
 
@@ -108,4 +108,4 @@ Extension 仍为 Popup-only，并由自动 artifact gate 拒绝 remote code、�
 
 ## 7. Current next step
 
-当前下一步是完成并评审 Phase 2.5 验收矩阵。通过后只能把 Phase 3 作为候选下一阶段并等待项目负责人单独批准；不得自动创建 Job/Application/ResumeVersion、Adapter、content script、AI 或 RAG 实现。
+当前下一步只有项目负责人验收 Phase 2.5，并决定是否单独批准 Phase 3。Phase 3 只是候选下一阶段；不得自动创建 Job/Application/ResumeVersion、Adapter、content script、AI 或 RAG 实现。

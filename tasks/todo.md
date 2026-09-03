@@ -53,22 +53,22 @@
 - [x] Update README first-run flow and local configuration.
 - [x] Update architecture, data model, engineering principles, roadmap, decision index, and active ADR amendments.
 - [x] Update product/API/agent context where old PostgreSQL or Extension-ID statements would otherwise conflict.
-- [ ] Keep unsupported future capabilities explicitly unimplemented.
+- [x] Keep unsupported future capabilities explicitly unimplemented.
 
 ## Complete validation
 
-- [ ] `pnpm install --frozen-lockfile`.
-- [ ] `uv sync --project apps/api --locked`.
-- [ ] `pnpm test`, lint, format check, typecheck, Web build, Extension build.
-- [ ] API tests, lint, format check, import check.
-- [ ] SQLite clean-temp initialization, restart persistence, Alembic connection.
-- [ ] API startup and `GET /health`.
-- [ ] Secret, remote-runtime, proxy/telemetry, manifest/CSP, loopback, tracked-artifact scans.
-- [ ] `git diff --check` and final `git status`.
+- [x] `pnpm install --frozen-lockfile`.
+- [x] `uv sync --project apps/api --locked`.
+- [x] `pnpm test`, lint, format check, typecheck, Web build, Extension build.
+- [x] API tests, lint, format check, import check.
+- [x] SQLite clean-temp initialization, restart persistence, Alembic connection.
+- [x] API startup and `GET /health`.
+- [x] Secret, remote-runtime, proxy/telemetry, manifest/CSP, loopback, tracked-artifact scans.
+- [x] `git diff --check` and final `git status`.
 
 ## Review and delivery
 
-- [ ] Run `code-review-and-quality`; resolve Critical and Required findings.
-- [ ] Run `code-simplification`; remove confirmed dead Phase 2.5 code only.
-- [ ] Commit coherent, verified increments.
-- [ ] Produce the required Phase 2.5 Summary and stop before Phase 3.
+- [x] Run `code-review-and-quality`; resolve Critical and Required findings.
+- [x] Run `code-simplification`; remove confirmed dead Phase 2.5 code only.
+- [x] Commit coherent, verified increments.
+- [x] Produce the required Phase 2.5 Summary and stop before Phase 3.

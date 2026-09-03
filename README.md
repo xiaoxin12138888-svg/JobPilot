@@ -6,7 +6,7 @@ JobPilot 不替代招聘网站，不建设职位数据库，也不代表用户�
 
 ## 当前状态
 
-项目正在完成 **Phase 2.5 — Local Runtime Foundation Finalization**。当前基线只有：
+项目已完成 **Phase 2.5 — Local Runtime Foundation Finalization**，正在等待负责人决定是否单独批准 Phase 3。当前基线只有：
 
 - React Web：显示本机 API 的 `checking / ready / unavailable` 状态；`unavailable` 提供 retry 动作；
 - Chrome Extension：无 privileged Chrome API permission、无后台进程的本地健康 Popup；唯一 host permission 是 `http://127.0.0.1:8000/*`；

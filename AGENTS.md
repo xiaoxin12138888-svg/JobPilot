@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Phase 2.5 Local Runtime Foundation Finalization is active on `phase/2.5-local-runtime`. The original `phase/2-authentication` branch and recovery checkpoint `pre-local-first-cleanup` remain untouched. Phase 3 is not started. Do not implement Job, Application, ResumeVersion, recruitment-site adapters, content scripts, AI, RAG, uploads, analytics or dashboards without separate approval.
+Phase 2.5 Local Runtime Foundation Finalization is complete on `phase/2.5-local-runtime` and awaits project-owner acceptance. The original `phase/2-authentication` branch and recovery checkpoint `pre-local-first-cleanup` remain untouched. Phase 3 is not started. Do not implement Job, Application, ResumeVersion, recruitment-site adapters, content scripts, AI, RAG, uploads, analytics or dashboards without separate approval.
 
 ## Canonical context
 
