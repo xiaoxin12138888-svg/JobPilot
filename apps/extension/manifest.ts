@@ -4,13 +4,14 @@ export function createManifest(config: ExtensionConfig): chrome.runtime.Manifest
   return {
     manifest_version: 3,
     name: 'JobPilot Extension',
-    description: 'Check whether the local JobPilot service is available',
+    description: 'Capture the current BOSS job into the local JobPilot workspace',
     version: '0.1.0',
     minimum_chrome_version: '106',
     action: {
       default_popup: 'popup.html',
-      default_title: 'Check local JobPilot',
+      default_title: 'Capture current BOSS job',
     },
+    permissions: ['activeTab', 'scripting'],
     host_permissions: [`${config.apiBaseUrl}/*`],
     content_security_policy: {
       extension_pages:

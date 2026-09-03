@@ -5,17 +5,18 @@ import { createManifest } from './manifest';
 const config = { apiBaseUrl: 'http://127.0.0.1:8000' } as const;
 
 describe('createManifest', () => {
-  it('exposes only the local Popup and exact loopback health origin', () => {
+  it('exposes only user-triggered current-tab capture and the exact loopback API origin', () => {
     expect(createManifest(config)).toEqual({
       manifest_version: 3,
       name: 'JobPilot Extension',
-      description: 'Check whether the local JobPilot service is available',
+      description: 'Capture the current BOSS job into the local JobPilot workspace',
       version: '0.1.0',
       minimum_chrome_version: '106',
       action: {
         default_popup: 'popup.html',
-        default_title: 'Check local JobPilot',
+        default_title: 'Capture current BOSS job',
       },
+      permissions: ['activeTab', 'scripting'],
       host_permissions: ['http://127.0.0.1:8000/*'],
       content_security_policy: {
         extension_pages:
@@ -24,12 +25,15 @@ describe('createManifest', () => {
     });
   });
 
-  it('has no privileged, background, injected, or OAuth surfaces', () => {
+  it('has no broad host, persistent injection, background, or OAuth surfaces', () => {
     const manifest = createManifest(config);
 
+    expect(manifest.permissions).toEqual(['activeTab', 'scripting']);
+    expect(manifest.host_permissions).toEqual(['http://127.0.0.1:8000/*']);
+
     for (const forbiddenKey of [
-      'permissions',
       'optional_permissions',
+      'optional_host_permissions',
       'background',
       'content_scripts',
       'oauth2',
