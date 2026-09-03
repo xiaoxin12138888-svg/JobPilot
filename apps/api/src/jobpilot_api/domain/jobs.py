@@ -100,6 +100,8 @@ def normalize_source_url(value: str | None) -> str | None:
 
 
 def _required_text(field: str, value: str, maximum: int) -> str:
+    if not isinstance(value, str):
+        raise DomainValidationError(f"{field}: must be text")
     cleaned = value.strip()
     if not cleaned:
         raise DomainValidationError(f"{field}: must not be blank")

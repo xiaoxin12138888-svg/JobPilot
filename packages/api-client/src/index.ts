@@ -11,6 +11,7 @@ import type {
   UpdateApplicationInput,
   UpdateJobInput,
 } from '@jobpilot/shared-types';
+export { APPLICATION_STATUS_LABELS } from '@jobpilot/shared-types';
 
 export type {
   ApiErrorEnvelope,
@@ -79,10 +80,7 @@ export interface ApiClient {
   createApplication(jobId: string): Promise<Application>;
   listApplications(filters?: ApplicationListFilters): Promise<ApplicationListResponse>;
   getApplication(applicationId: string): Promise<Application>;
-  updateApplication(
-    applicationId: string,
-    input: UpdateApplicationInput,
-  ): Promise<Application>;
+  updateApplication(applicationId: string, input: UpdateApplicationInput): Promise<Application>;
 }
 
 export interface ApiClientOptions {
@@ -178,9 +176,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
           signal: abortController.signal,
         });
         if (response.status !== 200) {
-          throw new Error(
-            `JobPilot API health request failed with status ${response.status}`,
-          );
+          throw new Error(`JobPilot API health request failed with status ${response.status}`);
         }
         let payload: unknown;
         try {
@@ -215,9 +211,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       return requireJob(await request(`/api/v1/jobs/${encodeURIComponent(jobId)}`, 'GET'));
     },
     async updateJob(jobId, input): Promise<Job> {
-      return requireJob(
-        await request(`/api/v1/jobs/${encodeURIComponent(jobId)}`, 'PATCH', input),
-      );
+      return requireJob(await request(`/api/v1/jobs/${encodeURIComponent(jobId)}`, 'PATCH', input));
     },
     async deleteJob(jobId): Promise<void> {
       await request(`/api/v1/jobs/${encodeURIComponent(jobId)}`, 'DELETE');
@@ -238,11 +232,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     },
     async updateApplication(applicationId, input): Promise<Application> {
       return requireApplication(
-        await request(
-          `/api/v1/applications/${encodeURIComponent(applicationId)}`,
-          'PATCH',
-          input,
-        ),
+        await request(`/api/v1/applications/${encodeURIComponent(applicationId)}`, 'PATCH', input),
       );
     },
   };
@@ -315,14 +305,7 @@ const JOB_KEYS = [
   'createdAt',
   'updatedAt',
 ] as const;
-const APPLICATION_KEYS = [
-  'id',
-  'jobId',
-  'status',
-  'appliedAt',
-  'createdAt',
-  'updatedAt',
-] as const;
+const APPLICATION_KEYS = ['id', 'jobId', 'status', 'appliedAt', 'createdAt', 'updatedAt'] as const;
 
 function isJobFields(value: Record<string, unknown>): boolean {
   return (
@@ -400,7 +383,11 @@ function isRecordWithKeys(
   value: unknown,
   keys: readonly string[],
 ): value is Record<string, unknown> {
-  return isRecord(value) && Object.keys(value).length === keys.length && keys.every((key) => key in value);
+  return (
+    isRecord(value) &&
+    Object.keys(value).length === keys.length &&
+    keys.every((key) => key in value)
+  );
 }
 
 function isNullableString(value: unknown): value is string | null {

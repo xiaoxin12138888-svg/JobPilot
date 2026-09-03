@@ -38,7 +38,7 @@ def create_job(
 @router.get("/jobs", response_model=JobListResponse)
 def list_jobs(
     service: Annotated[JobService, Depends(get_job_service)],
-    keyword: str | None = None,
+    keyword: Annotated[str | None, Query(max_length=200)] = None,
     source: Literal["manual"] | None = None,
     application_status: Annotated[
         ApplicationStatus | None, Query(alias="applicationStatus")

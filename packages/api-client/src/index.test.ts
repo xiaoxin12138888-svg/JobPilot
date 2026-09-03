@@ -15,6 +15,7 @@ afterEach(() => {
 describe('createApiClient', () => {
   it('exports only the intended client runtime surface', () => {
     expect(Object.keys(apiClientModule).sort()).toEqual([
+      'APPLICATION_STATUS_LABELS',
       'ApiRequestError',
       'createApiClient',
       'validateApiBaseUrl',
@@ -165,7 +166,12 @@ describe('createApiClient', () => {
   });
 
   it('lists jobs with bounded filters and validates the response', async () => {
-    const payload = { items: [{ ...createJobPayload(), applicationStatus: 'planned' }], total: 1, limit: 20, offset: 0 };
+    const payload = {
+      items: [{ ...createJobPayload(), applicationStatus: 'planned' }],
+      total: 1,
+      limit: 20,
+      offset: 0,
+    };
     const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(payload));
     const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
 
@@ -191,7 +197,9 @@ describe('createApiClient', () => {
   it('surfaces the public API error without leaking a transport detail', async () => {
     const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(
       jsonResponse(
-        { error: { code: 'DUPLICATE_JOB_URL', message: '该岗位链接已经保存', requestId: 'req_1' } },
+        {
+          error: { code: 'DUPLICATE_JOB_URL', message: '该岗位链接已经保存', requestId: 'req_1' },
+        },
         409,
       ),
     );
@@ -210,9 +218,7 @@ describe('createApiClient', () => {
 
   it('requires explicit applied confirmation in the status request body', async () => {
     const application = createApplicationPayload('applied');
-    const fetchImplementation = vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(jsonResponse(application));
+    const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(application));
     const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
 
     await client.updateApplication('application-1', {
