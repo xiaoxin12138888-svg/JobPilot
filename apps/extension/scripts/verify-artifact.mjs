@@ -38,11 +38,11 @@ for (const file of artifactFiles) {
 const manifest = JSON.parse(await readFile(path.join(distDirectory, 'manifest.json'), 'utf8'));
 assert.equal(manifest.manifest_version, 3);
 assert.equal(manifest.action?.default_popup, 'popup.html');
+assert.deepEqual(manifest.permissions, ['activeTab', 'scripting']);
 assert.deepEqual(manifest.host_permissions, [`${LOOPBACK_ORIGIN}/*`]);
 assert.equal(manifest.content_security_policy?.extension_pages, EXPECTED_CSP);
 
 for (const forbiddenKey of [
-  'permissions',
   'optional_permissions',
   'optional_host_permissions',
   'background',
@@ -76,7 +76,7 @@ const withoutApprovedLoopback = artifactSource
 assert.doesNotMatch(withoutApprovedLoopback, /https?:\/\//iu, 'Remote runtime URL detected');
 assert.doesNotMatch(
   artifactSource,
-  /unsafe-eval|<all_urls>|chrome\.(?:identity|storage|tabs|proxy)|\b(?:auth0|logto|oauth|oidc|pkce|telemetry|analytics|sentry)\b/iu,
+  /unsafe-eval|<all_urls>|chrome\.(?:identity|storage|proxy)|\b(?:auth0|logto|oauth|oidc|pkce|telemetry|analytics|sentry)\b/iu,
   'Forbidden Extension runtime capability detected',
 );
 
