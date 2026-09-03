@@ -68,6 +68,7 @@ def test_api_settings_reject_duplicate_cors_origins() -> None:
         "http://192.168.1.20:5173",
         "https://web.example.invalid",
         "chrome-extension://not-a-valid-extension-id",
+        "chrome-extension://abcdefghijklmnopabcdefghijklmnop",
     ],
 )
 def test_api_settings_reject_nonlocal_cors_origins(origin: str) -> None:
@@ -75,12 +76,12 @@ def test_api_settings_reject_nonlocal_cors_origins(origin: str) -> None:
         ApiSettings.from_environment({"JOBPILOT_CORS_ORIGINS": origin})
 
 
-def test_api_settings_accept_exact_web_and_extension_origins() -> None:
-    web_origin = "http://127.0.0.1:5173"
-    extension_origin = "chrome-extension://abcdefghijklmnopabcdefghijklmnop"
+def test_api_settings_accept_exact_loopback_web_origins() -> None:
+    ipv4_origin = "http://127.0.0.1:5173"
+    localhost_origin = "https://localhost:5173"
 
     settings = ApiSettings.from_environment(
-        {"JOBPILOT_CORS_ORIGINS": f"{web_origin},{extension_origin}"}
+        {"JOBPILOT_CORS_ORIGINS": f"{ipv4_origin},{localhost_origin}"}
     )
 
-    assert settings.cors_origins == (web_origin, extension_origin)
+    assert settings.cors_origins == (ipv4_origin, localhost_origin)

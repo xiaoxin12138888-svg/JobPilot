@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from ipaddress import ip_address
@@ -9,8 +8,7 @@ from urllib.parse import urlsplit
 
 DEFAULT_API_BIND_HOST = "127.0.0.1"
 DEFAULT_CORS_ORIGINS = ("http://127.0.0.1:5173",)
-ALLOWED_CORS_SCHEMES = frozenset({"http", "https", "chrome-extension"})
-EXTENSION_ID_PATTERN = re.compile(r"[a-p]{32}\Z")
+ALLOWED_CORS_SCHEMES = frozenset({"http", "https"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,13 +69,9 @@ def _validate_cors_origin(origin: str) -> None:
         or parsed.username is not None
         or parsed.password is not None
         or port == 0
-        or (parsed.scheme == "chrome-extension" and port is not None)
     ):
         raise ValueError("CORS origin must be one exact origin without credentials or suffixes")
-    if parsed.scheme == "chrome-extension":
-        if EXTENSION_ID_PATTERN.fullmatch(parsed.hostname) is None:
-            raise ValueError("CORS origin must use one exact Chrome Extension ID")
-    elif not _is_loopback_cors_host(parsed.hostname):
+    if not _is_loopback_cors_host(parsed.hostname):
         raise ValueError("CORS origin must use a loopback Web host")
 
 

@@ -20,7 +20,7 @@ def test_cors_allows_only_the_configured_exact_origin_without_credentials() -> N
 
 
 def test_cors_preflight_is_get_only_and_credential_free() -> None:
-    origin = "chrome-extension://abcdefghijklmnopabcdefghijklmnop"
+    origin = "http://127.0.0.1:5173"
     client = TestClient(create_app(ApiSettings.from_environment({"JOBPILOT_CORS_ORIGINS": origin})))
 
     response = client.options(
