@@ -25,6 +25,43 @@ def test_job_draft_trims_user_text_and_normalizes_an_http_url() -> None:
     assert draft.normalized_source_url == "https://example.com/jobs/1?from=feed"
 
 
+def test_job_draft_accepts_a_boss_job_detail_source() -> None:
+    draft = JobDraft.create(
+        title="产品经理",
+        company="测试公司",
+        source="boss",
+        source_url="https://www.zhipin.com/job_detail/fixture123.html?ka=search_list_jname",
+    )
+
+    assert draft.source == "boss"
+    assert (
+        draft.normalized_source_url
+        == "https://www.zhipin.com/job_detail/fixture123.html?ka=search_list_jname"
+    )
+
+
+@pytest.mark.parametrize(
+    ("source", "source_url"),
+    [
+        ("other", "https://www.zhipin.com/job_detail/fixture123.html"),
+        ("boss", None),
+        ("boss", "https://example.com/job_detail/fixture123.html"),
+        ("boss", "https://www.zhipin.com/web/geek/job"),
+    ],
+)
+def test_job_draft_rejects_an_unsupported_source_or_boss_page(
+    source: str,
+    source_url: str | None,
+) -> None:
+    with pytest.raises(DomainValidationError, match="source"):
+        JobDraft.create(
+            title="岗位",
+            company="公司",
+            source=source,
+            source_url=source_url,
+        )
+
+
 @pytest.mark.parametrize("field", ["title", "company"])
 def test_job_draft_rejects_blank_required_text(field: str) -> None:
     values = {"title": "岗位", "company": "公司"}

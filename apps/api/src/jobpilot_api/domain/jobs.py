@@ -12,6 +12,7 @@ MAX_SHORT_TEXT_LENGTH = 300
 MAX_URL_LENGTH = 2_048
 MAX_DESCRIPTION_LENGTH = 100_000
 MAX_NOTES_LENGTH = 20_000
+SUPPORTED_JOB_SOURCES = frozenset({"manual", "boss"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,9 +42,11 @@ class JobDraft:
     ) -> JobDraft:
         clean_title = _required_text("title", title, MAX_TITLE_LENGTH)
         clean_company = _required_text("company", company, MAX_COMPANY_LENGTH)
-        if source != "manual":
-            raise DomainValidationError("source: Phase 3 only accepts manual jobs")
+        if source not in SUPPORTED_JOB_SOURCES:
+            raise DomainValidationError("source: must be manual or boss")
         clean_url = _optional_text("sourceUrl", source_url, MAX_URL_LENGTH)
+        if source == "boss" and not is_boss_job_detail_url(clean_url):
+            raise DomainValidationError("sourceUrl: boss source requires a BOSS job detail URL")
         return cls(
             title=clean_title,
             company=clean_company,
@@ -97,6 +100,23 @@ def normalize_source_url(value: str | None) -> str | None:
     )
     netloc = f"{hostname}:{port}" if include_port else hostname
     return urlunsplit((scheme, netloc, parsed.path, parsed.query, ""))
+
+
+def is_boss_job_detail_url(value: str | None) -> bool:
+    if value is None:
+        return False
+    try:
+        parsed = urlsplit(value)
+    except ValueError:
+        return False
+    path = parsed.path
+    return (
+        parsed.scheme.lower() in {"http", "https"}
+        and parsed.hostname == "www.zhipin.com"
+        and path.startswith("/job_detail/")
+        and len(path) > len("/job_detail/.html")
+        and path.endswith(".html")
+    )
 
 
 def _required_text(field: str, value: str, maximum: int) -> str:

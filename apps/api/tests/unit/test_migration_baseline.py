@@ -1,6 +1,7 @@
 import sqlite3
 from pathlib import Path
 
+import pytest
 from alembic import command
 from alembic.config import Config
 from alembic.script import ScriptDirectory
@@ -9,7 +10,7 @@ from jobpilot_api.infrastructure.database.engine import sqlite_database_url
 from jobpilot_api.infrastructure.database.models import Base
 
 
-def test_model_metadata_and_migration_history_contain_only_phase_3_tables() -> None:
+def test_model_metadata_and_migration_history_contain_only_job_application_tables() -> None:
     config = Config("apps/api/alembic.ini")
     script = ScriptDirectory.from_config(config)
 
@@ -32,11 +33,29 @@ def test_alembic_connects_to_an_explicit_temporary_sqlite_database(tmp_path: Pat
     assert version_table == ("alembic_version",)
 
 
-def test_phase_3_migration_upgrades_and_downgrades_clean_database(tmp_path: Path) -> None:
+def test_phase_4_source_migration_preserves_phase_3_data_and_is_reversible(tmp_path: Path) -> None:
     database_path = tmp_path / "migration" / "jobpilot.db"
     database_path.parent.mkdir(parents=True)
     config = Config("apps/api/alembic.ini")
     config.set_main_option("sqlalchemy.url", sqlite_database_url(database_path).render_as_string())
+
+    command.upgrade(config, "0001_job_application")
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """
+            INSERT INTO jobs (
+                id, title, company, source, created_at, updated_at
+            ) VALUES ('manual-job', '岗位', '公司', 'manual', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO applications (
+                id, job_id, status, created_at, updated_at
+            ) VALUES ('application-1', 'manual-job', 'planned', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """
+        )
+        connection.commit()
 
     command.upgrade(config, "head")
     with sqlite3.connect(database_path) as connection:
@@ -50,6 +69,22 @@ def test_phase_3_migration_upgrades_and_downgrades_clean_database(tmp_path: Path
         application_foreign_keys = connection.execute(
             "PRAGMA foreign_key_list(applications)"
         ).fetchall()
+        connection.execute(
+            """
+            INSERT INTO jobs (
+                id, title, company, source, source_url, created_at, updated_at
+            ) VALUES (
+                'boss-job', '产品经理', '测试公司', 'boss',
+                'https://www.zhipin.com/job_detail/fixture123.html',
+                CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+            )
+            """
+        )
+        preserved_application = connection.execute(
+            "SELECT job_id, status FROM applications WHERE id = 'application-1'"
+        ).fetchone()
+        connection.execute("DELETE FROM jobs WHERE id = 'boss-job'")
+        connection.commit()
 
     assert {"jobs", "applications", "alembic_version"}.issubset(tables)
     assert "normalized_source_url" in job_columns
@@ -57,14 +92,52 @@ def test_phase_3_migration_upgrades_and_downgrades_clean_database(tmp_path: Path
         row[2] == "jobs" and row[3] == "job_id" and row[6] == "CASCADE"
         for row in application_foreign_keys
     )
+    assert preserved_application == ("manual-job", "planned")
 
-    command.downgrade(config, "base")
+    command.downgrade(config, "0001_job_application")
     with sqlite3.connect(database_path) as connection:
-        remaining = {
-            row[0]
-            for row in connection.execute(
-                "SELECT name FROM sqlite_master WHERE type = 'table'"
-            ).fetchall()
-        }
-    assert "jobs" not in remaining
-    assert "applications" not in remaining
+        preserved_job = connection.execute(
+            "SELECT source FROM jobs WHERE id = 'manual-job'"
+        ).fetchone()
+        with pytest.raises(sqlite3.IntegrityError):
+            connection.execute(
+                """
+                INSERT INTO jobs (
+                    id, title, company, source, created_at, updated_at
+                ) VALUES ('rejected-boss', '岗位', '公司', 'boss', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """
+            )
+
+    assert preserved_job == ("manual",)
+
+    command.upgrade(config, "head")
+    with sqlite3.connect(database_path) as connection:
+        version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
+    assert version == ("0002_boss_job_source",)
+
+
+def test_source_migration_refuses_to_downgrade_while_boss_jobs_exist(tmp_path: Path) -> None:
+    database_path = tmp_path / "migration" / "jobpilot.db"
+    database_path.parent.mkdir(parents=True)
+    config = Config("apps/api/alembic.ini")
+    config.set_main_option("sqlalchemy.url", sqlite_database_url(database_path).render_as_string())
+    command.upgrade(config, "head")
+
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """
+            INSERT INTO jobs (
+                id, title, company, source, created_at, updated_at
+            ) VALUES ('boss-job', '岗位', '公司', 'boss', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """
+        )
+        connection.commit()
+
+    with pytest.raises(RuntimeError, match="BOSS jobs exist"):
+        command.downgrade(config, "0001_job_application")
+
+    with sqlite3.connect(database_path) as connection:
+        preserved = connection.execute("SELECT source FROM jobs WHERE id = 'boss-job'").fetchone()
+        version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
+    assert preserved == ("boss",)
+    assert version == ("0002_boss_job_source",)

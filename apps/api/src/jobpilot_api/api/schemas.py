@@ -24,7 +24,7 @@ class JobCreateRequest(ApiModel):
     company: str
     location: str | None = None
     salary_text: str | None = None
-    source: Literal["manual"] = "manual"
+    source: Literal["manual", "boss"] = "manual"
     source_url: str | None = None
     description: str | None = None
     notes: str | None = None
@@ -35,7 +35,7 @@ class JobUpdateRequest(ApiModel):
     company: str | None = None
     location: str | None = None
     salary_text: str | None = None
-    source: Literal["manual"] | None = None
+    source: Literal["manual", "boss"] | None = None
     source_url: str | None = None
     description: str | None = None
     notes: str | None = None
@@ -53,7 +53,7 @@ class JobResponse(ApiModel):
     company: str
     location: str | None
     salary_text: str | None
-    source: Literal["manual"]
+    source: Literal["manual", "boss"]
     source_url: str | None
     description: str | None
     notes: str | None
@@ -68,7 +68,7 @@ class JobResponse(ApiModel):
             company=job.company,
             location=job.location,
             salary_text=job.salary_text,
-            source="manual",
+            source=job.source,
             source_url=job.source_url,
             description=job.description,
             notes=job.notes,

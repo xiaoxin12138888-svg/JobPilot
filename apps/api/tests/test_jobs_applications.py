@@ -76,6 +76,22 @@ def test_duplicate_normalized_source_url_is_a_conflict(client: TestClient) -> No
     assert "sqlite" not in duplicate.text.lower()
 
 
+def test_boss_job_uses_the_existing_job_api_without_creating_an_application(
+    client: TestClient,
+) -> None:
+    created = _create_job(
+        client,
+        source="boss",
+        source_url="https://www.zhipin.com/job_detail/fixture123.html",
+    )
+
+    assert created["source"] == "boss"
+    filtered = client.get("/api/v1/jobs", params={"source": "boss"})
+    assert [item["id"] for item in filtered.json()["items"]] == [created["id"]]
+    applications = client.get("/api/v1/applications", params={"jobId": created["id"]})
+    assert applications.json()["total"] == 0
+
+
 def test_job_validation_and_pagination_are_bounded(client: TestClient) -> None:
     invalid = _create_job_response(client, title="   ")
     too_large = client.get("/api/v1/jobs", params={"limit": 101})
@@ -221,12 +237,14 @@ def _create_job(
     *,
     title: str = "AI 产品经理实习生",
     company: str = "测试公司",
+    source: str = "manual",
     source_url: str | None = "https://example.com/jobs/ai-pm",
 ) -> dict[str, object]:
     response = _create_job_response(
         client,
         title=title,
         company=company,
+        source=source,
         source_url=source_url,
     )
     assert response.status_code == 201, response.text
@@ -238,6 +256,7 @@ def _create_job_response(
     *,
     title: str = "AI 产品经理实习生",
     company: str = "测试公司",
+    source: str = "manual",
     source_url: str | None = "https://example.com/jobs/ai-pm",
 ):
     return client.post(
@@ -247,7 +266,7 @@ def _create_job_response(
             "company": company,
             "location": "上海",
             "salaryText": "200-300/天",
-            "source": "manual",
+            "source": source,
             "sourceUrl": source_url,
             "description": "负责 AI 产品设计与需求分析",
             "notes": "",
