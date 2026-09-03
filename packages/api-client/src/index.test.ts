@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import * as apiClientModule from './index';
-import { createApiClient } from './index';
+import { ApiRequestError, createApiClient } from './index';
 
 const healthyPayload = {
   status: 'ok',
@@ -13,8 +13,12 @@ afterEach(() => {
 });
 
 describe('createApiClient', () => {
-  it('exports only the health-only client surface at runtime', () => {
-    expect(Object.keys(apiClientModule).sort()).toEqual(['createApiClient', 'validateApiBaseUrl']);
+  it('exports only the intended client runtime surface', () => {
+    expect(Object.keys(apiClientModule).sort()).toEqual([
+      'ApiRequestError',
+      'createApiClient',
+      'validateApiBaseUrl',
+    ]);
   });
 
   it('gets and validates the exact API health response without credentials or redirects', async () => {
@@ -127,4 +131,133 @@ describe('createApiClient', () => {
     await vi.advanceTimersByTimeAsync(5_000);
     await timeoutExpectation;
   });
+
+  it('creates a manual job with camelCase JSON and no credentials', async () => {
+    const job = createJobPayload();
+    const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(job, 201));
+    const client = createApiClient({
+      baseUrl: 'http://127.0.0.1:8000',
+      fetchImplementation,
+    });
+
+    await expect(
+      client.createJob({
+        title: 'AI 产品经理实习生',
+        company: '测试公司',
+        source: 'manual',
+        salaryText: '200-300/天',
+      }),
+    ).resolves.toEqual(job);
+    expect(fetchImplementation).toHaveBeenCalledWith('http://127.0.0.1:8000/api/v1/jobs', {
+      body: JSON.stringify({
+        title: 'AI 产品经理实习生',
+        company: '测试公司',
+        source: 'manual',
+        salaryText: '200-300/天',
+      }),
+      cache: 'no-store',
+      credentials: 'omit',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      method: 'POST',
+      redirect: 'error',
+      signal: expect.any(AbortSignal),
+    });
+  });
+
+  it('lists jobs with bounded filters and validates the response', async () => {
+    const payload = { items: [{ ...createJobPayload(), applicationStatus: 'planned' }], total: 1, limit: 20, offset: 0 };
+    const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(payload));
+    const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
+
+    await expect(
+      client.listJobs({ keyword: 'AI', source: 'manual', applicationStatus: 'planned', limit: 20 }),
+    ).resolves.toEqual(payload);
+    expect(fetchImplementation.mock.calls[0]?.[0]).toBe(
+      'http://127.0.0.1:8000/api/v1/jobs?keyword=AI&source=manual&applicationStatus=planned&limit=20',
+    );
+  });
+
+  it('rejects an untrusted business payload', async () => {
+    const fetchImplementation = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(jsonResponse({ ...createJobPayload(), source: 'boss' }, 201));
+    const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
+
+    await expect(client.createJob({ title: '岗位', company: '公司' })).rejects.toThrow(
+      'invalid Job response',
+    );
+  });
+
+  it('surfaces the public API error without leaking a transport detail', async () => {
+    const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(
+      jsonResponse(
+        { error: { code: 'DUPLICATE_JOB_URL', message: '该岗位链接已经保存', requestId: 'req_1' } },
+        409,
+      ),
+    );
+    const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
+
+    const request = client.createJob({ title: '岗位', company: '公司' });
+    await expect(request).rejects.toBeInstanceOf(ApiRequestError);
+    await expect(request).rejects.toMatchObject({
+      name: 'ApiRequestError',
+      status: 409,
+      code: 'DUPLICATE_JOB_URL',
+      message: '该岗位链接已经保存',
+      requestId: 'req_1',
+    });
+  });
+
+  it('requires explicit applied confirmation in the status request body', async () => {
+    const application = createApplicationPayload('applied');
+    const fetchImplementation = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(jsonResponse(application));
+    const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
+
+    await client.updateApplication('application-1', {
+      status: 'applied',
+      confirmApplied: true,
+    });
+
+    expect(fetchImplementation.mock.calls[0]?.[1]).toMatchObject({
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'applied', confirmApplied: true }),
+      credentials: 'omit',
+    });
+  });
 });
+
+function jsonResponse(payload: unknown, status = 200): Response {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+function createJobPayload() {
+  return {
+    id: 'job-1',
+    title: 'AI 产品经理实习生',
+    company: '测试公司',
+    location: null,
+    salaryText: '200-300/天',
+    source: 'manual' as const,
+    sourceUrl: null,
+    description: null,
+    notes: null,
+    createdAt: '2026-09-03T00:00:00Z',
+    updatedAt: '2026-09-03T00:00:00Z',
+  };
+}
+
+function createApplicationPayload(status: 'planned' | 'applied') {
+  return {
+    id: 'application-1',
+    jobId: 'job-1',
+    status,
+    appliedAt: status === 'applied' ? '2026-09-03T00:01:00Z' : null,
+    createdAt: '2026-09-03T00:00:00Z',
+    updatedAt: '2026-09-03T00:01:00Z',
+  };
+}
