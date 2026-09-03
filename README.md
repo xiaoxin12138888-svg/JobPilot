@@ -6,15 +6,15 @@ JobPilot 不替代招聘网站，不建设职位数据库，也不代表用户�
 
 ## 当前状态
 
-项目已完成 **Phase 2.5 — Local Runtime Foundation Finalization**，正在等待负责人决定是否单独批准 Phase 3。当前基线只有：
+项目已在 `phase/3-job-application` 完成 **Phase 3 — Job & Application Domain Foundation** 的实现与验收，等待负责人最终接受。当前能力包括：
 
-- React Web：显示本机 API 的 `checking / ready / unavailable` 状态；`unavailable` 提供 retry 动作；
+- React Web：本机 API 状态、岗位库、手动录入、岗位详情/编辑/删除和投递状态管理；
 - Chrome Extension：无 privileged Chrome API permission、无后台进程的本地健康 Popup；唯一 host permission 是 `http://127.0.0.1:8000/*`；
-- FastAPI：只公开 `GET /health`，默认绑定 `127.0.0.1`；
-- SQLite、SQLAlchemy 与 Alembic：API launcher 首次启动自动创建 `runtime-data/jobpilot.db`，后续启动复用；当前没有业务表或 revision；
-- `packages/shared-types` 与 `packages/api-client`：只提供严格校验的 health contract。
+- FastAPI：公开 `GET /health` 以及最小 Job/Application REST API，默认绑定 `127.0.0.1`；
+- SQLite、SQLAlchemy 与 Alembic：launcher 启动前自动升级 `runtime-data/jobpilot.db`，revision 只创建 `jobs` 与 `applications`；
+- `packages/shared-types` 与 `packages/api-client`：提供 camelCase 业务契约、credential-free 请求和不可信响应校验。
 
-Phase 3 尚未开始。仓库中没有 Job、Application、ResumeVersion、招聘网站 Adapter、content script、AI、RAG 或上传功能。
+Phase 4 尚未开始。仓库中没有 ResumeVersion、招聘网站 Adapter、content script、`activeTab`、AI、RAG、自动投递、云同步或上传功能。
 
 ## 本地优先意味着什么
 
@@ -47,11 +47,13 @@ Extension 必须满足：
 
 ```text
 React Web ---------\
-                    > exact loopback HTTP -> FastAPI -> GET /health
-Chrome Extension --/
+                    > exact loopback HTTP -> FastAPI -> health + Job/Application
+Chrome Extension --/                            |
+                                                 v
+                                      runtime-data/jobpilot.db (SQLite)
 
-Future local business services -> runtime-data/jobpilot.db (SQLite)
-User's browser -> recruitment website (never proxied by JobPilot)
+Web original-platform link -> user's browser -> recruitment website
+JobPilot API never proxies recruitment website traffic
 ```
 
 ## Development setup
@@ -86,7 +88,9 @@ pnpm run api:dev
 pnpm run dev:web
 ```
 
-打开 `http://127.0.0.1:5173`。API 探针位于 `http://127.0.0.1:8000/health`。受支持的 API launcher 会在 Uvicorn 启动前初始化 SQLite；停止再启动不会覆盖已有数据库。
+打开 `http://127.0.0.1:5173`。API 探针位于 `http://127.0.0.1:8000/health`。受支持的 API launcher 会在 Uvicorn 启动前执行 Alembic upgrade；停止再启动不会覆盖已有数据库。
+
+关闭 API：在运行 API 的终端按 `Ctrl+C`。再次执行 `pnpm run api:dev` 即可重启并恢复本地数据。
 
 ### Build and load Extension
 

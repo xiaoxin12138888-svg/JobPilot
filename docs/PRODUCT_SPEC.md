@@ -1,112 +1,97 @@
 # JobPilot 产品规格
 
-> 状态：Phase 2.5 Local Runtime Foundation Finalization 已完成，等待负责人验收。Phase 3 尚未开始；未来能力只描述产品边界，不代表已经实现。
+> 状态：Phase 3 — Job & Application Domain Foundation 已获负责人批准并在
+> `phase/3-job-application` 实现。Phase 4 未获批准。
 
 ## 1. 产品定位
 
-JobPilot 是个人求职者安装在自己电脑上的本地优先工作台。它计划把用户从多个招聘平台主动带入的信息整理到一个本机 workspace，形成可检查的求职工作流：
+JobPilot 是个人求职者安装在自己电脑上的本地优先求职工作台。招聘平台继续负责岗位发现、
+账号登录、沟通和正式投递；JobPilot 负责保存用户确认过的本地岗位快照与真实求职进度。
+
+一个安装实例就是一个本地 workspace：无 JobPilot 账号、无云租户、无认证、无多用户，
+业务数据只写入本机 SQLite。
+
+## 2. Phase 3 用户流程
 
 ```text
-岗位捕获 -> 岗位整理 -> 申请跟踪 -> 简历版本关联 -> 准备与复盘
+手动添加岗位 -> 岗位库 -> 岗位详情 -> 建立计划投递
+-> 用户确认已在原平台投递 -> 跟踪筛选/测评/面试/结果
 ```
 
-JobPilot 不替代招聘网站。岗位发现、账号登录、HR 沟通和正式投递仍在原招聘平台完成。
+即使没有任何招聘网站 Adapter，用户也能完成整个本地管理流程。
 
-## 2. 目标用户与本地边界
+## 3. Job
 
-核心用户是同时使用多个招聘平台、希望在自己的电脑管理求职材料的个人求职者。
+Job 是用户主动保存的岗位快照，包含职位、公司、地点、薪资文本、来源、原平台 URL、
+JD、备注和本地时间。Phase 3 只允许 `manual` 来源。
 
-- 一个安装实例对应一个本地 workspace；
-- 不创建 JobPilot 账号，不要求云登录或 “JobPilot Cloud”；
-- 不支持团队、组织、招聘方、猎头或多人协作；
-- 未来岗位、申请、简历和文档数据只保存在用户本机；
-- 本地数据边界由操作系统账户、文件权限和 loopback 网络共同构成。
+- title 与 company 必填，输入统一去除首尾空白；
+- source URL 只接受不带凭据的 HTTP/HTTPS；
+- URL 规范化 scheme、host、默认端口并移除 fragment，规范化结果在本地唯一；
+- 没有 URL 时不做 company/title 模糊去重，允许保存相似岗位；
+- description 是本地快照，原岗位下架后仍保留；
+- 删除必须由 Web 明确确认，并同时删除该 Job 的 Application；当前没有归档/恢复系统。
 
-若以后要加入公网部署、多用户、远程同步或团队能力，必须先新增 ADR、威胁模型和明确授权，不能直接放宽本地默认值。
+岗位库默认按最近更新时间排序，支持职位/公司/地点关键字、来源和投递状态筛选。
 
-## 3. 产品原则
+## 4. Application
 
-### 3.1 用户触发、用户确认
+Application 表示一个 Job 的真实求职进度。一个 Job 最多一个 Application，建立时为
+`planned`。正式状态及中文文案：
 
-未来 Extension 只在用户主动点击后读取当前已打开的具体岗位页。标准流程是：
+| 状态 | 中文 |
+| --- | --- |
+| `planned` | 计划投递 |
+| `applied` | 已投递 |
+| `screening` | 筛选中 |
+| `assessment` | 笔试/测评 |
+| `interviewing` | 面试中 |
+| `offer` | Offer |
+| `rejected` | 淘汰 |
+| `withdrawn` | 已放弃 |
+| `closed` | 岗位关闭 |
 
-```text
-用户点击 -> 读取当前已呈现 DOM -> 预览 -> 用户确认或修正 -> 保存到本地 workspace
-```
+状态使用小型显式流转表，并允许少量相邻状态更正。每次进入 `applied` 都要求
+`confirmApplied: true`；首次进入时记录 `applied_at`。
 
-自动解析不足时，可以依次提供手动选择当前页面内容和手动粘贴 JD。任何结果在用户确认前都不是正式岗位记录。
+## 5. 原平台行为
 
-### 3.2 本地 API 是事实边界
+“去原平台查看/投递”只是一个安全的新窗口链接：
 
-未来岗位、申请和简历版本的状态由本机 FastAPI/domain 与本地数据库统一定义。Web 和 Extension 只消费同一套契约，不各自维护业务事实。
+- 只打开该 Job 已保存的 `source_url`；
+- 不自动填写、点击或申请；
+- 不创建 Application；
+- 不改变任何 Application 状态；
+- 没有 URL 时不显示该动作。
 
-### 3.3 简单架构优先
+## 6. Web
 
-V1 保持 Web、Chrome Extension、单体 FastAPI 和一个本地 SQLite 文件。当前没有业务表；只在获得明确 Phase 授权后增加当期真实需要的模型和接口。
+Phase 3 Web 包含：
 
-### 3.4 AI 不是核心运行依赖
+- 本地 API checking/unavailable/retry 状态；
+- 岗位库 loading/error/empty/list 状态；
+- 手动岗位表单与前后端校验；
+- 岗位详情、编辑和明确确认删除；
+- Application 建立、显式已投递确认和状态更新；
+- 320/768/1024/1440 响应式布局与键盘可访问控件。
 
-未来 AI 必须是显式启用、可替换、可降级的辅助能力。核心岗位与申请工作流不能因为远端模型不可达而停止，也不得把模型输出当作事实。
+不建设复杂 Dashboard 或拖拽看板。
 
-## 4. P0 no-proxy runtime
+## 7. 本地与 no-proxy 边界
 
-安装后的日常核心流程必须在中国大陆普通网络、关闭 VPN、系统/浏览器代理和特殊 DNS 时工作。
+- Web、Extension 与 API 只通过精确 loopback 通信；
+- installed runtime 不依赖账号、云服务、CDN、远程字体/脚本、telemetry、update 或境外 AI；
+- JobPilot API 不请求或代理招聘网站；
+- Extension 仍是 health-only Popup，没有招聘站点权限、background、content script 或 `activeTab`；
+- 测试只使用显式临时数据库，不读取、替换或删除 `runtime-data/jobpilot.db`。
 
-目标招聘平台是 BOSS 直聘、牛客、实习僧、猎聘和国聘。平台支持状态只能基于对应 Adapter 的真实验收，不能因为出现在目标清单中就提前宣称支持。
+## 8. Phase 3 非目标
 
-- 核心不依赖 Auth0、Logto Cloud、Google APIs/reCAPTCHA、Cloudflare Turnstile、GitHub runtime API/raw、jsDelivr、unpkg、cdnjs、远程字体/脚本、境外 AI、telemetry/analytics 或 update API；
-- Extension 不执行远程 JavaScript，不下载运行时代码，不修改代理；
-- 招聘网站流量由用户浏览器直接访问，不经过 JobPilot API 或中转服务器；
-- 未来每个招聘平台 Adapter 使用单独批准的精确 host permission；
-- Adapter 只能由用户主动触发并读取当前页面已呈现 DOM；
-- 每个 Adapter 必须完成无代理真实网络验收，不能用 synthetic probe 或一次偶然成功代替完整路径。
+招聘网站 Adapter、content script、`activeTab`、ResumeVersion、Evidence Map、AI/RAG/LLM/
+Agent、推荐、自动投递、自动联系 HR、云同步、账号、认证和多用户均不属于 Phase 3。
 
-## 5. 当前实现范围
+## 9. 成功标准
 
-当前只实现工程与本地连接基线：
-
-- Web 本地服务状态；
-- Extension 本地 health Popup；
-- FastAPI `GET /health`；
-- health shared type 与 loopback API client；
-- `runtime-data/jobpilot.db` 中的本地 SQLite、SQLAlchemy/Alembic 空 schema 基础；
-- 测试、lint、format、typecheck 和 build 门禁。
-
-当前没有 Job、Application、ResumeVersion、LocalProfile、Adapter、content script、AI、RAG、对象存储或上传。
-
-## 6. 未来核心能力
-
-以下能力必须按 Roadmap 分阶段批准后实施：
-
-1. 用户主动触发的当前岗位捕获与人工兜底；
-2. 本地岗位库、去重和编辑；
-3. Application 状态与事件记录；
-4. ResumeVersion 保存及与 Application 的关联；
-5. 更多平台 Adapter；
-6. 可选的结构化分析、文档检索、面试准备和复盘。
-
-单用户模型不需要 `user_id`。若未来确有本机偏好资料需求，可以另行设计 `LocalProfile`；当前不预建伪 User。
-
-## 7. 明确非目标
-
-- JobPilot 公网账号、云同步、SaaS、多用户、团队或 RBAC；
-- 后台爬虫、自动翻页、列表扫描、隐藏接口采集；
-- 绕过招聘平台登录、验证码、风控或访问限制；
-- 自动投递、自动联系 HR 或代替用户决策；
-- 把采集结果建设成对外职位数据库；
-- 远程可执行代码、强制 telemetry 或代理/VPN 功能；
-- 在 Phase 3 批准前实现任何业务资源。
-
-## 8. 成功标准
-
-当前 Phase 2.5 完成标准：
-
-- Web、Extension 和 API 在无账号、无 provider 配置下启动；
-- 客户端只连接精确 loopback API；
-- supported API launcher 首次运行自动初始化 SQLite，重启复用同一文件，`/health` 请求本身不查询数据库或远程服务；
-- Extension bundle 不含远程代码、后台、content script、代理或额外 host；
-- Extension 通过精确 loopback host permission 直连 API，不复制 Extension ID 到 CORS；
-- canonical docs 不再把历史认证系统或 PostgreSQL 描述为当前能力；
-- 全部自动化门禁通过，并在进入 Phase 3 前停止。
-
-未来 MVP 成功标准将在 Phase 3/4 规格中冻结，至少覆盖用户确认、本地保存、状态可追溯、无代理真实网络和数据不离开本机的默认行为。
+Phase 3 必须证明：手动录入岗位、在岗位库查看、建立投递、明确确认已投递、推进至面试和
+Offer/淘汰，在关闭并重启 Web/API 后仍由同一 SQLite 文件恢复；自动化、真实浏览器、
+loopback/security、no-proxy、代码审查和简化门禁全部通过。

@@ -33,8 +33,8 @@
 
 - Router 只负责 request、validation、application service 和 response；
 - 业务规则进入 domain/application，持久化进入 repository adapter；
-- supported launcher 在服务启动前初始化 SQLite；当前 `/health` 请求不查询数据库；
-- 第一个写接口前重新评审 localhost CSRF、Host、Origin、Fetch Metadata 和 DNS rebinding。
+- supported launcher 在服务启动前升级 SQLite migration；`/health` 请求不查询数据库；
+- 写接口强制 loopback Host、安全 Origin/Fetch Metadata 与 JSON boundary；CORS 不替代本机进程认证。
 
 ### Shared packages
 
@@ -44,7 +44,7 @@
 
 ## 4. Data and security
 
-- 当前数据库 metadata 为空；未来表不含 `user_id` 或身份字段；
+- 当前 metadata 只含 Phase 3 的 `jobs` 与 `applications`；所有表不含 `user_id` 或身份字段；
 - 数据库只使用本地 SQLite file URL；默认 `runtime-data/jobpilot.db` 属于用户数据，自动化不得触碰；
 - SQLite connections 启用 foreign keys 与有界 busy timeout；当前保留 rollback journal，WAL 必须由实测需要驱动；
 - 操作系统账户与文件权限保护本地静态数据；

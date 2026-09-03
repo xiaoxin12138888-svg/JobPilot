@@ -1,102 +1,127 @@
 # JobPilot API Contract
 
-> 状态：当前公开 API 只有 `GET /health`。Phase 3 尚未开始，未来业务 endpoint 尚未冻结。
+> 状态：`GET /health` 与 Phase 3 Job/Application contract 已冻结。JSON 字段使用 camelCase。
 
 ## 1. Runtime boundary
 
-- API 默认 origin：`http://127.0.0.1:8000`；
-- supported launcher 只接受 IP-literal loopback bind；
-- Web health client 只接受 `localhost`、`127.0.0.1` 或 `[::1]`；
-- Extension 当前只接受精确 `http://127.0.0.1:8000`；
-- 不支持公网、LAN 或远端 API；
-- 当前没有账号、登录、cookie、token、session 或用户资料 endpoint。
+默认 API origin 为 `http://127.0.0.1:8000`，只支持 loopback。没有账号、cookie、token、
+session 或用户 endpoint。客户端请求使用 `credentials: omit`、`cache: no-store`、
+`redirect: error` 和 5000 ms timeout。
 
-CORS 只允许精确配置的 loopback Web origin。不允许 `*`、regex、userinfo、path/query suffix、Extension origin 或 credential allowance。Extension 通过 manifest 中精确的 loopback host permission 直接发送请求，不需要复制 Extension ID。
+写入还要求 loopback Host、安全的 Origin/Fetch Metadata 与 `application/json`。
+CORS 只列精确 Web origin 和 `GET, POST, PATCH, DELETE`，不允许 credentials。
 
-## 2. `GET /health`
+## 2. Health
 
-### Request
+`GET /health` 返回：
 
-- Method：`GET`
-- Path：`/health`
-- Body：无
-- Cookie/credential：不发送
-- Purpose：确认本机 FastAPI 进程可导入、启动并响应
-
-客户端必须使用：
-
-```text
-cache: no-store
-credentials: omit
-redirect: error
-Accept: application/json
+```json
+{"status":"ok","service":"jobpilot-api"}
 ```
 
-客户端在 5000 ms 后中止未完成的请求。失败后只提供用户触发的 retry，不进行后台轮询或自动重试。
+该请求不查询数据库或远程服务。
 
-### Success
+## 3. Job endpoints
 
-`200 OK`，响应必须精确包含两个字段：
+### `POST /api/v1/jobs`
 
 ```json
 {
-  "status": "ok",
-  "service": "jobpilot-api"
+  "title": "AI 产品经理实习生",
+  "company": "测试公司",
+  "location": "上海",
+  "salaryText": "200-300 元/天",
+  "source": "manual",
+  "sourceUrl": "https://example.com/jobs/1",
+  "description": "JD 快照",
+  "notes": "本地备注"
 }
 ```
 
-不允许额外字段。非 200、重定向、非 JSON、错误字段、缺失字段或额外字段都视为 unavailable。
+`title`、`company` 必填；其他字段可为 null/省略，source 只能是 `manual`。成功为 201。
 
-### Dependency boundary
+### `GET /api/v1/jobs`
 
-supported API launcher 在 Uvicorn 前初始化本地 SQLite 文件。`GET /health` 请求本身不创建 engine、不读取业务表，也不访问招聘网站、对象存储、模型服务、telemetry、update 或其他远程依赖。
+Query：
 
-## 3. Shared TypeScript contract
+- `keyword`：title/company/location 简单包含匹配，最多 200 字符；
+- `source=manual`；
+- `applicationStatus`：正式 Application status；
+- `limit`：默认 50，1–100；
+- `offset`：默认 0，非负。
 
-当前唯一共享传输类型是：
+按 `updatedAt` 倒序。响应：
 
-```typescript
-interface ApiHealthResponse {
-  status: 'ok';
-  service: 'jobpilot-api';
+```json
+{"items":[],"total":0,"limit":50,"offset":0}
+```
+
+item 是 Job response，并增加 `applicationStatus`（可为 null）。
+
+### `GET /api/v1/jobs/{jobId}`
+
+返回 Job 或 404。
+
+### `PATCH /api/v1/jobs/{jobId}`
+
+接受 create 字段的非空 patch（可使用 null 清空可选字段），返回更新后的 Job。
+
+### `DELETE /api/v1/jobs/{jobId}`
+
+成功为 204；真实删除 Job 并由数据库级联 Application。Web 必须在调用前明确确认。
+
+Job response 字段为：`id`、`title`、`company`、`location`、`salaryText`、
+`source`、`sourceUrl`、`description`、`notes`、`createdAt`、`updatedAt`。
+`normalizedSourceUrl` 是持久化去重字段，不公开。
+
+## 4. Application endpoints
+
+### `POST /api/v1/jobs/{jobId}/application`
+
+JSON body 固定为空对象 `{}`。创建 `planned` Application，成功为 201。Job 不存在为 404；
+该 Job 已有关联 Application 为 409。
+
+### `GET /api/v1/applications`
+
+支持 `jobId`、`status`、`limit`、`offset`；岗位详情使用 `jobId` 精确读取其至多一条
+Application。列表 item 除 Application 字段外增加 `jobTitle` 与 `company`。
+
+### `GET /api/v1/applications/{applicationId}`
+
+返回 Application 或 404。
+
+### `PATCH /api/v1/applications/{applicationId}`
+
+```json
+{"status":"applied","confirmApplied":true}
+```
+
+状态必须符合领域流转表。任何进入 `applied` 的请求都要求 `confirmApplied: true`。
+
+Application response 字段为：`id`、`jobId`、`status`、`appliedAt`、
+`createdAt`、`updatedAt`。
+
+## 5. Errors
+
+所有公开错误保持：
+
+```json
+{
+  "error": {
+    "code": "DUPLICATE_JOB_URL",
+    "message": "该岗位链接已经保存",
+    "requestId": "req_..."
+  }
 }
 ```
 
-`packages/api-client` 在消费响应前按不可信数据校验精确 shape。React 与 Extension Popup 不自行复制解析规则。
+主要状态：
 
-## 4. Error and request metadata
+- 404：Job/Application 不存在；
+- 409：重复 normalized URL 或一个 Job 已有 Application；
+- 422：request/domain validation 或非法状态流转；
+- 503：SQLite 暂时 locked/busy；
+- 403/415：localhost 写安全边界；
+- 500：统一未知错误，不返回 exception、SQL 或 traceback。
 
-API 保留统一 request ID、错误响应和 access-query redaction 基础设施。当前 health 正常路径直接返回 `ApiHealthResponse`，不套 `data` envelope。
-
-未来业务错误在所属 Phase 中冻结，至少满足：
-
-- machine-readable `code`；
-- 面向用户的有界 `message`；
-- request ID；
-- 不返回堆栈、数据库细节、文件路径、原始页面数据或外部供应商 payload。
-
-## 5. Future business contract rules
-
-Phase 3 获批前不得添加 `/api/v1/jobs` 或其他业务路由。未来 Job、Application、ResumeVersion contract 必须遵守：
-
-- 单安装、单 workspace，不接受也不返回 `userId`；
-- request/response DTO 与 ORM model 分离；
-- 外部 DOM、粘贴文本、URL 和文件一律在边界校验；
-- 列表从首次实现起有界；
-- 写接口在实现前冻结 Origin、Host、Fetch Metadata、localhost CSRF、DNS-rebinding 与幂等策略；
-- JobPilot API 不主动请求 `sourceUrl` 或招聘网站；
-- 字段和 endpoint 只能由当期 Phase 规格批准，不能从旧草案恢复。
-
-若未来需要 `LocalProfile`，它是本地产品数据，不是账号或认证主体，并须由新的明确需求驱动。
-
-## 6. Acceptance
-
-当前 API contract 的验收条件：
-
-- OpenAPI path 只有 `/health`；
-- health 响应与 TypeScript contract 一致；
-- supported startup 初始化默认 SQLite，重启不覆盖文件；health request 不执行数据库查询；
-- bind 与 client base URL 拒绝非 loopback host；数据库工具只接受显式的本地 SQLite file URL；
-- CORS 精确、GET-only、credential-free；
-- Web 对 `checking / ready / unavailable`、Extension 对 `checking / available / unavailable` 以及两端的 retry 动作有自动化测试；
-- Phase 3 业务路由为零。
+响应均带 `X-Request-Id`，其值与 error envelope 一致。
