@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 
-def test_supported_server_initializes_sqlite_before_using_the_default_loopback_bind(
+def test_supported_server_upgrades_sqlite_before_using_the_default_loopback_bind(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
@@ -15,7 +15,7 @@ def test_supported_server_initializes_sqlite_before_using_the_default_loopback_b
     events: list[tuple[str, object]] = []
     monkeypatch.setattr(
         server,
-        "initialize_database",
+        "upgrade_database",
         lambda path: events.append(("database", path)),
     )
     monkeypatch.setattr(
@@ -40,7 +40,7 @@ def test_supported_server_accepts_loopback_ip_literals(
 ) -> None:
     server = importlib.import_module("jobpilot_api.server")
     calls: list[dict[str, object]] = []
-    monkeypatch.setattr(server, "initialize_database", lambda path: None)
+    monkeypatch.setattr(server, "upgrade_database", lambda path: None)
     monkeypatch.setattr(server.uvicorn, "run", lambda *args, **kwargs: calls.append(kwargs))
 
     server.run(
@@ -63,7 +63,7 @@ def test_supported_server_rejects_non_loopback_before_calling_uvicorn(
     server = importlib.import_module("jobpilot_api.server")
     calls: list[dict[str, object]] = []
     initialized: list[Path] = []
-    monkeypatch.setattr(server, "initialize_database", initialized.append)
+    monkeypatch.setattr(server, "upgrade_database", initialized.append)
     monkeypatch.setattr(server.uvicorn, "run", lambda *args, **kwargs: calls.append(kwargs))
 
     with pytest.raises(ValueError, match="loopback"):

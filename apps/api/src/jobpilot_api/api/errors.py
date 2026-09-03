@@ -6,8 +6,12 @@ import secrets
 from collections.abc import Mapping
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
+from sqlalchemy.exc import OperationalError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+
+from jobpilot_api.domain.errors import DomainError
 
 LOGGER = logging.getLogger(__name__)
 REQUEST_ID_PATTERN = re.compile(r"[A-Za-z0-9._:-]{1,128}")
@@ -50,6 +54,29 @@ def install_error_handlers(application: FastAPI) -> None:
             headers=error.headers,
         )
 
+    @application.exception_handler(RequestValidationError)
+    async def handle_validation_error(
+        request: Request,
+        _error: RequestValidationError,
+    ) -> JSONResponse:
+        return _error_response(request, 422, "VALIDATION_ERROR", "Request validation failed")
+
+    @application.exception_handler(DomainError)
+    async def handle_domain_error(request: Request, error: DomainError) -> JSONResponse:
+        return _error_response(request, error.status_code, error.code, error.message)
+
+    @application.exception_handler(OperationalError)
+    async def handle_database_error(request: Request, error: OperationalError) -> JSONResponse:
+        message = str(error.orig).lower()
+        if "locked" in message or "busy" in message:
+            return _error_response(
+                request,
+                503,
+                "DATABASE_BUSY",
+                "Local database is temporarily busy",
+            )
+        return _unexpected_error_response(request, error)
+
     @application.exception_handler(Exception)
     async def handle_unexpected_error(request: Request, error: Exception) -> JSONResponse:
         return _unexpected_error_response(request, error)
@@ -89,6 +116,15 @@ def _error_response(
     )
     _attach_public_headers(request, response)
     return response
+
+
+def public_error_response(
+    request: Request,
+    status_code: int,
+    code: str,
+    message: str,
+) -> JSONResponse:
+    return _error_response(request, status_code, code, message)
 
 
 def _unexpected_error_response(request: Request, error: Exception) -> JSONResponse:

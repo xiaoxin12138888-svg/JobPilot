@@ -3,6 +3,8 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
+from alembic import command
+from alembic.config import Config
 from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.engine import URL, make_url
 
@@ -69,4 +71,17 @@ def initialize_database(database_path: Path = DEFAULT_DATABASE_PATH) -> Path:
             connection.exec_driver_sql("SELECT 1")
     finally:
         engine.dispose()
+    return resolved_path
+
+
+def upgrade_database(database_path: Path = DEFAULT_DATABASE_PATH) -> Path:
+    resolved_path = database_path.expanduser().resolve()
+    resolved_path.parent.mkdir(parents=True, exist_ok=True)
+    api_root = Path(__file__).resolve().parents[4]
+    config = Config(str(api_root / "alembic.ini"))
+    config.set_main_option(
+        "sqlalchemy.url",
+        sqlite_database_url(resolved_path).render_as_string(hide_password=False),
+    )
+    command.upgrade(config, "head")
     return resolved_path

@@ -35,5 +35,6 @@ ADR-008 完全取代了旧远程身份方向。ADR-006、ADR-007 及其实现/�
 - [ADR-005：采用 pnpm 与 uv 作为单一包管理工具链](ADR-005-pnpm-uv-toolchains.md) — Accepted
 - [ADR-008：采用 Local-first Single-user 无认证架构](ADR-008-local-first-single-user-no-authentication.md) — Accepted
 - [ADR-009：采用本地 SQLite 作为唯一 Runtime Database](ADR-009-local-sqlite-storage.md) — Accepted
+- [ADR-010：Job 与 Application 领域基础](ADR-010-job-application-domain-foundation.md) — Accepted
 
 当前 runtime storage 只能按 ADR-009 理解为 SQLite。ADR-002 标题和正文中的 PostgreSQL 是被保留的历史决策记录，不是兼容模式、安装要求或未来默认承诺。

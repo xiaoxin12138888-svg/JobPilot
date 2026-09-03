@@ -19,8 +19,15 @@ def test_health_returns_service_status() -> None:
     assert response.headers["X-Request-Id"].startswith("req_")
 
 
-def test_openapi_exposes_only_health() -> None:
-    assert set(app.openapi()["paths"]) == {"/health"}
+def test_openapi_exposes_only_health_and_phase_3_business_routes() -> None:
+    assert set(app.openapi()["paths"]) == {
+        "/health",
+        "/api/v1/jobs",
+        "/api/v1/jobs/{job_id}",
+        "/api/v1/jobs/{job_id}/application",
+        "/api/v1/applications",
+        "/api/v1/applications/{application_id}",
+    }
 
 
 def test_framework_documentation_routes_are_not_exposed() -> None:

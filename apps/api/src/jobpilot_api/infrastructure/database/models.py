@@ -1,5 +1,56 @@
-from sqlalchemy.orm import DeclarativeBase
+from __future__ import annotations
+
+from datetime import datetime
+
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Text, UniqueConstraint
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
 class Base(DeclarativeBase):
     pass
+
+
+class JobModel(Base):
+    __tablename__ = "jobs"
+    __table_args__ = (
+        UniqueConstraint("normalized_source_url", name="uq_jobs_normalized_source_url"),
+        CheckConstraint("source = 'manual'", name="ck_jobs_source_manual"),
+        Index("ix_jobs_updated_at", "updated_at"),
+        Index("ix_jobs_source", "source"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    company: Mapped[str] = mapped_column(String(200), nullable=False)
+    location: Mapped[str | None] = mapped_column(String(300))
+    salary_text: Mapped[str | None] = mapped_column(String(300))
+    source: Mapped[str] = mapped_column(String(32), nullable=False)
+    source_url: Mapped[str | None] = mapped_column(String(2048))
+    normalized_source_url: Mapped[str | None] = mapped_column(String(2048))
+    description: Mapped[str | None] = mapped_column(Text)
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class ApplicationModel(Base):
+    __tablename__ = "applications"
+    __table_args__ = (
+        UniqueConstraint("job_id", name="uq_applications_job_id"),
+        CheckConstraint(
+            "status IN ('planned','applied','screening','assessment','interviewing','offer','rejected','withdrawn','closed')",
+            name="ck_applications_status",
+        ),
+        Index("ix_applications_status_updated_at", "status", "updated_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    job_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("jobs.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

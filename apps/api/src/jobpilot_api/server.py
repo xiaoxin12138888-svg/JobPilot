@@ -6,7 +6,7 @@ from pathlib import Path
 import uvicorn
 
 from jobpilot_api.config import ApiSettings
-from jobpilot_api.infrastructure.database.engine import DEFAULT_DATABASE_PATH, initialize_database
+from jobpilot_api.infrastructure.database.engine import DEFAULT_DATABASE_PATH, upgrade_database
 
 
 def run(
@@ -16,7 +16,7 @@ def run(
     database_path: Path = DEFAULT_DATABASE_PATH,
 ) -> None:
     settings = ApiSettings.from_environment(environment)
-    initialize_database(database_path)
+    upgrade_database(database_path)
     uvicorn.run(
         "jobpilot_api.main:app",
         host=settings.bind_host,

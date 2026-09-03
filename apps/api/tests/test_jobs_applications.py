@@ -1,0 +1,193 @@
+from __future__ import annotations
+
+from collections.abc import Iterator
+from pathlib import Path
+
+import pytest
+from alembic import command
+from alembic.config import Config
+from fastapi.testclient import TestClient
+
+from jobpilot_api.config import ApiSettings
+from jobpilot_api.infrastructure.database.engine import sqlite_database_url
+from jobpilot_api.main import create_app
+
+
+@pytest.fixture
+def client(tmp_path: Path) -> Iterator[TestClient]:
+    database_path = tmp_path / "jobpilot.db"
+    config = Config("apps/api/alembic.ini")
+    config.set_main_option("sqlalchemy.url", sqlite_database_url(database_path).render_as_string())
+    command.upgrade(config, "head")
+    application = create_app(ApiSettings.from_environment({}), database_path=database_path)
+    with TestClient(application, base_url="http://127.0.0.1") as active_client:
+        yield active_client
+
+
+def test_job_crud_search_and_application_status_filter(client: TestClient) -> None:
+    created = _create_job(client)
+    second = _create_job(
+        client,
+        title="后端工程师",
+        company="另一家公司",
+        source_url=None,
+    )
+
+    response = client.get("/api/v1/jobs", params={"keyword": "测试公司"})
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+    assert response.json()["items"][0]["id"] == created["id"]
+    assert response.json()["items"][0]["applicationStatus"] is None
+
+    detail = client.get(f"/api/v1/jobs/{created['id']}")
+    assert detail.status_code == 200
+    assert detail.json()["description"] == "负责 AI 产品设计与需求分析"
+
+    updated = client.patch(
+        f"/api/v1/jobs/{created['id']}",
+        json={"notes": "已准备作品集", "location": "上海 / 远程"},
+    )
+    assert updated.status_code == 200
+    assert updated.json()["notes"] == "已准备作品集"
+
+    application = client.post(f"/api/v1/jobs/{created['id']}/application", json={})
+    assert application.status_code == 201
+    assert application.json()["status"] == "planned"
+
+    filtered = client.get("/api/v1/jobs", params={"applicationStatus": "planned"})
+    assert filtered.status_code == 200
+    assert [item["id"] for item in filtered.json()["items"]] == [created["id"]]
+
+    assert client.delete(f"/api/v1/jobs/{created['id']}").status_code == 204
+    assert client.get(f"/api/v1/jobs/{created['id']}").status_code == 404
+    assert client.get(f"/api/v1/applications/{application.json()['id']}").status_code == 404
+    assert client.get(f"/api/v1/jobs/{second['id']}").status_code == 200
+
+
+def test_duplicate_normalized_source_url_is_a_conflict(client: TestClient) -> None:
+    _create_job(client, source_url="HTTPS://Example.com:443/jobs/1#top")
+
+    duplicate = _create_job_response(client, source_url="https://example.COM/jobs/1")
+
+    assert duplicate.status_code == 409
+    assert duplicate.json()["error"]["code"] == "DUPLICATE_JOB_URL"
+    assert "sqlite" not in duplicate.text.lower()
+
+
+def test_job_validation_and_pagination_are_bounded(client: TestClient) -> None:
+    invalid = _create_job_response(client, title="   ")
+    too_large = client.get("/api/v1/jobs", params={"limit": 101})
+
+    assert invalid.status_code == 422
+    assert invalid.json()["error"]["code"] == "VALIDATION_ERROR"
+    assert too_large.status_code == 422
+    assert "detail" not in too_large.json()
+
+
+def test_application_lifecycle_requires_confirmation_and_rejects_invalid_jump(
+    client: TestClient,
+) -> None:
+    job = _create_job(client)
+    created = client.post(f"/api/v1/jobs/{job['id']}/application", json={})
+    application_id = created.json()["id"]
+
+    duplicate = client.post(f"/api/v1/jobs/{job['id']}/application", json={})
+    unconfirmed = client.patch(
+        f"/api/v1/applications/{application_id}",
+        json={"status": "applied", "confirmApplied": False},
+    )
+    invalid_jump = client.patch(
+        f"/api/v1/applications/{application_id}",
+        json={"status": "offer", "confirmApplied": False},
+    )
+    applied = client.patch(
+        f"/api/v1/applications/{application_id}",
+        json={"status": "applied", "confirmApplied": True},
+    )
+    interviewing = client.patch(
+        f"/api/v1/applications/{application_id}",
+        json={"status": "interviewing", "confirmApplied": False},
+    )
+    offer = client.patch(
+        f"/api/v1/applications/{application_id}",
+        json={"status": "offer", "confirmApplied": False},
+    )
+
+    assert duplicate.status_code == 409
+    assert duplicate.json()["error"]["code"] == "APPLICATION_ALREADY_EXISTS"
+    assert unconfirmed.status_code == 422
+    assert unconfirmed.json()["error"]["code"] == "VALIDATION_ERROR"
+    assert invalid_jump.status_code == 422
+    assert invalid_jump.json()["error"]["code"] == "INVALID_APPLICATION_TRANSITION"
+    assert applied.json()["appliedAt"] is not None
+    assert interviewing.json()["status"] == "interviewing"
+    assert offer.json()["status"] == "offer"
+
+    applications = client.get("/api/v1/applications", params={"status": "offer"})
+    assert applications.status_code == 200
+    assert applications.json()["total"] == 1
+    assert applications.json()["items"][0]["jobTitle"] == "AI 产品经理实习生"
+
+
+def test_application_requires_an_existing_job(client: TestClient) -> None:
+    response = client.post("/api/v1/jobs/missing/application", json={})
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "RESOURCE_NOT_FOUND"
+
+
+def test_browser_writes_reject_cross_site_origin_and_non_json_body(client: TestClient) -> None:
+    cross_site = client.post(
+        "/api/v1/jobs",
+        headers={"Origin": "https://evil.example", "Sec-Fetch-Site": "cross-site"},
+        json={"title": "岗位", "company": "公司"},
+    )
+    non_json = client.post(
+        "/api/v1/jobs",
+        headers={"Content-Type": "text/plain"},
+        content='{"title":"岗位","company":"公司"}',
+    )
+
+    assert cross_site.status_code == 403
+    assert cross_site.json()["error"]["code"] == "LOCAL_WRITE_FORBIDDEN"
+    assert non_json.status_code == 415
+    assert non_json.json()["error"]["code"] == "JSON_REQUIRED"
+
+
+def _create_job(
+    client: TestClient,
+    *,
+    title: str = "AI 产品经理实习生",
+    company: str = "测试公司",
+    source_url: str | None = "https://example.com/jobs/ai-pm",
+) -> dict[str, object]:
+    response = _create_job_response(
+        client,
+        title=title,
+        company=company,
+        source_url=source_url,
+    )
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+def _create_job_response(
+    client: TestClient,
+    *,
+    title: str = "AI 产品经理实习生",
+    company: str = "测试公司",
+    source_url: str | None = "https://example.com/jobs/ai-pm",
+):
+    return client.post(
+        "/api/v1/jobs",
+        json={
+            "title": title,
+            "company": company,
+            "location": "上海",
+            "salaryText": "200-300/天",
+            "source": "manual",
+            "sourceUrl": source_url,
+            "description": "负责 AI 产品设计与需求分析",
+            "notes": "",
+        },
+    )
