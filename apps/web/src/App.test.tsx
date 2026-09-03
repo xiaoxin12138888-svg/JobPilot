@@ -13,7 +13,10 @@ import { App } from './App';
 
 const healthyResponse = { status: 'ok', service: 'jobpilot-api' } as const;
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  window.history.replaceState(null, '', '/');
+});
 
 describe('App', () => {
   it('renders a clear checking state while the local API health request is pending', () => {
@@ -50,6 +53,41 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: '岗位库' })).toBeInTheDocument();
     expect(await screen.findByText('还没有保存岗位')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '添加岗位' })).toBeEnabled();
+  });
+
+  it('lists captured BOSS jobs with their source label', async () => {
+    const bossJob = createJob({
+      source: 'boss',
+      sourceUrl: 'https://www.zhipin.com/job_detail/fixture123.html',
+    });
+    const listJobs = vi.fn().mockResolvedValue(page([{ ...bossJob, applicationStatus: null }]));
+
+    render(<App apiClient={createApiClient({ listJobs })} />);
+
+    expect(await screen.findByText('BOSS直聘')).toBeInTheDocument();
+    expect(listJobs).toHaveBeenCalledWith({});
+  });
+
+  it('opens a local Job detail deep link without loading the library first', async () => {
+    const jobId = '11111111-1111-4111-8111-111111111111';
+    const bossJob = { ...createJob({ source: 'boss' }), id: jobId };
+    const apiClient = createApiClient({ getJob: vi.fn().mockResolvedValue(bossJob) });
+    window.history.replaceState(null, '', `/?jobId=${jobId}`);
+
+    render(<App apiClient={apiClient} />);
+
+    expect(await screen.findByRole('heading', { name: bossJob.title })).toBeInTheDocument();
+    expect(screen.getAllByText('BOSS直聘').length).toBeGreaterThan(0);
+    expect(apiClient.getJob).toHaveBeenCalledWith(jobId);
+    expect(apiClient.listJobs).not.toHaveBeenCalled();
+  });
+
+  it('opens the manual add form from its local fallback deep link', async () => {
+    window.history.replaceState(null, '', '/?view=create');
+
+    render(<App apiClient={createApiClient()} />);
+
+    expect(await screen.findByRole('heading', { name: '添加岗位' })).toBeInTheDocument();
   });
 
   it('adds a manual job and opens its detail', async () => {
@@ -115,6 +153,25 @@ describe('App', () => {
     expect(link).toHaveAttribute('rel', 'noreferrer');
     expect(apiClient.createApplication).not.toHaveBeenCalled();
     expect(apiClient.updateApplication).not.toHaveBeenCalled();
+  });
+
+  it('preserves a captured Job source when editing its snapshot', async () => {
+    const bossJob = createJob({
+      source: 'boss',
+      sourceUrl: 'https://www.zhipin.com/job_detail/fixture123.html',
+    });
+    const updateJob = vi.fn().mockResolvedValue(bossJob);
+    const apiClient = createApiClient({
+      listJobs: vi.fn().mockResolvedValue(page([{ ...bossJob, applicationStatus: null }])),
+      getJob: vi.fn().mockResolvedValue(bossJob),
+      updateJob,
+    });
+    render(<App apiClient={apiClient} />);
+    fireEvent.click(await screen.findByRole('button', { name: '查看详情' }));
+    fireEvent.click(await screen.findByRole('button', { name: '编辑岗位' }));
+    fireEvent.click(screen.getByRole('button', { name: '保存修改' }));
+
+    expect(updateJob).toHaveBeenCalledWith(bossJob.id, expect.objectContaining({ source: 'boss' }));
   });
 
   it('loads only the application for the opened job', async () => {
@@ -222,7 +279,7 @@ function createJob(input: Partial<CreateJobInput> = {}): Job {
     company: input.company ?? '测试公司',
     location: input.location ?? '上海',
     salaryText: input.salaryText ?? '200-300/天',
-    source: 'manual',
+    source: input.source ?? 'manual',
     sourceUrl: input.sourceUrl ?? 'https://example.com/jobs/ai-pm',
     description: input.description ?? '负责 AI 产品设计与需求分析',
     notes: input.notes ?? null,

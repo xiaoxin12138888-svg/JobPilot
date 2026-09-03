@@ -11,7 +11,7 @@ import type {
   UpdateApplicationInput,
   UpdateJobInput,
 } from '@jobpilot/shared-types';
-export { APPLICATION_STATUS_LABELS } from '@jobpilot/shared-types';
+export { APPLICATION_STATUS_LABELS, JOB_SOURCE_LABELS } from '@jobpilot/shared-types';
 
 export type {
   ApiErrorEnvelope,

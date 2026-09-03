@@ -29,16 +29,27 @@ export function App({ apiClient }: AppProps) {
 }
 
 function Workspace({ apiClient }: AppProps) {
-  const [view, setView] = useState<View>({ name: 'library' });
+  const [view, setView] = useState<View>(initialViewFromLocation);
+
+  function navigate(nextView: View) {
+    setView(nextView);
+    const query =
+      nextView.name === 'detail'
+        ? `?jobId=${encodeURIComponent(nextView.jobId)}`
+        : nextView.name === 'create'
+          ? '?view=create'
+          : '';
+    window.history.replaceState(null, '', `${window.location.pathname}${query}`);
+  }
 
   if (view.name === 'create') {
     return (
       <AppFrame>
         <JobForm
-          onCancel={() => setView({ name: 'library' })}
+          onCancel={() => navigate({ name: 'library' })}
           onSubmit={async (input) => {
             const job = await apiClient.createJob(input);
-            setView({ name: 'detail', jobId: job.id });
+            navigate({ name: 'detail', jobId: job.id });
           }}
         />
       </AppFrame>
@@ -50,8 +61,8 @@ function Workspace({ apiClient }: AppProps) {
         <JobDetail
           apiClient={apiClient}
           jobId={view.jobId}
-          onBack={() => setView({ name: 'library' })}
-          onDeleted={() => setView({ name: 'library' })}
+          onBack={() => navigate({ name: 'library' })}
+          onDeleted={() => navigate({ name: 'library' })}
         />
       </AppFrame>
     );
@@ -60,11 +71,19 @@ function Workspace({ apiClient }: AppProps) {
     <AppFrame>
       <JobLibrary
         apiClient={apiClient}
-        onAdd={() => setView({ name: 'create' })}
-        onOpen={(job: Job) => setView({ name: 'detail', jobId: job.id })}
+        onAdd={() => navigate({ name: 'create' })}
+        onOpen={(job: Job) => navigate({ name: 'detail', jobId: job.id })}
       />
     </AppFrame>
   );
+}
+
+function initialViewFromLocation(): View {
+  const params = new URLSearchParams(window.location.search);
+  const jobId = params.get('jobId')?.trim();
+  if (jobId && jobId.length <= 36) return { name: 'detail', jobId };
+  if (params.get('view') === 'create') return { name: 'create' };
+  return { name: 'library' };
 }
 
 function AppFrame({ children }: { children: React.ReactNode }) {

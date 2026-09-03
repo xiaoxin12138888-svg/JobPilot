@@ -44,7 +44,7 @@ export function JobForm({ initial, onSubmit, onCancel }: JobFormProps) {
         company: values.company,
         location: nullable(values.location),
         salaryText: nullable(values.salaryText),
-        source: 'manual',
+        source: initial?.source ?? 'manual',
         sourceUrl: nullable(values.sourceUrl),
         description: nullable(values.description),
         notes: nullable(values.notes),

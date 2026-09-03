@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 
-import { APPLICATION_STATUS_LABELS as STATUS_LABELS } from '@jobpilot/api-client';
+import {
+  APPLICATION_STATUS_LABELS as STATUS_LABELS,
+  JOB_SOURCE_LABELS,
+} from '@jobpilot/api-client';
 import type { ApiClient, ApplicationStatus, Job, JobListItem } from '@jobpilot/api-client';
 
 interface JobLibraryProps {
@@ -19,7 +22,6 @@ export function JobLibrary({ apiClient, onAdd, onOpen }: JobLibraryProps) {
 
   const load = useCallback(() => {
     const filters = {
-      source: 'manual' as const,
       ...(query.keyword ? { keyword: query.keyword } : {}),
       ...(query.status ? { applicationStatus: query.status } : {}),
     };
@@ -118,7 +120,7 @@ export function JobLibrary({ apiClient, onAdd, onOpen }: JobLibraryProps) {
           {jobs.map((job) => (
             <article className="job-card" key={job.id}>
               <div className="job-card-topline">
-                <span className="source-badge">手动录入</span>
+                <span className="source-badge">{JOB_SOURCE_LABELS[job.source]}</span>
                 <span className={`status-badge status-${job.applicationStatus ?? 'none'}`}>
                   {job.applicationStatus ? STATUS_LABELS[job.applicationStatus] : '未建立投递'}
                 </span>

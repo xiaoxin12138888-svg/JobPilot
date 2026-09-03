@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { APPLICATION_STATUS_LABELS as STATUS_LABELS } from '@jobpilot/api-client';
+import {
+  APPLICATION_STATUS_LABELS as STATUS_LABELS,
+  JOB_SOURCE_LABELS,
+} from '@jobpilot/api-client';
 import type { ApiClient, Application, Job } from '@jobpilot/api-client';
 
 import { ApplicationPanel } from './ApplicationPanel';
@@ -73,7 +76,7 @@ export function JobDetail({ apiClient, jobId, onBack, onDeleted }: JobDetailProp
       <div className="detail-hero">
         <div>
           <div className="job-card-topline">
-            <span className="source-badge">手动录入</span>
+            <span className="source-badge">{JOB_SOURCE_LABELS[job.source]}</span>
             <span className={`status-badge status-${application?.status ?? 'none'}`}>
               {application ? STATUS_LABELS[application.status] : '未建立投递'}
             </span>
@@ -108,7 +111,7 @@ export function JobDetail({ apiClient, jobId, onBack, onDeleted }: JobDetailProp
               </div>
               <div>
                 <dt>来源</dt>
-                <dd>手动录入</dd>
+                <dd>{JOB_SOURCE_LABELS[job.source]}</dd>
               </div>
               <div>
                 <dt>保存时间</dt>

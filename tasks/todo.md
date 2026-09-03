@@ -29,7 +29,7 @@
 - [ ] RED/GREEN health, ready, parsing, preview/edit, warning, saving, saved, duplicate, failure, retry.
 - [ ] Use the shared api-client and existing Job creation endpoint/service.
 - [ ] Open the local Web detail using only the saved Job ID; manual fallback opens manual add.
-- [ ] Show `BOSS直聘` in Web list/detail and keep original-platform links mutation-free.
+- [x] Show `BOSS直聘` in Web list/detail and keep original-platform links mutation-free.
 - [ ] Prove capture/save does not create or mark an Application.
 
 ## Acceptance

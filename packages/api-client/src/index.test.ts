@@ -17,6 +17,7 @@ describe('createApiClient', () => {
     expect(Object.keys(apiClientModule).sort()).toEqual([
       'APPLICATION_STATUS_LABELS',
       'ApiRequestError',
+      'JOB_SOURCE_LABELS',
       'createApiClient',
       'validateApiBaseUrl',
     ]);

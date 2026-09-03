@@ -5,6 +5,11 @@ export interface ApiHealthResponse {
 
 export type JobSource = 'manual' | 'boss';
 
+export const JOB_SOURCE_LABELS: Readonly<Record<JobSource, string>> = {
+  manual: '手动录入',
+  boss: 'BOSS直聘',
+};
+
 export type ApplicationStatus =
   | 'planned'
   | 'applied'
