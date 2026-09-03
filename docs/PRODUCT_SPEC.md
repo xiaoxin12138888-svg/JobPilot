@@ -1,7 +1,7 @@
 # JobPilot 产品规格
 
-> 状态：Phase 3 — Job & Application Domain Foundation 已获负责人批准并在
-> `phase/3-job-application` 实现。Phase 4 未获批准。
+> 状态：Phase 3 已通过。Phase 4 — BOSS Direct Job Capture 已获负责人批准，contract 已冻结，
+> 正在 `phase/4-boss-job-capture` 实现。
 
 ## 1. 产品定位
 
@@ -11,7 +11,7 @@ JobPilot 是个人求职者安装在自己电脑上的本地优先求职工作�
 一个安装实例就是一个本地 workspace：无 JobPilot 账号、无云租户、无认证、无多用户，
 业务数据只写入本机 SQLite。
 
-## 2. Phase 3 用户流程
+## 2. 当前用户流程
 
 ```text
 手动添加岗位 -> 岗位库 -> 岗位详情 -> 建立计划投递
@@ -20,10 +20,19 @@ JobPilot 是个人求职者安装在自己电脑上的本地优先求职工作�
 
 即使没有任何招聘网站 Adapter，用户也能完成整个本地管理流程。
 
+Phase 4 新增一条受控入口：
+
+```text
+用户主动打开具体 BOSS 岗位页 -> Popup 中点击读取 -> 当前可见 DOM 纯文本解析
+-> 确认/编辑预览 -> POST /api/v1/jobs -> SQLite -> 岗位库/详情
+```
+
+Popup 打开时只检查本地 API，不自动读取页面。采集失败可打开 JobPilot 手动添加。
+
 ## 3. Job
 
 Job 是用户主动保存的岗位快照，包含职位、公司、地点、薪资文本、来源、原平台 URL、
-JD、备注和本地时间。Phase 3 只允许 `manual` 来源。
+JD、备注和本地时间。来源允许 `manual` 与 Phase 4 的 `boss`。
 
 - title 与 company 必填，输入统一去除首尾空白；
 - source URL 只接受不带凭据的 HTTP/HTTPS；
@@ -82,16 +91,18 @@ Phase 3 Web 包含：
 - Web、Extension 与 API 只通过精确 loopback 通信；
 - installed runtime 不依赖账号、云服务、CDN、远程字体/脚本、telemetry、update 或境外 AI；
 - JobPilot API 不请求或代理招聘网站；
-- Extension 仍是 health-only Popup，没有招聘站点权限、background、content script 或 `activeTab`；
+- Extension 使用 `activeTab` + `scripting` 在用户点击后对当前 tab 执行一次只读解析；没有
+  BOSS host permission、`tabs` permission、background 或常驻 content script；
 - 测试只使用显式临时数据库，不读取、替换或删除 `runtime-data/jobpilot.db`。
 
-## 8. Phase 3 非目标
+## 8. Phase 4 非目标
 
-招聘网站 Adapter、content script、`activeTab`、ResumeVersion、Evidence Map、AI/RAG/LLM/
-Agent、推荐、自动投递、自动联系 HR、云同步、账号、认证和多用户均不属于 Phase 3。
+牛客、实习僧、猎聘、国聘 Adapter、通用 Adapter framework、后台/批量爬取、隐藏 API、
+ResumeVersion、Evidence Map、AI/RAG/LLM/Agent、推荐、自动投递、自动联系 HR、云同步、账号、
+认证和多用户均不属于 Phase 4。
 
 ## 9. 成功标准
 
-Phase 3 必须证明：手动录入岗位、在岗位库查看、建立投递、明确确认已投递、推进至面试和
-Offer/淘汰，在关闭并重启 Web/API 后仍由同一 SQLite 文件恢复；自动化、真实浏览器、
-loopback/security、no-proxy、代码审查和简化门禁全部通过。
+Phase 4 必须在关闭 VPN/系统/浏览器代理时，从真实 BOSS 岗位详情页完成读取、预览编辑、保存、
+岗位库/详情、原链接、重复识别与重启持久化；保存不能创建或改变 Application。自动化、真实
+Chrome、manifest/CSP/network/privacy、loopback/security、代码审查和简化门禁必须全部通过。

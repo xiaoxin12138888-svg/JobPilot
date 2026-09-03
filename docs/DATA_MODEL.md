@@ -1,7 +1,8 @@
 # JobPilot Local Data Model
 
 > 状态：Alembic revision `0001_job_application` 已创建 Phase 3 的 `jobs` 与
-> `applications`。没有其他业务表。
+> `applications`。Phase 4 contract 由 `0002_boss_job_source` 仅扩展 Job source CHECK；没有
+> 新业务表。
 
 ## 1. Storage rules
 
@@ -21,7 +22,7 @@
 | `company` | String(200), NOT NULL |
 | `location` | String(300), nullable |
 | `salary_text` | String(300), nullable |
-| `source` | String(32), NOT NULL, CHECK = `manual` |
+| `source` | String(32), NOT NULL, CHECK IN (`manual`, `boss`) |
 | `source_url` | String(2048), nullable |
 | `normalized_source_url` | String(2048), nullable, UNIQUE |
 | `description` | Text, nullable |
@@ -31,7 +32,8 @@
 
 索引：`updated_at`、`source`。SQLite UNIQUE 允许多个 NULL，因此无 URL Job 不做去重。
 规范化 URL 只接受 HTTP/HTTPS、无 userinfo；lowercase scheme/host、去默认端口和 fragment，
-保留 path/query。原始 `source_url` 供用户打开。
+保留 path/query。原始 `source_url` 供用户打开。`boss` 来源还要求 URL 属于受支持的 BOSS
+岗位详情页；所有招聘页面字段只作为有长度边界、去明显控制字符的纯文本保存。
 
 ## 3. `applications`
 

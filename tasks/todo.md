@@ -1,35 +1,44 @@
-# Phase 3 — Job & Application Checklist
+# Phase 4 — BOSS Direct Job Capture Checklist
 
-## Contracts and safety
+## Contract and safety
 
-- [x] Freeze product, data, API, architecture, roadmap and ADR-010.
-- [x] Create `phase/3-job-application` from clean `adb8c40`.
-- [x] Preserve `操作手册.txt`, old branches and `pre-local-first-cleanup`.
-- [x] Keep Adapter, content script, ResumeVersion, AI/RAG and cloud work out of scope.
+- [x] Receive explicit Phase 4 approval and create `phase/4-boss-job-capture` from clean `c27a987`.
+- [x] Preserve `操作手册.txt`, real `runtime-data/jobpilot.db`, Phase 3 commits, and old branches.
+- [x] Freeze ADR-011, capture fields, duplicate metadata, permissions, and stop boundary.
+- [ ] Keep all non-BOSS platforms, AI/RAG, automation, crawling, hidden APIs, and proxy changes out.
 
-## Backend
+## Backend and client
 
-- [x] RED/GREEN Job validation and URL normalization.
-- [x] RED/GREEN Application transition and explicit-applied-confirmation rules.
-- [x] Add only `jobs` and `applications` migration with upgrade/downgrade tests.
-- [x] Implement focused repositories and services; never use the real runtime DB in tests.
-- [x] Add Job/Application APIs, filters, pagination and safe public errors.
-- [x] Reassess localhost writes: Host, Origin/Fetch Metadata, JSON and SQLite-busy behavior.
-- [x] Upgrade schema before Uvicorn startup and prove restart persistence.
+- [ ] RED/GREEN `manual|boss` source validation and plain-text control-character sanitization.
+- [ ] Add and test a minimal reversible Job source CHECK migration.
+- [ ] Verify migration on a fresh temp DB and a copy of the real runtime DB, never the live file.
+- [ ] Preserve `POST /api/v1/jobs`, normalized URL dedupe, and expose existing local Job ID on 409.
+- [ ] Extend shared types/api-client validation while preserving manual Job/Application behavior.
 
-## Web and client
+## BOSS Adapter
 
-- [x] Add shared types and strict credential-free API client methods.
-- [x] Implement API checking/unavailable recovery, empty Job library and manual Job form.
-- [x] Implement list filters, details, edit and explicitly confirmed deletion.
-- [x] Implement Application creation/status tracking and explicit applied confirmation.
-- [x] Keep original-platform action as a safe external link with zero mutation.
+- [ ] Observe a real current BOSS Job detail DOM with VPN/proxy off before choosing selectors.
+- [ ] RED/GREEN strict BOSS hostname + detail-page detection.
+- [ ] RED/GREEN title, company, location, salary, description and whitespace normalization.
+- [ ] Cover unsupported/non-BOSS/missing required/optional missing/odd text/URL cases.
+- [ ] Commit only a minimal sanitized DOM fixture; never full HTML, cookies, IDs, chats, HAR, or tokens.
+
+## Extension and Web
+
+- [ ] Add only `activeTab` and `scripting`; keep exact loopback host permission and no content script.
+- [ ] RED/GREEN health, ready, parsing, preview/edit, warning, saving, saved, duplicate, failure, retry.
+- [ ] Use the shared api-client and existing Job creation endpoint/service.
+- [ ] Open the local Web detail using only the saved Job ID; manual fallback opens manual add.
+- [ ] Show `BOSS直聘` in Web list/detail and keep original-platform links mutation-free.
+- [ ] Prove capture/save does not create or mark an Application.
 
 ## Acceptance
 
-- [x] Run frozen/locked installs, tests, lint, format, typecheck and builds.
-- [x] Run migration upgrade/downgrade, API import/startup and restart persistence.
-- [x] Run real browser workflow at 320/768/1024/1440 plus API unavailable/recovery.
-- [x] Verify no-proxy local workflow and security/local-first scans.
-- [x] Run code review to Critical 0 / Required 0 and simplify confirmed complexity.
-- [x] Synchronize documentation, commit coherent increments and stop before Phase 4.
+- [ ] Run frozen/locked installs and all TypeScript/Python tests, lint, format, typecheck, and builds.
+- [ ] Run migration, API import/startup, SQLite persistence, artifact/CSP, secret, remote, and log scans.
+- [ ] Load unpacked in Chrome after action-time approval and run the real BOSS capture twice.
+- [ ] Verify Popup, parse, preview, save, library, detail, duplicate, original URL, and restart.
+- [ ] Verify console/network/privacy and full workflow with VPN/system/browser proxy off.
+- [ ] Verify Web at 320/768/1024/1440 and keyboard/accessibility states.
+- [ ] Run code review to Critical 0 / Required 0 and simplify confirmed complexity.
+- [ ] Synchronize all canonical docs, commit coherent increments, and stop before Phase 5.

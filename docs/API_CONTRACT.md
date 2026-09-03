@@ -1,6 +1,7 @@
 # JobPilot API Contract
 
-> 状态：`GET /health` 与 Phase 3 Job/Application contract 已冻结。JSON 字段使用 camelCase。
+> 状态：`GET /health`、Job/Application 与 Phase 4 BOSS capture 所复用的 Job contract 已冻结。
+> JSON 字段使用 camelCase。
 
 ## 1. Runtime boundary
 
@@ -38,14 +39,16 @@ CORS 只列精确 Web origin 和 `GET, POST, PATCH, DELETE`，不允许 credenti
 }
 ```
 
-`title`、`company` 必填；其他字段可为 null/省略，source 只能是 `manual`。成功为 201。
+`title`、`company` 必填；其他字段可为 null/省略，source 可为 `manual` 或 `boss`。`boss`
+必须携带属于受支持 BOSS 岗位详情页的 HTTP/HTTPS `sourceUrl`。成功为 201。Web 手动录入与
+Extension BOSS capture 均进入此 endpoint 和同一个 Job service；不存在 capture 专用保存接口。
 
 ### `GET /api/v1/jobs`
 
 Query：
 
 - `keyword`：title/company/location 简单包含匹配，最多 200 字符；
-- `source=manual`；
+- `source=manual|boss`；
 - `applicationStatus`：正式 Application status；
 - `limit`：默认 50，1–100；
 - `offset`：默认 0，非负。
@@ -110,10 +113,14 @@ Application response 字段为：`id`、`jobId`、`status`、`appliedAt`、
   "error": {
     "code": "DUPLICATE_JOB_URL",
     "message": "该岗位链接已经保存",
-    "requestId": "req_..."
+    "requestId": "req_...",
+    "resourceId": "existing-local-job-id"
   }
 }
 ```
+
+`resourceId` 仅在能安全标识相关本地资源时出现。BOSS 重复 URL 的 409 使用它指向已有 Job，
+便于 Extension 打开本机详情；其他错误保持原有三字段 envelope。
 
 主要状态：
 

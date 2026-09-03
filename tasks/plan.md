@@ -1,35 +1,71 @@
-# Implementation Plan: Phase 3 — Job & Application Domain Foundation
+# Implementation Plan: Phase 4 — BOSS Direct Job Capture
 
-> Owner-approved on 2026-09-03. Phase 4 is not authorized.
+> Owner-approved on 2026-09-03. Phase 5 is not authorized.
 
 ## Objective
 
-Deliver a genuinely usable local workflow: manually create a Job, browse and edit the job library,
-create one Application, explicitly confirm real submission, track its allowed status, and preserve
-the data across restart. Keep the existing single-user, loopback-only, SQLite and no-proxy boundaries.
+Deliver one user-triggered, local-only vertical path from a specific BOSS 直聘 Job detail page,
+through an editable Extension preview and the existing Job API/service, into SQLite and the JobPilot
+Web Job library. Do not crawl, call BOSS APIs, automate applications, or add another platform.
 
-## Frozen decisions
+## Frozen contract
 
-- Only `manual` Jobs can be created. A normalized HTTP/HTTPS source URL is unique; no URL means no fuzzy dedupe.
-- Job deletion is explicitly confirmed in Web and cascades its one optional Application.
-- Application statuses are `planned`, `applied`, `screening`, `assessment`, `interviewing`, `offer`, `rejected`, `withdrawn`, `closed`.
-- Every transition into `applied` requires `confirmApplied: true`. Opening `source_url` never mutates state.
-- API JSON is camelCase. Lists use bounded `limit`/`offset` (50 default, 100 maximum).
-- Domain rules and services stay outside routers. Repositories are business-specific, not generic CRUD.
-- Only `jobs` and `applications` are migrated. Tests use explicit temporary databases.
+- The only new source is `boss`; its user-facing label is `BOSS直聘`. `manual` remains supported.
+- `JobCaptureDraft` reuses `CreateJobInput`: `source`, `sourceUrl`, `title`, `company`, `location`,
+  `salaryText`, and plain-text `description`. Parser `warnings` stay inside the Extension.
+- `title` and `company` are required before save. Optional missing fields produce warnings and remain
+  editable. The API remains the authoritative length, control-character, source, and URL boundary.
+- `sourceUrl` is the active tab HTTP/HTTPS URL. BOSS capture accepts only a verified BOSS Job detail
+  hostname/path; DOM content cannot supply or replace it.
+- The Extension uses `activeTab` + `scripting`, executes one read-only parser after a user click, and
+  registers no persistent content script, background worker, BOSS host permission, or broad host.
+- Save reuses `POST /api/v1/jobs`. Duplicate normalized URLs remain `409 DUPLICATE_JOB_URL`; the
+  additive optional `resourceId` identifies the existing local Job so the Popup can open it.
+- The `jobs.source` CHECK expands reversibly from `manual` to `manual|boss`; no other schema or table
+  is added. Migration tests use temporary databases and a copy of runtime data, never the live file.
+- Opening the original BOSS URL or saving a Job never creates or mutates an Application.
 
 ## Ordered work
 
-1. Synchronize canonical contracts and ADR-010.
-2. RED/GREEN domain validation, URL normalization and Application transition rules.
-3. RED/GREEN Alembic migration, constraints, repository persistence and automatic startup upgrade.
-4. RED/GREEN Job and Application services/API, public errors and localhost write boundary.
-5. Add shared transport types and a validating credential-free API client.
-6. Build the responsive Job library, manual form, details and Application controls.
-7. Verify full automation, real browser sizes/states, restart persistence and no-proxy runtime.
-8. Resolve Critical/Required review findings, simplify, update docs and stop before Phase 4.
+1. Freeze this plan, ADR-011, API/data/permission contracts, and the Phase 4 stop boundary.
+2. RED/GREEN source validation, plain-text sanitization, duplicate existing-Job metadata, and the
+   reversible SQLite migration; prove Phase 3 manual/Application regression.
+3. Observe a real user-opened BOSS Job detail page with VPN/proxy off; record only the minimum
+   selector evidence needed for the Adapter.
+4. RED/GREEN one `BossAdapter`: strict page detection, five field parsers, warnings, normalization,
+   odd-text handling, and minimal sanitized fixtures.
+5. RED/GREEN Popup states and user flow: health, explicit capture, preview/edit, save, duplicate,
+   retry, manual fallback, and safe local Job detail link.
+6. Add only necessary Web changes: source labels, captured Jobs in the library, and a local-ID detail
+   deep link. Preserve the manual form and full Application lifecycle.
+7. Run locked installs, affected/full automated gates, builds, migration upgrade/downgrade/upgrade,
+   runtime persistence, artifact/CSP/secret/remote scans, and `git diff --check`.
+8. Load the unpacked build in Chrome with action-time approval; validate the real BOSS flow,
+   duplicate behavior, console/network/privacy, no-proxy operation, restart persistence, and Web at
+   320/768/1024/1440.
+9. Resolve all Critical/Required review findings, run the simplification pass, synchronize docs, and
+   stop before Phase 5.
 
-## Final gate
+## Checkpoints
 
-Phase 3 passes only when the specified real scenario survives API/Web restart, all automated gates
-pass, real browser validation covers 320/768/1024/1440 and review reaches Critical 0 / Required 0.
+- Backend checkpoint: API/domain/migration/client tests and manual Job/Application regression pass.
+- Capture checkpoint: live-DOM-informed Adapter tests pass with no over-collection or hidden API.
+- UI checkpoint: Extension/Web tests, typecheck, lint, format, builds, and artifact gate pass.
+- Final checkpoint: real no-proxy capture and duplicate scenario pass; review is Critical 0 /
+  Required 0; tracked worktree is clean except the untouched `操作手册.txt`.
+
+## Risks and mitigations
+
+- BOSS DOM may change: use one evidence-based selector set with a few semantic fallbacks and warnings.
+- Chrome user state is sensitive: inspect only visible necessary DOM; never read cookies, storage,
+  tokens, recruiter private data, full-page snapshots, or unrelated tabs.
+- SQLite constraint replacement can lose data if mishandled: use a reversible migration and verify
+  it on fresh temporary data plus a copy of the real database.
+- Duplicate save can race: keep normalized URL uniqueness in SQLite and return only the existing
+  local Job ID in the bounded 409 error.
+
+## Open prerequisite
+
+Before selector implementation and final acceptance, the project owner must keep one real BOSS Job
+detail tab open in Chrome with VPN/system/browser proxy off. No credentials or session material are
+to be shared with Codex.

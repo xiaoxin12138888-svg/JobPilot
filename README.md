@@ -6,7 +6,7 @@ JobPilot 不替代招聘网站，不建设职位数据库，也不代表用户�
 
 ## 当前状态
 
-项目已在 `phase/3-job-application` 完成 **Phase 3 — Job & Application Domain Foundation** 的实现与验收，等待负责人最终接受。当前能力包括：
+项目已通过 **Phase 3 — Job & Application Domain Foundation**。负责人已批准 **Phase 4 — BOSS Direct Job Capture**，当前在 `phase/4-boss-job-capture` 按冻结 contract 实现。Phase 3 能力包括：
 
 - React Web：本机 API 状态、岗位库、手动录入、岗位详情/编辑/删除和投递状态管理；
 - Chrome Extension：无 privileged Chrome API permission、无后台进程的本地健康 Popup；唯一 host permission 是 `http://127.0.0.1:8000/*`；
@@ -14,7 +14,7 @@ JobPilot 不替代招聘网站，不建设职位数据库，也不代表用户�
 - SQLite、SQLAlchemy 与 Alembic：launcher 启动前自动升级 `runtime-data/jobpilot.db`，revision 只创建 `jobs` 与 `applications`；
 - `packages/shared-types` 与 `packages/api-client`：提供 camelCase 业务契约、credential-free 请求和不可信响应校验。
 
-Phase 4 尚未开始。仓库中没有 ResumeVersion、招聘网站 Adapter、content script、`activeTab`、AI、RAG、自动投递、云同步或上传功能。
+Phase 4 只新增 BOSS 直聘当前岗位页的用户主动采集、确认编辑与本地保存。它不引入其他招聘平台、常驻 content script、后台抓取、AI、RAG、自动投递、云同步或上传。
 
 ## 本地优先意味着什么
 
@@ -31,14 +31,14 @@ Phase 4 尚未开始。仓库中没有 ResumeVersion、招聘网站 Adapter、co
 
 Auth0、Logto Cloud、Google APIs、Google reCAPTCHA、Cloudflare Turnstile、GitHub API/raw content、jsDelivr、unpkg、cdnjs、远程字体/JavaScript、境外 AI API、境外 telemetry/analytics 或境外 update API 永远不能成为核心 runtime dependency。未来可选远程能力即使经单独 ADR/批准，也必须显式启用、可降级，并且不阻塞本地核心。
 
-当前 supported recruitment adapters：`none`。BOSS 直聘、牛客、实习僧、猎聘和国聘均为 `NOT STARTED / NOT SUPPORTED`，必须等对应 Phase 实现并通过以下 Gate 后才能改变状态。
+当前 supported recruitment adapters：`none`。BOSS 直聘为 `IN PROGRESS / NOT SUPPORTED`；牛客、实习僧、猎聘和国聘均为 `NOT STARTED / NOT SUPPORTED`。必须等对应实现和以下 Gate 全部通过后才能改变状态。
 
 Extension 必须满足：
 
 - 所有 JavaScript 与样式随 bundle 分发，不执行远程代码；
 - 不下载 CDN 资源，不修改或创建代理/VPN，不发送 telemetry；
-- 当前只有精确 loopback API host permission，没有后台、content script 或招聘网站权限；
-- 未来每个 Adapter 必须另行批准精确 host，由用户主动触发，并且只读取当前已打开页面的已呈现 DOM；
+- Phase 4 contract 只允许 `activeTab`、`scripting` 与精确 loopback API host permission，没有后台、常驻 content script、`tabs` permission 或招聘网站 host permission；
+- 每个 Adapter 必须由用户主动触发，并且只读取当前已打开页面的已呈现 DOM；
 - 每个 Adapter 都要在无代理真实网络上分别记录：招聘平台页面、Extension Popup、页面识别、岗位解析、保存到 JobPilot、JobPilot 岗位库的 `PASS / FAIL`；任一步依赖代理就不能标为支持。
 
 依赖镜像、pnpm registry、PyPI 和 GitHub release 只属于开发或安装阶段，不得变成已安装运行时依赖。
@@ -52,6 +52,7 @@ Chrome Extension --/                            |
                                                  v
                                       runtime-data/jobpilot.db (SQLite)
 
+BOSS current rendered DOM -- user click/read-only --> Chrome Extension
 Web original-platform link -> user's browser -> recruitment website
 JobPilot API never proxies recruitment website traffic
 ```

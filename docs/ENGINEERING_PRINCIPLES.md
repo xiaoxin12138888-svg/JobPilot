@@ -24,10 +24,11 @@
 
 ### Extension
 
-- 当前只提供本地 health Popup；
+- Phase 4 只提供本地 health 与 BOSS 当前岗位读取/确认 Popup；
 - bundle 不执行远程 JavaScript，不下载 CDN 资源，不发送 telemetry，不修改代理；
-- 当前没有 background、content script、storage、identity 或 recruitment host；
-- 未来 page capture 必须精确 host、用户手势、当前页面、最小消息 schema。
+- 仅使用 `activeTab`、`scripting` 与精确 loopback host；没有 background、常驻 content
+  script、`tabs` permission、storage、identity 或 recruitment host permission；
+- page capture 必须是明确用户手势、当前页面、一次性只读 DOM parser 和最小返回 schema。
 
 ### API
 
@@ -44,7 +45,8 @@
 
 ## 4. Data and security
 
-- 当前 metadata 只含 Phase 3 的 `jobs` 与 `applications`；所有表不含 `user_id` 或身份字段；
+- 当前 metadata 只含 `jobs` 与 `applications`；Phase 4 只扩展 Job source CHECK，所有表不含
+  `user_id` 或身份字段；
 - 数据库只使用本地 SQLite file URL；默认 `runtime-data/jobpilot.db` 属于用户数据，自动化不得触碰；
 - SQLite connections 启用 foreign keys 与有界 busy timeout；当前保留 rollback journal，WAL 必须由实测需要驱动；
 - 操作系统账户与文件权限保护本地静态数据；

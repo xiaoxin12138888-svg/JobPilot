@@ -1,7 +1,7 @@
 # JobPilot 总体架构
 
-> 状态：ADR-008、ADR-009 与 ADR-010 Accepted。Phase 3 运行时仍为 local-first、
-> single-user、no-account、SQLite；Phase 4 未开始。
+> 状态：ADR-008 至 ADR-011 Accepted。Phase 4 contract 已冻结并保持 local-first、
+> single-user、no-account、SQLite。
 
 ## 1. 运行时
 
@@ -9,7 +9,7 @@
 flowchart LR
     U[用户]
     W[React Web]
-    E[Chrome Extension health Popup]
+    E[Chrome Extension BOSS capture Popup]
     C[packages/api-client]
     A[FastAPI 127.0.0.1:8000]
     S[(runtime-data/jobpilot.db)]
@@ -21,6 +21,7 @@ flowchart LR
     E --> C
     C --> A
     A --> S
+    R -. 当前可见 DOM 只读解析 .-> E
     W -. 仅打开 source_url .-> R
 ```
 
@@ -31,7 +32,7 @@ SQLite；`GET /health` 仍不连接数据库。Web 与 Extension 永不直连 SQ
 
 ```text
 apps/web                 岗位库、手动录入、详情与投递跟踪
-apps/extension           health-only Popup；无招聘站点能力
+apps/extension           BOSS 页面识别、一次性只读 Adapter、确认编辑 Popup
 apps/api/domain          Job/Application 值、校验与状态规则
 apps/api/application     use-case service 与业务 repository port
 apps/api/infrastructure  SQLAlchemy repository 与 SQLite/Alembic
@@ -74,7 +75,9 @@ Web 不引入路由或状态框架。App 只协调 health 和 library/create/det
 ## 6. Local-first 与后续边界
 
 installed runtime 不依赖远程身份、CDN、字体/脚本、telemetry、update、对象存储或 AI。
-Extension 仍没有 background、content script、`activeTab` 或招聘网站 host permission。
+Extension 只新增 `activeTab` 与 `scripting`；没有 background、常驻 content script、`tabs`
+permission 或招聘网站 host permission。一次性 `BossAdapter` 只能在明确用户手势后读取当前
+已呈现的必要 DOM 纯文本，随后由用户确认并通过共享 api-client 调用现有 Job service。
 
-Phase 4 的候选是首个招聘网站 Adapter 与用户确认后的岗位捕获。它必须另行批准精确 host、
-DOM fixture、用户手势和真实 no-proxy 验收，不得改变 Phase 3 的本地事实边界。
+真实 BOSS、Extension、解析、保存与 Web 链路必须单独通过 no-proxy 验收，不得改变 Phase 3
+的本地事实边界或 Application 状态。
