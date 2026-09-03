@@ -13,6 +13,10 @@ MAX_URL_LENGTH = 2_048
 MAX_DESCRIPTION_LENGTH = 100_000
 MAX_NOTES_LENGTH = 20_000
 SUPPORTED_JOB_SOURCES = frozenset({"manual", "boss"})
+CONTROL_CHARACTER_TRANSLATION = {
+    codepoint: None
+    for codepoint in (*range(0, 9), *range(11, 13), *range(14, 32), *range(127, 160))
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,7 +126,7 @@ def is_boss_job_detail_url(value: str | None) -> bool:
 def _required_text(field: str, value: str, maximum: int) -> str:
     if not isinstance(value, str):
         raise DomainValidationError(f"{field}: must be text")
-    cleaned = value.strip()
+    cleaned = _plain_text(value).strip()
     if not cleaned:
         raise DomainValidationError(f"{field}: must not be blank")
     if len(cleaned) > maximum:
@@ -133,9 +137,13 @@ def _required_text(field: str, value: str, maximum: int) -> str:
 def _optional_text(field: str, value: str | None, maximum: int) -> str | None:
     if value is None:
         return None
-    cleaned = value.strip()
+    cleaned = _plain_text(value).strip()
     if not cleaned:
         return None
     if len(cleaned) > maximum:
         raise DomainValidationError(f"{field}: must be at most {maximum} characters")
     return cleaned
+
+
+def _plain_text(value: str) -> str:
+    return value.replace("\r\n", "\n").replace("\r", "\n").translate(CONTROL_CHARACTER_TRANSLATION)

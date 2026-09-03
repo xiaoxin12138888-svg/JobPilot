@@ -62,6 +62,20 @@ def test_job_draft_rejects_an_unsupported_source_or_boss_page(
         )
 
 
+def test_job_draft_removes_control_characters_and_normalizes_line_endings() -> None:
+    draft = JobDraft.create(
+        title="\x00 产品\x1f经理 \r",
+        company="公\x7f司",
+        location="\x1b 上海 ",
+        description="第一行\r\n第二\x00行\r第三行",
+    )
+
+    assert draft.title == "产品经理"
+    assert draft.company == "公司"
+    assert draft.location == "上海"
+    assert draft.description == "第一行\n第二行\n第三行"
+
+
 @pytest.mark.parametrize("field", ["title", "company"])
 def test_job_draft_rejects_blank_required_text(field: str) -> None:
     values = {"title": "岗位", "company": "公司"}

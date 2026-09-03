@@ -102,6 +102,18 @@ def test_job_validation_and_pagination_are_bounded(client: TestClient) -> None:
     assert "detail" not in too_large.json()
 
 
+def test_job_api_stores_untrusted_job_fields_as_sanitized_plain_text(client: TestClient) -> None:
+    created = _create_job(
+        client,
+        title="\x00 产品\x1f经理",
+        company="公\x7f司",
+        source_url=None,
+    )
+
+    assert created["title"] == "产品经理"
+    assert created["company"] == "公司"
+
+
 def test_application_lifecycle_requires_confirmation_and_rejects_invalid_jump(
     client: TestClient,
 ) -> None:
