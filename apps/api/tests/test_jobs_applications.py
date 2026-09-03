@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sqlite3
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -8,6 +9,7 @@ from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
 
+import jobpilot_api.infrastructure.database.engine as engine_module
 from jobpilot_api.config import ApiSettings
 from jobpilot_api.infrastructure.database.engine import sqlite_database_url
 from jobpilot_api.main import create_app
@@ -136,6 +138,30 @@ def test_application_requires_an_existing_job(client: TestClient) -> None:
     assert response.json()["error"]["code"] == "RESOURCE_NOT_FOUND"
 
 
+def test_application_list_filters_by_job_id(client: TestClient) -> None:
+    target_job = _create_job(client, source_url=None)
+    other_job = _create_job(
+        client,
+        title="后端工程师",
+        company="另一家公司",
+        source_url=None,
+    )
+    target_application = client.post(
+        f"/api/v1/jobs/{target_job['id']}/application",
+        json={},
+    ).json()
+    client.post(f"/api/v1/jobs/{other_job['id']}/application", json={})
+
+    response = client.get(
+        "/api/v1/applications",
+        params={"jobId": target_job["id"], "limit": 1},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+    assert [item["id"] for item in response.json()["items"]] == [target_application["id"]]
+
+
 def test_browser_writes_reject_cross_site_origin_and_non_json_body(client: TestClient) -> None:
     cross_site = client.post(
         "/api/v1/jobs",
@@ -152,6 +178,42 @@ def test_browser_writes_reject_cross_site_origin_and_non_json_body(client: TestC
     assert cross_site.json()["error"]["code"] == "LOCAL_WRITE_FORBIDDEN"
     assert non_json.status_code == 415
     assert non_json.json()["error"]["code"] == "JSON_REQUIRED"
+
+
+def test_writes_reject_a_non_loopback_host(client: TestClient) -> None:
+    response = client.post(
+        "/api/v1/jobs",
+        headers={"Host": "example.com", "Content-Type": "application/json"},
+        json={"title": "岗位", "company": "公司"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "LOCAL_WRITE_FORBIDDEN"
+
+
+def test_sqlite_busy_is_a_bounded_public_503(monkeypatch, tmp_path: Path) -> None:
+    database_path = tmp_path / "busy" / "jobpilot.db"
+    database_path.parent.mkdir(parents=True)
+    config = Config("apps/api/alembic.ini")
+    config.set_main_option("sqlalchemy.url", sqlite_database_url(database_path).render_as_string())
+    command.upgrade(config, "head")
+    monkeypatch.setattr(engine_module, "SQLITE_BUSY_TIMEOUT_MILLISECONDS", 10)
+    application = create_app(ApiSettings.from_environment({}), database_path=database_path)
+
+    with (
+        sqlite3.connect(database_path) as locked,
+        TestClient(
+            application,
+            base_url="http://127.0.0.1",
+        ) as busy_client,
+    ):
+        locked.execute("BEGIN EXCLUSIVE")
+        response = _create_job_response(busy_client)
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "DATABASE_BUSY"
+    assert "sqlite" not in response.text.lower()
+    assert "locked" not in response.text.lower()
 
 
 def _create_job(

@@ -104,11 +104,17 @@ def create_application(
 @router.get("/applications", response_model=ApplicationListResponse)
 def list_applications(
     service: Annotated[ApplicationService, Depends(get_application_service)],
+    job_id: Annotated[str | None, Query(alias="jobId", max_length=36)] = None,
     status_filter: Annotated[ApplicationStatus | None, Query(alias="status")] = None,
     limit: PageLimit = 50,
     offset: PageOffset = 0,
 ) -> ApplicationListResponse:
-    items, total = service.list(status=status_filter, limit=limit, offset=offset)
+    items, total = service.list(
+        job_id=job_id,
+        status=status_filter,
+        limit=limit,
+        offset=offset,
+    )
     return ApplicationListResponse(
         items=[ApplicationListItem.from_entry(item) for item in items],
         total=total,

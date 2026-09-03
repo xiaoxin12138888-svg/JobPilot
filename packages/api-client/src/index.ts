@@ -65,6 +65,7 @@ export interface JobListFilters {
 }
 
 export interface ApplicationListFilters {
+  jobId?: string;
   status?: ApplicationStatus;
   limit?: number;
   offset?: number;

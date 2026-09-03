@@ -77,6 +77,12 @@ def test_application_allows_forward_progress_and_adjacent_correction() -> None:
         ApplicationStatus.APPLIED,
         confirm_applied=True,
     )
+    with pytest.raises(DomainValidationError, match="确认"):
+        validate_status_transition(
+            ApplicationStatus.SCREENING,
+            ApplicationStatus.APPLIED,
+            confirm_applied=False,
+        )
     validate_status_transition(
         ApplicationStatus.INTERVIEWING,
         ApplicationStatus.OFFER,

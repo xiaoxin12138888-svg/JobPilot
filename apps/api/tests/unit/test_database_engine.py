@@ -9,8 +9,8 @@ from jobpilot_api.infrastructure.database.engine import (
     DEFAULT_DATABASE_PATH,
     SQLITE_BUSY_TIMEOUT_MILLISECONDS,
     create_database_engine,
-    initialize_database,
     sqlite_database_url,
+    upgrade_database,
 )
 
 
@@ -23,18 +23,18 @@ def test_default_database_path_is_the_ignored_repository_runtime_data_file() -> 
     )
 
 
-def test_initialization_creates_the_parent_directory_and_database(tmp_path: Path) -> None:
+def test_upgrade_creates_the_parent_directory_and_database(tmp_path: Path) -> None:
     database_path = tmp_path / "nested" / "runtime-data" / "jobpilot.db"
 
-    initialized_path = initialize_database(database_path)
+    upgraded_path = upgrade_database(database_path)
 
-    assert initialized_path == database_path.resolve()
+    assert upgraded_path == database_path.resolve()
     assert database_path.is_file()
 
 
-def test_second_initialization_reuses_the_database_without_overwriting_data(tmp_path: Path) -> None:
+def test_second_upgrade_reuses_the_database_without_overwriting_data(tmp_path: Path) -> None:
     database_path = tmp_path / "runtime-data" / "jobpilot.db"
-    initialize_database(database_path)
+    upgrade_database(database_path)
     first_engine = create_database_engine(database_path)
     try:
         with first_engine.begin() as connection:
@@ -46,7 +46,7 @@ def test_second_initialization_reuses_the_database_without_overwriting_data(tmp_
     finally:
         first_engine.dispose()
 
-    initialize_database(database_path)
+    upgrade_database(database_path)
     second_engine = create_database_engine(database_path)
     try:
         with second_engine.connect() as connection:

@@ -179,12 +179,16 @@ class SqlAlchemyApplicationRepository:
     def list(
         self,
         *,
+        job_id: str | None,
         status: ApplicationStatus | None,
         limit: int,
         offset: int,
     ) -> tuple[list[ApplicationListEntry], int]:
         statement = select(ApplicationModel, JobModel.title, JobModel.company).join(JobModel)
         count_statement = select(func.count()).select_from(ApplicationModel)
+        if job_id:
+            statement = statement.where(ApplicationModel.job_id == job_id)
+            count_statement = count_statement.where(ApplicationModel.job_id == job_id)
         if status:
             statement = statement.where(ApplicationModel.status == status.value)
             count_statement = count_statement.where(ApplicationModel.status == status.value)

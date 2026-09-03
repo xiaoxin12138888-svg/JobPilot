@@ -232,6 +232,29 @@ describe('createApiClient', () => {
       credentials: 'omit',
     });
   });
+
+  it('loads only the application belonging to one job', async () => {
+    const payload = {
+      items: [
+        {
+          ...createApplicationPayload('planned'),
+          jobTitle: 'AI 产品经理实习生',
+          company: '测试公司',
+        },
+      ],
+      total: 1,
+      limit: 1,
+      offset: 0,
+    };
+    const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(payload));
+    const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
+
+    await client.listApplications({ jobId: 'job-1', limit: 1 });
+
+    expect(fetchImplementation.mock.calls[0]?.[0]).toBe(
+      'http://127.0.0.1:8000/api/v1/applications?jobId=job-1&limit=1',
+    );
+  });
 });
 
 function jsonResponse(payload: unknown, status = 200): Response {

@@ -55,9 +55,7 @@ describe('App', () => {
   it('adds a manual job and opens its detail', async () => {
     const apiClient = createStatefulApiClient();
     render(<App apiClient={apiClient} />);
-    await screen.findByRole('heading', { name: '岗位库' });
-
-    fireEvent.click(screen.getByRole('button', { name: '添加岗位' }));
+    fireEvent.click(await screen.findByRole('button', { name: '添加岗位' }));
     fireEvent.change(screen.getByLabelText('职位名称 *'), {
       target: { value: 'AI 产品经理实习生' },
     });
@@ -84,14 +82,20 @@ describe('App', () => {
   it('validates required fields and source URL before calling the API', async () => {
     const apiClient = createApiClient();
     render(<App apiClient={apiClient} />);
-    await screen.findByRole('heading', { name: '岗位库' });
-    fireEvent.click(screen.getByRole('button', { name: '添加岗位' }));
+    fireEvent.click(await screen.findByRole('button', { name: '添加岗位' }));
     fireEvent.change(screen.getByLabelText('岗位链接'), {
       target: { value: 'ftp://example.com/job' },
     });
     fireEvent.click(screen.getByRole('button', { name: '保存岗位' }));
 
     expect(screen.getByRole('alert')).toHaveTextContent('请填写职位名称和公司');
+    expect(apiClient.createJob).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText('职位名称 *'), { target: { value: '岗位' } });
+    fireEvent.change(screen.getByLabelText('公司 *'), { target: { value: '公司' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存岗位' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent('HTTP 或 HTTPS');
     expect(apiClient.createJob).not.toHaveBeenCalled();
   });
 
@@ -111,6 +115,20 @@ describe('App', () => {
     expect(link).toHaveAttribute('rel', 'noreferrer');
     expect(apiClient.createApplication).not.toHaveBeenCalled();
     expect(apiClient.updateApplication).not.toHaveBeenCalled();
+  });
+
+  it('loads only the application for the opened job', async () => {
+    const job = createJob();
+    const apiClient = createApiClient({
+      listJobs: vi.fn().mockResolvedValue(page([{ ...job, applicationStatus: 'planned' }])),
+      getJob: vi.fn().mockResolvedValue(job),
+    });
+    render(<App apiClient={apiClient} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '查看详情' }));
+    await screen.findByRole('heading', { name: 'AI 产品经理实习生' });
+
+    expect(apiClient.listApplications).toHaveBeenCalledWith({ jobId: 'job-1', limit: 1 });
   });
 
   it('creates an application and explicitly confirms applied status', async () => {
@@ -140,6 +158,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: '我已完成投递' }));
 
     expect((await screen.findAllByText('已投递')).length).toBeGreaterThan(0);
+    expect(screen.getByRole('combobox', { name: '更正或推进状态' })).toHaveValue('applied');
     expect(apiClient.updateApplication).toHaveBeenCalledWith('application-1', {
       status: 'applied',
       confirmApplied: true,

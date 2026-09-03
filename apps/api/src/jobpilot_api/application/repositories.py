@@ -54,6 +54,7 @@ class ApplicationRepository(Protocol):
     def list(
         self,
         *,
+        job_id: str | None,
         status: ApplicationStatus | None,
         limit: int,
         offset: int,

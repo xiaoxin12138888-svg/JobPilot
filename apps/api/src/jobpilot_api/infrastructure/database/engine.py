@@ -63,17 +63,6 @@ def create_database_engine(database_path: Path = DEFAULT_DATABASE_PATH) -> Engin
     return engine
 
 
-def initialize_database(database_path: Path = DEFAULT_DATABASE_PATH) -> Path:
-    resolved_path = database_path.expanduser().resolve()
-    engine = create_database_engine(resolved_path)
-    try:
-        with engine.begin() as connection:
-            connection.exec_driver_sql("SELECT 1")
-    finally:
-        engine.dispose()
-    return resolved_path
-
-
 def upgrade_database(database_path: Path = DEFAULT_DATABASE_PATH) -> Path:
     resolved_path = database_path.expanduser().resolve()
     resolved_path.parent.mkdir(parents=True, exist_ok=True)

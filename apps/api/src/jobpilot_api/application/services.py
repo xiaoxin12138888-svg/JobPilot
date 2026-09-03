@@ -106,8 +106,9 @@ class ApplicationService:
     def list(
         self,
         *,
+        job_id: str | None,
         status: ApplicationStatus | None,
         limit: int,
         offset: int,
     ) -> tuple[list[ApplicationListEntry], int]:
-        return self._repository.list(status=status, limit=limit, offset=offset)
+        return self._repository.list(job_id=job_id, status=status, limit=limit, offset=offset)
