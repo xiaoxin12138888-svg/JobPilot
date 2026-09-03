@@ -16,12 +16,14 @@
 }
 
 body {
-  width: 22rem;
+  width: 24rem;
   min-height: 12rem;
   margin: 0;
 }
 
-button {
+button,
+input,
+textarea {
   font: inherit;
 }
 
@@ -49,16 +51,19 @@ h1 {
 }
 
 .health-panel {
+  max-height: 32rem;
   min-height: 6.5rem;
   padding-top: 1rem;
+  overflow-y: auto;
 }
 
-.health-state {
+.popup-state {
   display: grid;
   gap: 0.75rem;
 }
 
-.health-state p {
+.popup-state p,
+.capture-form p {
   margin: 0;
 }
 
@@ -74,6 +79,9 @@ h1 {
 
 .checking .status-title::before,
 .available .status-title::before,
+.ready .status-title::before,
+.saved .status-title::before,
+.duplicate .status-title::before,
 .unavailable .status-title::before {
   display: inline-block;
   width: 0.5rem;
@@ -91,26 +99,107 @@ h1 {
   background: #1d6744;
 }
 
+.ready .status-title::before,
+.saved .status-title::before,
+.duplicate .status-title::before {
+  background: #1d6744;
+}
+
 .unavailable .status-title::before {
   background: #a24a42;
 }
 
-.retry-button {
+.action-row {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.primary-button,
+.secondary-button {
   min-height: 2.5rem;
   padding: 0.625rem 0.875rem;
-  border: 1px solid transparent;
   border-radius: 0.375rem;
-  color: #fff;
-  background: #1d6744;
   font-weight: 650;
   cursor: pointer;
 }
 
-.retry-button:hover {
+.primary-button {
+  border: 1px solid transparent;
+  color: #fff;
+  background: #1d6744;
+}
+
+.primary-button:hover {
   background: #155236;
 }
 
-.retry-button:focus-visible {
+.secondary-button {
+  border: 1px solid #aeb8b1;
+  color: #29332e;
+  background: #fff;
+}
+
+.secondary-button:hover {
+  background: #e9ede9;
+}
+
+.primary-button:focus-visible,
+.secondary-button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
   outline: 3px solid #8abca6;
   outline-offset: 2px;
+}
+
+.capture-form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.source-label {
+  color: #1d6744;
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.form-field {
+  display: grid;
+  gap: 0.375rem;
+  color: #3f4b45;
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.form-field input,
+.form-field textarea {
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid #bdc6bf;
+  border-radius: 0.375rem;
+  color: #1e2522;
+  background: #fff;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+.form-field textarea {
+  min-height: 7rem;
+  resize: vertical;
+}
+
+.warning-list {
+  margin: 0;
+  padding: 0.625rem 0.75rem 0.625rem 1.75rem;
+  border-left: 3px solid #b47b21;
+  color: #634719;
+  background: #fff7e8;
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.form-error {
+  color: #8c342e;
+  font-size: 0.75rem;
+  font-weight: 650;
 }
