@@ -46,6 +46,7 @@ export class ApiRequestError extends Error {
   readonly status: number;
   readonly code: string;
   readonly requestId: string;
+  readonly resourceId: string | undefined;
 
   constructor(status: number, error: ApiErrorEnvelope['error']) {
     super(error.message);
@@ -53,6 +54,7 @@ export class ApiRequestError extends Error {
     this.status = status;
     this.code = error.code;
     this.requestId = error.requestId;
+    this.resourceId = error.resourceId;
   }
 }
 
@@ -315,7 +317,7 @@ function isJobFields(value: Record<string, unknown>): boolean {
     typeof value.company === 'string' &&
     isNullableString(value.location) &&
     isNullableString(value.salaryText) &&
-    value.source === 'manual' &&
+    (value.source === 'manual' || value.source === 'boss') &&
     isNullableString(value.sourceUrl) &&
     isNullableString(value.description) &&
     isNullableString(value.notes) &&
@@ -367,12 +369,16 @@ function isApiHealthResponse(value: unknown): value is ApiHealthResponse {
 }
 
 function isApiErrorEnvelope(value: unknown): value is ApiErrorEnvelope {
+  if (!isRecordWithKeys(value, ['error']) || !isRecord(value.error)) return false;
+  const keys = Object.keys(value.error);
   return (
-    isRecordWithKeys(value, ['error']) &&
-    isRecordWithKeys(value.error, ['code', 'message', 'requestId']) &&
+    keys.length >= 3 &&
+    keys.length <= 4 &&
+    keys.every((key) => ['code', 'message', 'requestId', 'resourceId'].includes(key)) &&
     typeof value.error.code === 'string' &&
     typeof value.error.message === 'string' &&
-    typeof value.error.requestId === 'string'
+    typeof value.error.requestId === 'string' &&
+    (value.error.resourceId === undefined || typeof value.error.resourceId === 'string')
   );
 }
 

@@ -165,6 +165,21 @@ describe('createApiClient', () => {
     });
   });
 
+  it('accepts and validates a BOSS job response', async () => {
+    const job = createJobPayload('boss');
+    const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(job, 201));
+    const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
+
+    await expect(
+      client.createJob({
+        title: '产品经理',
+        company: '测试公司',
+        source: 'boss',
+        sourceUrl: 'https://www.zhipin.com/job_detail/fixture123.html',
+      }),
+    ).resolves.toEqual(job);
+  });
+
   it('lists jobs with bounded filters and validates the response', async () => {
     const payload = {
       items: [{ ...createJobPayload(), applicationStatus: 'planned' }],
@@ -186,7 +201,7 @@ describe('createApiClient', () => {
   it('rejects an untrusted business payload', async () => {
     const fetchImplementation = vi
       .fn<typeof fetch>()
-      .mockResolvedValue(jsonResponse({ ...createJobPayload(), source: 'boss' }, 201));
+      .mockResolvedValue(jsonResponse({ ...createJobPayload(), source: 'unknown' }, 201));
     const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
 
     await expect(client.createJob({ title: '岗位', company: '公司' })).rejects.toThrow(
@@ -198,7 +213,12 @@ describe('createApiClient', () => {
     const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(
       jsonResponse(
         {
-          error: { code: 'DUPLICATE_JOB_URL', message: '该岗位链接已经保存', requestId: 'req_1' },
+          error: {
+            code: 'DUPLICATE_JOB_URL',
+            message: '该岗位链接已经保存',
+            requestId: 'req_1',
+            resourceId: 'job-existing',
+          },
         },
         409,
       ),
@@ -213,6 +233,7 @@ describe('createApiClient', () => {
       code: 'DUPLICATE_JOB_URL',
       message: '该岗位链接已经保存',
       requestId: 'req_1',
+      resourceId: 'job-existing',
     });
   });
 
@@ -264,14 +285,14 @@ function jsonResponse(payload: unknown, status = 200): Response {
   });
 }
 
-function createJobPayload() {
+function createJobPayload(source: 'manual' | 'boss' = 'manual') {
   return {
     id: 'job-1',
     title: 'AI 产品经理实习生',
     company: '测试公司',
     location: null,
     salaryText: '200-300/天',
-    source: 'manual' as const,
+    source,
     sourceUrl: null,
     description: null,
     notes: null,

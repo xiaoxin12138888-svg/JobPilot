@@ -34,7 +34,10 @@ class SqlAlchemyJobRepository:
             with self._sessions.begin() as session:
                 session.add(model)
         except IntegrityError as error:
-            raise DuplicateJobError("该岗位链接已经保存") from error
+            raise DuplicateJobError(
+                "该岗位链接已经保存",
+                resource_id=self._existing_job_id(draft.normalized_source_url),
+            ) from error
         except OperationalError as error:
             raise _database_error(error) from error
         return _job(model)
@@ -57,10 +60,26 @@ class SqlAlchemyJobRepository:
                     setattr(model, name, value)
                 model.updated_at = datetime.now(UTC)
         except IntegrityError as error:
-            raise DuplicateJobError("该岗位链接已经保存") from error
+            raise DuplicateJobError(
+                "该岗位链接已经保存",
+                resource_id=self._existing_job_id(draft.normalized_source_url),
+            ) from error
         except OperationalError as error:
             raise _database_error(error) from error
         return _job(model)
+
+    def _existing_job_id(self, normalized_source_url: str | None) -> str | None:
+        if normalized_source_url is None:
+            return None
+        try:
+            with self._sessions() as session:
+                return session.scalar(
+                    select(JobModel.id).where(
+                        JobModel.normalized_source_url == normalized_source_url
+                    )
+                )
+        except OperationalError as error:
+            raise _database_error(error) from error
 
     def delete(self, job_id: str) -> bool:
         try:

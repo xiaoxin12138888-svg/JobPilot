@@ -12,8 +12,8 @@
 - [x] RED/GREEN `manual|boss` source validation and plain-text control-character sanitization.
 - [x] Add and test a minimal reversible Job source CHECK migration.
 - [x] Verify migration on a fresh temp DB and a copy of the real runtime DB, never the live file.
-- [ ] Preserve `POST /api/v1/jobs`, normalized URL dedupe, and expose existing local Job ID on 409.
-- [ ] Extend shared types/api-client validation while preserving manual Job/Application behavior.
+- [x] Preserve `POST /api/v1/jobs`, normalized URL dedupe, and expose existing local Job ID on 409.
+- [x] Extend shared types/api-client validation while preserving manual Job/Application behavior.
 
 ## BOSS Adapter
 

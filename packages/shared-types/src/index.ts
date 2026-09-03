@@ -3,7 +3,7 @@ export interface ApiHealthResponse {
   service: 'jobpilot-api';
 }
 
-export type JobSource = 'manual';
+export type JobSource = 'manual' | 'boss';
 
 export type ApplicationStatus =
   | 'planned'
@@ -97,5 +97,6 @@ export interface ApiErrorEnvelope {
     code: string;
     message: string;
     requestId: string;
+    resourceId?: string;
   };
 }

@@ -67,12 +67,13 @@ def test_job_crud_search_and_application_status_filter(client: TestClient) -> No
 
 
 def test_duplicate_normalized_source_url_is_a_conflict(client: TestClient) -> None:
-    _create_job(client, source_url="HTTPS://Example.com:443/jobs/1#top")
+    existing = _create_job(client, source_url="HTTPS://Example.com:443/jobs/1#top")
 
     duplicate = _create_job_response(client, source_url="https://example.COM/jobs/1")
 
     assert duplicate.status_code == 409
     assert duplicate.json()["error"]["code"] == "DUPLICATE_JOB_URL"
+    assert duplicate.json()["error"]["resourceId"] == existing["id"]
     assert "sqlite" not in duplicate.text.lower()
 
 

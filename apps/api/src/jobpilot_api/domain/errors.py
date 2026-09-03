@@ -5,9 +5,10 @@ class DomainError(Exception):
     code = "DOMAIN_ERROR"
     status_code = 422
 
-    def __init__(self, message: str) -> None:
+    def __init__(self, message: str, *, resource_id: str | None = None) -> None:
         super().__init__(message)
         self.message = message
+        self.resource_id = resource_id
 
 
 class DomainValidationError(DomainError):

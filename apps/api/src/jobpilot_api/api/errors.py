@@ -63,7 +63,13 @@ def install_error_handlers(application: FastAPI) -> None:
 
     @application.exception_handler(DomainError)
     async def handle_domain_error(request: Request, error: DomainError) -> JSONResponse:
-        return _error_response(request, error.status_code, error.code, error.message)
+        return _error_response(
+            request,
+            error.status_code,
+            error.code,
+            error.message,
+            resource_id=error.resource_id,
+        )
 
     @application.exception_handler(OperationalError)
     async def handle_database_error(request: Request, error: OperationalError) -> JSONResponse:
@@ -103,12 +109,15 @@ def _error_response(
     message: str,
     *,
     headers: Mapping[str, str] | None = None,
+    resource_id: str | None = None,
 ) -> JSONResponse:
     error_body: dict[str, object] = {
         "code": code,
         "message": message,
         "requestId": request.state.request_id,
     }
+    if resource_id is not None:
+        error_body["resourceId"] = resource_id
     response = JSONResponse(
         status_code=status_code,
         content={"error": error_body},
