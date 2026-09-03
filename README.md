@@ -6,12 +6,12 @@ JobPilot 不替代招聘网站，不建设职位数据库，也不代表用户�
 
 ## 当前状态
 
-项目已完成 **Local-first Single-user Repository Cleanup**，正在等待负责人决定是否进入 Phase 3。当前基线只有：
+项目正在完成 **Phase 2.5 — Local Runtime Foundation Finalization**。当前基线只有：
 
 - React Web：显示本机 API 的 `checking / ready / unavailable` 状态；`unavailable` 提供 retry 动作；
 - Chrome Extension：无 privileged Chrome API permission、无后台进程的本地健康 Popup；唯一 host permission 是 `http://127.0.0.1:8000/*`；
 - FastAPI：只公开 `GET /health`，默认绑定 `127.0.0.1`；
-- PostgreSQL、SQLAlchemy 与 Alembic：保留空工程骨架，当前没有业务表或 revision；`/health` 启动不创建数据库连接；
+- SQLite、SQLAlchemy 与 Alembic：API launcher 首次启动自动创建 `runtime-data/jobpilot.db`，后续启动复用；当前没有业务表或 revision；
 - `packages/shared-types` 与 `packages/api-client`：只提供严格校验的 health contract。
 
 Phase 3 尚未开始。仓库中没有 Job、Application、ResumeVersion、招聘网站 Adapter、content script、AI、RAG 或上传功能。
@@ -50,7 +50,7 @@ React Web ---------\
                     > exact loopback HTTP -> FastAPI -> GET /health
 Chrome Extension --/
 
-Future local business services -> local PostgreSQL
+Future local business services -> runtime-data/jobpilot.db (SQLite)
 User's browser -> recruitment website (never proxied by JobPilot)
 ```
 
@@ -68,59 +68,59 @@ User's browser -> recruitment website (never proxied by JobPilot)
 ### Install
 
 ```powershell
-Copy-Item .env.example .env
 pnpm install --frozen-lockfile
 uv sync --project apps/api --locked
 ```
 
-`.env` 仅用于本机配置并已被 Git 忽略。不得提交本机密码、Extension ID 或其他 secret。
+默认首次运行不需要 `.env`、PostgreSQL、Docker、数据库账号、Extension ID、VPN 或代理。可选 `.env` 只供 Vite 读取 `VITE_*` 本机开发覆盖并已被 Git 忽略；API override 必须设置为启动进程的环境变量。不得提交 `.env` 或其他 secret。
 
 ### Start API and Web
 
 分别在两个终端执行：
 
 ```powershell
-pnpm api:dev
+pnpm run api:dev
 ```
 
 ```powershell
-pnpm dev:web
+pnpm run dev:web
 ```
 
-打开 `http://127.0.0.1:5173`。API 探针位于 `http://127.0.0.1:8000/health`。
+打开 `http://127.0.0.1:5173`。API 探针位于 `http://127.0.0.1:8000/health`。受支持的 API launcher 会在 Uvicorn 启动前初始化 SQLite；停止再启动不会覆盖已有数据库。
 
 ### Build and load Extension
 
 ```powershell
-pnpm build:extension
+pnpm run build:extension
 ```
 
 在 Chrome/Chromium 扩展管理页开启 Developer mode，选择 **Load unpacked**，并指向 `apps/extension/dist`。Popup 只检查精确的 `http://127.0.0.1:8000/health`。
 
-若要从真实 Extension Popup 读取 health，需把实际的 `chrome-extension://<32-character-id>` 追加到 `JOBPILOT_CORS_ORIGINS`。必须使用精确 ID，不能使用 wildcard。
+Extension 通过 manifest 中精确的 `http://127.0.0.1:8000/*` host permission 直接读取 health，不需要也不允许把 Extension ID 加到 API CORS。API CORS 仅服务精确的 loopback Web origin。
 
 ## Local configuration
 
 - `VITE_API_BASE_URL`：Web 与 Extension 共用的 build-time loopback API base；同时构建 Extension 时必须保持精确 `http://127.0.0.1:8000`，Web 单独运行才可接受 `localhost` 或 `[::1]`；
 - `JOBPILOT_API_BIND_HOST`：API 监听地址，只接受 IP-literal loopback；
-- `JOBPILOT_CORS_ORIGINS`：逗号分隔的精确 Web/Extension origins；
-- `JOBPILOT_DATABASE_URL`：仅供本地 Alembic/数据库工具使用；
+- `JOBPILOT_CORS_ORIGINS`：逗号分隔的精确 loopback Web origins；
 
-当前 health-only API 不读取数据库 URL。远端 PostgreSQL URL 会被拒绝。旧认证 revision 对应的预发布开发/测试数据库必须重建，不支持原地迁移。
+数据库固定为本地 SQLite 文件，不读取 database URL。默认路径是 `runtime-data/jobpilot.db`；整个目录被 Git 忽略，并且测试、clean、build 和格式化流程都不得删除、替换或写入真实数据库。测试与 Alembic 验证必须显式使用临时 SQLite 路径。
+
+每个 SQLite connection 都启用外键和 5000 ms busy timeout。当前单用户、单进程且没有并发写入证据，因此保留默认 rollback journal；需要 WAL 时必须先提供运行证据和独立评审。
 
 ## Verification
 
 ```powershell
-pnpm test
-pnpm lint
-pnpm format:check
-pnpm typecheck
-pnpm build:web
-pnpm build:extension
-pnpm api:test
-pnpm api:lint
-pnpm api:format:check
-pnpm api:import:check
+pnpm run test
+pnpm run lint
+pnpm run format:check
+pnpm run typecheck
+pnpm run build:web
+pnpm run build:extension
+pnpm run api:test
+pnpm run api:lint
+pnpm run api:format:check
+pnpm run api:import:check
 ```
 
 ## Documentation
@@ -133,4 +133,4 @@ pnpm api:import:check
 - [路线图](docs/ROADMAP.md)
 - [架构决策记录](docs/DECISIONS/README.md)
 
-当前决定由 [ADR-008](docs/DECISIONS/ADR-008-local-first-single-user-no-authentication.md) 固定。被移除的历史认证实现和 ADR 可从 annotated tag `pre-local-first-cleanup` 恢复；它们不是当前产品文档。
+本地产品边界由 [ADR-008](docs/DECISIONS/ADR-008-local-first-single-user-no-authentication.md) 固定，SQLite 存储由 [ADR-009](docs/DECISIONS/ADR-009-local-sqlite-storage.md) 固定。被移除的历史认证实现和 ADR 可从 annotated tag `pre-local-first-cleanup` 恢复；它们不是当前产品文档。

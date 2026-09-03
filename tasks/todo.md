@@ -29,7 +29,7 @@
 - [x] Remove psycopg from `pyproject.toml` and `uv.lock`.
 - [x] Remove PostgreSQL/libpq/PGHOSTADDR URL logic and tests.
 - [x] Remove PostgreSQL-only environment variables.
-- [ ] Remove PostgreSQL-only statements from active documentation.
+- [x] Remove PostgreSQL-only statements from active documentation.
 - [x] Confirm no runtime PostgreSQL consumer remains.
 
 ## Health client TDD
@@ -42,17 +42,17 @@
 
 - [x] Build `apps/extension/dist` and validate its required structure.
 - [x] Add an automated artifact gate for remote code, CSP, permissions, hosts, background, and content scripts.
-- [ ] Attempt real Chrome Load unpacked and report PASS/BLOCKED truthfully.
-- [ ] Verify real Popup ready → unavailable → retry → ready when tooling permits.
-- [ ] Determine whether users still need to copy the Extension ID into CORS settings.
+- [x] Attempt real Chrome Load unpacked and report PASS/BLOCKED truthfully.
+- [x] Verify real Popup ready → unavailable → retry → ready when tooling permits.
+- [x] Determine whether users still need to copy the Extension ID into CORS settings.
 - [x] Keep wildcard CORS forbidden.
-- [ ] Verify no-proxy local runtime when tooling permits.
+- [x] Verify no-proxy local runtime when tooling permits.
 
 ## Documentation
 
-- [ ] Update README first-run flow and local configuration.
-- [ ] Update architecture, data model, engineering principles, roadmap, decision index, and active ADR amendments.
-- [ ] Update product/API/agent context where old PostgreSQL or Extension-ID statements would otherwise conflict.
+- [x] Update README first-run flow and local configuration.
+- [x] Update architecture, data model, engineering principles, roadmap, decision index, and active ADR amendments.
+- [x] Update product/API/agent context where old PostgreSQL or Extension-ID statements would otherwise conflict.
 - [ ] Keep unsupported future capabilities explicitly unimplemented.
 
 ## Complete validation

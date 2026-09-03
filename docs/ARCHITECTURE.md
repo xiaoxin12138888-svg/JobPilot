@@ -1,6 +1,6 @@
 # JobPilot 总体架构
 
-> 状态：ADR-008 Accepted。当前为 local-first、single-user、no-account 基线；Phase 3 尚未开始。
+> 状态：ADR-008 与 ADR-009 Accepted。当前为 Phase 2.5 local-first、single-user、no-account、SQLite 基线；Phase 3 尚未开始。
 
 ## 1. 架构目标
 
@@ -10,7 +10,7 @@ JobPilot 是运行在用户电脑上的个人求职工作台。架构优先保�
 - 已安装核心不依赖远程身份、CDN、telemetry、update 或境外 AI 服务；
 - 用户主动打开的招聘页面不经过 JobPilot 后端代理；
 - 当前只保留真实使用的 `/health` contract，不预建业务模块；
-- 未来业务数据保存在本地 PostgreSQL，不需要多用户 ownership 字段。
+- 未来业务数据保存在一个本地 SQLite 文件，不需要多用户 ownership 字段。
 
 ## 2. 当前运行时
 
@@ -22,7 +22,7 @@ flowchart LR
     C[packages/api-client]
     A[FastAPI on 127.0.0.1:8000]
     H[GET /health]
-    P[(Local PostgreSQL skeleton)]
+    S[(runtime-data/jobpilot.db)]
 
     U --> W
     U --> E
@@ -30,10 +30,10 @@ flowchart LR
     E --> C
     C --> A
     A --> H
-    A -. future business persistence only .-> P
+    A -. launcher initializes; future persistence .-> S
 ```
 
-当前 `/health` 启动不创建 database engine，也不连接 PostgreSQL。SQLAlchemy metadata 为空，Alembic 没有业务 revision。
+受支持的 launcher 在 Uvicorn 前初始化 SQLite 文件；`GET /health` handler 本身不查询数据库。SQLAlchemy metadata 为空，Alembic 没有业务 revision。
 
 ## 3. Monorepo 边界
 
@@ -63,6 +63,7 @@ Web 和 Extension 不直连数据库。未来业务写入统一经过 FastAPI ap
 - 没有 `permissions`、background/service worker、content script、storage 或 identity；
 - bundle 与 CSP 禁止远程 JavaScript、CDN、telemetry 和代理能力；
 - 只向本机 `/health` 发送 credential-free GET。
+- Chrome host permission 允许 Popup 直接读取 loopback API；不需要复制 Extension ID，也不把 Extension origin 加入 API CORS。
 
 未来采集必须在独立 Phase 中新增最小权限，不能复用当前 cleanup 作为授权。
 
@@ -70,14 +71,16 @@ Web 和 Extension 不直连数据库。未来业务写入统一经过 FastAPI ap
 
 - 默认监听 `127.0.0.1`，supported launcher 拒绝 `0.0.0.0`、`::`、LAN IP 和 hostname；
 - 当前只公开 `GET /health`；
-- CORS 只允许精确 loopback Web origin 和明确配置的 Chrome Extension ID；
+- CORS 只允许精确 loopback Web origin；Extension 访问由 manifest 的精确 host permission 覆盖；
 - 不允许 wildcard、regex 或 credentials；
 - 保留 request ID、统一错误和 query redaction 基础设施；
-- 当前不加载数据库或任何远程 client。
+- supported launcher 在服务启动前初始化 SQLite；`/health` 不执行数据库查询，也不加载任何远程 client。
 
 ## 5. Local persistence
 
-PostgreSQL、SQLAlchemy 和 Alembic 作为未来本地业务持久化骨架保留。数据库 URL 只允许 loopback PostgreSQL；远端 host 被拒绝。
+SQLite 是唯一 runtime database；默认文件为 repository root 下的 `runtime-data/jobpilot.db`。SQLAlchemy 2.x 管理 connection/transaction，所有连接启用 foreign keys 与 5000 ms busy timeout。当前保持默认 rollback journal，不启用 WAL。
+
+supported launcher 自动创建父目录与文件并在后续启动复用。Alembic 复用同一 SQLite URL 解析；自动化测试必须传入临时 path，不能创建、替换或删除真实 runtime database。`runtime-data/` 被 Git 忽略，但它是用户数据边界，不是可随意清理的 build artifact。
 
 当前没有 User、Identity、Session、Job、Application、ResumeVersion 或 LocalProfile 表。旧预发布数据库包含已删除 revision 时必须重建，不提供原地迁移。
 
@@ -102,7 +105,7 @@ PostgreSQL、SQLAlchemy 和 Alembic 作为未来本地业务持久化骨架保�
 ```text
 User browser -> recruitment website
 Future user gesture -> exact-host content script -> current rendered DOM
-Confirmed data -> loopback API -> local PostgreSQL
+Confirmed data -> loopback API -> local SQLite
 ```
 
 JobPilot API 不请求招聘网站。每个未来 Adapter 必须：
@@ -121,4 +124,4 @@ AI、RAG、对象存储和招聘网站 Adapter 都是未来可替换端口，不
 
 ## 9. 当前门禁
 
-本轮只完成 Authentication & Repository Simplification 的文档和仓库清理。完成测试、构建、link、stale-reference、remote-runtime 和 tracked-artifact 检查后停止，等待项目负责人决定是否批准 Phase 3。
+本轮只完成 Phase 2.5 Local Runtime Foundation Finalization。完成 SQLite、重启持久化、真实 Chrome、no-proxy、测试、构建、安全扫描、审查与文档门禁后停止，等待项目负责人决定是否批准 Phase 3。

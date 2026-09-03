@@ -65,3 +65,7 @@ no-account 与 no-proxy 决策继续有效。
 - supported API launcher 使用默认 path 时正常启动且不要求数据库环境变量；
 - psycopg、libpq/PGHOSTADDR、PostgreSQL-only config/tests/docs 从 active runtime 删除；
 - 自动化测试不创建、替换或删除真实 `runtime-data/jobpilot.db`。
+
+## Implementation evidence
+
+Phase 2.5 已实现 default-path initialization、restart preservation、foreign keys、5000 ms busy timeout、hidden SQL parameters 与 Alembic temporary-file smoke test。真实 `runtime-data/jobpilot.db` 由 supported launcher 创建并保持 Git ignored；所有自动化数据库测试显式使用临时路径。

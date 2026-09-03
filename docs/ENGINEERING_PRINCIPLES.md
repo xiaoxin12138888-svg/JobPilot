@@ -8,8 +8,8 @@
 
 1. **Local-first**：一个安装实例、一个本地 workspace，业务数据默认不离开用户电脑。
 2. **No account**：当前不创建账号、登录、session、token、User 或多用户 ownership。
-3. **Loopback only**：API、客户端和 PostgreSQL 工具只接受 loopback；不提供公网/LAN fallback。
-4. **One fact source**：未来持久业务状态由本机 API/domain 与 PostgreSQL 定义。
+3. **Loopback only**：API 与客户端只接受 loopback；不提供公网/LAN fallback。
+4. **One fact source**：未来持久业务状态由本机 API/domain 与 SQLite 定义。
 5. **User trigger and confirmation**：招聘页面读取必须由用户主动触发并在保存前确认。
 6. **No remote core dependency**：已安装核心不依赖境外服务、CDN、远程代码、telemetry 或 update API。
 7. **Simple architecture first**：只实现当前已批准、已有消费者的最小边界。
@@ -33,7 +33,7 @@
 
 - Router 只负责 request、validation、application service 和 response；
 - 业务规则进入 domain/application，持久化进入 repository adapter；
-- 当前 `/health` 不加载数据库；
+- supported launcher 在服务启动前初始化 SQLite；当前 `/health` 请求不查询数据库；
 - 第一个写接口前重新评审 localhost CSRF、Host、Origin、Fetch Metadata 和 DNS rebinding。
 
 ### Shared packages
@@ -45,7 +45,8 @@
 ## 4. Data and security
 
 - 当前数据库 metadata 为空；未来表不含 `user_id` 或身份字段；
-- 数据库 URL 必须是 loopback PostgreSQL；
+- 数据库只使用本地 SQLite file URL；默认 `runtime-data/jobpilot.db` 属于用户数据，自动化不得触碰；
+- SQLite connections 启用 foreign keys 与有界 busy timeout；当前保留 rollback journal，WAL 必须由实测需要驱动；
 - 操作系统账户与文件权限保护本地静态数据；
 - CORS 是浏览器边界，不是本机恶意进程认证；
 - DOM、粘贴文本、URL、文件和所有外部响应均为不可信输入；

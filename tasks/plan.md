@@ -1,5 +1,7 @@
 # Implementation Plan: Phase 2.5 — Local Runtime Foundation Finalization
 
+> Execution status（2026-09-03）：Tasks 1–7 已实现；真实 Chrome 与项目负责人确认已经关闭 Extension-ID CORS 和 no-proxy 两项不确定性。Task 8 完整验收、审查、简化与最终提交进行中。Phase 3 仍未开始。
+
 ## Objective
 
 Finalize the local runtime foundation without entering Phase 3. Replace the unused local
@@ -122,6 +124,8 @@ any other Phase 3 capability.
 
 **Dependencies:** Tasks 2 and 5.
 
+**Recorded evidence:** Chrome Load unpacked 无 manifest/load error、无 JobPilot service worker；真实 Popup 完成 available → API stopped/unavailable → restart + Retry/available。Extension ID 为浏览器安装细节，不需要复制到 CORS；Extension 依靠精确 loopback host permission，API CORS 只服务 Web。项目负责人确认验证时未手动配置 `.env`/Extension ID，并关闭 VPN/系统/浏览器代理。
+
 ### Task 7 — Synchronize local-runtime documentation
 
 **Acceptance criteria:**
@@ -154,7 +158,7 @@ any other Phase 3 capability.
 - **User data deletion:** all automated database tests use temporary directories; cleanup commands
   never target `runtime-data/`.
 - **CORS assumptions:** only real Chrome evidence can mark the Extension/CORS gate PASS; otherwise
-  keep it blocked and request the exact manual test.
+  keep it blocked and request the exact manual test. Phase 2.5 已取得该证据，当前实现不接受 Extension origin。
 - **SQLite concurrency:** keep the single-process default simple, enable foreign keys and a bounded
   busy timeout, and defer WAL until actual concurrent writes exist.
 - **Scope drift:** no business tables or APIs are created; empty metadata and migration history are

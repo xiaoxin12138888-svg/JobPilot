@@ -5,22 +5,24 @@
 ## 1. Current baseline
 
 - `Base.metadata` 不包含业务实体；
-- `/health` 启动不创建 database engine；
-- PostgreSQL URL 只允许 loopback host；
-- Alembic migration tooling 需要显式本地数据库 URL；
+- 默认 SQLite 文件是 repository root 下的 `runtime-data/jobpilot.db`；
+- supported launcher 在 Uvicorn 前创建父目录并初始化数据库，后续启动复用同一文件；
+- `/health` 请求本身不创建 engine 或查询数据库；
+- Alembic 与 runtime 共用 SQLite file URL 解析，测试和验证必须显式使用临时 path；
 - 包含旧认证 revision 的预发布开发/测试数据库必须重建，不支持原地迁移。
 
 一个安装实例隐含一个本地 workspace。当前没有 User、Identity、Session、Account 或 LocalProfile。
 
 ## 2. Modeling principles
 
-- PostgreSQL 是未来本地业务事实来源；
+- SQLite 是当前及后续已批准本地业务的唯一事实来源；
 - Web 与 Extension 不直接访问数据库；
 - 单 workspace 模型不包含 `user_id`、tenant ID 或 owner ID；
 - 时间统一保存为 UTC-aware timestamp；
 - 枚举由 domain 与 API contract 共同固定；
 - 外部 URL、页面文本和文件元数据都视为不可信输入；
 - 只在对应 Phase 获批时创建表、约束和索引。
+- 每个 connection 启用 `foreign_keys=ON` 与 5000 ms busy timeout；当前使用默认 rollback journal，WAL 需要运行证据和独立评审。
 
 ## 3. Future `Job`
 
@@ -65,7 +67,7 @@ Phase 4 的候选职责是标识用户本地保存的简历版本。概念字段
 
 ## 7. Local data lifecycle
 
-未来业务数据默认留在用户电脑。对应 Phase 必须提供可理解的本地备份、导出、删除和重建说明，不把云同步作为默认恢复路径。
+未来业务数据默认留在用户电脑。`runtime-data/jobpilot.db` 是用户数据；test、clean、build、format 和 repository cleanup 不得删除、替换或写入它。对应 Phase 必须提供可理解的本地备份、导出、删除和重建说明，不把云同步作为默认恢复路径。
 
 操作系统账户和文件权限是本地静态数据边界；loopback 只限制网络暴露，不能防御同一操作系统账户下的恶意本机进程。
 

@@ -3,7 +3,7 @@
 - **Status**：Partially Superseded by [ADR-009](ADR-009-local-sqlite-storage.md)
 - **Date**：2026-08-30
 
-> **Local-first amendment（2026-09-01）**：[ADR-008](ADR-008-local-first-single-user-no-authentication.md) 保留 FastAPI + PostgreSQL 决定，但将其限定为本机 loopback/self-hosted 基础。本文对 pgvector 和 S3-compatible object storage 的表述只是未来候选，不是当前 runtime、云存储或远程服务授权；任何对象存储必须重新审批，并且不能成为本地核心的强制远程依赖。
+> **Historical local-first amendment（2026-09-01）**：[ADR-008](ADR-008-local-first-single-user-no-authentication.md) 当时保留 FastAPI + PostgreSQL 决定并将其限定为本机 loopback/self-hosted 基础；该 storage 部分随后被 ADR-009 取代。本文对 pgvector 和 S3-compatible object storage 的表述只是历史候选，不是当前 runtime、云存储或远程服务授权；任何对象存储必须重新审批，并且不能成为本地核心的强制远程依赖。
 
 > **Storage supersession（2026-09-01）**：[ADR-009](ADR-009-local-sqlite-storage.md)
 > 以 SQLite 取代本文的 PostgreSQL runtime 选择。FastAPI、关系型数据、SQLAlchemy/Alembic、

@@ -1,6 +1,6 @@
 # JobPilot 产品规格
 
-> 状态：Local-first Single-user 产品基线。Phase 3 尚未开始；未来能力只描述产品边界，不代表已经实现。
+> 状态：Phase 2.5 Local Runtime Foundation Finalization。Phase 3 尚未开始；未来能力只描述产品边界，不代表已经实现。
 
 ## 1. 产品定位
 
@@ -42,7 +42,7 @@ JobPilot 不替代招聘网站。岗位发现、账号登录、HR 沟通和正�
 
 ### 3.3 简单架构优先
 
-V1 保持 Web、Chrome Extension、单体 FastAPI 和本地 PostgreSQL。当前没有业务表；只在获得明确 Phase 授权后增加当期真实需要的模型和接口。
+V1 保持 Web、Chrome Extension、单体 FastAPI 和一个本地 SQLite 文件。当前没有业务表；只在获得明确 Phase 授权后增加当期真实需要的模型和接口。
 
 ### 3.4 AI 不是核心运行依赖
 
@@ -69,7 +69,7 @@ V1 保持 Web、Chrome Extension、单体 FastAPI 和本地 PostgreSQL。当前�
 - Extension 本地 health Popup；
 - FastAPI `GET /health`；
 - health shared type 与 loopback API client；
-- 空的 PostgreSQL/SQLAlchemy/Alembic 工程骨架；
+- `runtime-data/jobpilot.db` 中的本地 SQLite、SQLAlchemy/Alembic 空 schema 基础；
 - 测试、lint、format、typecheck 和 build 门禁。
 
 当前没有 Job、Application、ResumeVersion、LocalProfile、Adapter、content script、AI、RAG、对象存储或上传。
@@ -99,13 +99,14 @@ V1 保持 Web、Chrome Extension、单体 FastAPI 和本地 PostgreSQL。当前�
 
 ## 8. 成功标准
 
-当前 cleanup 完成标准：
+当前 Phase 2.5 完成标准：
 
 - Web、Extension 和 API 在无账号、无 provider 配置下启动；
 - 客户端只连接精确 loopback API；
-- `/health` 不连接数据库或远程服务；
+- supported API launcher 首次运行自动初始化 SQLite，重启复用同一文件，`/health` 请求本身不查询数据库或远程服务；
 - Extension bundle 不含远程代码、后台、content script、代理或额外 host；
-- canonical docs 不再把历史认证系统描述为当前能力；
+- Extension 通过精确 loopback host permission 直连 API，不复制 Extension ID 到 CORS；
+- canonical docs 不再把历史认证系统或 PostgreSQL 描述为当前能力；
 - 全部自动化门禁通过，并在进入 Phase 3 前停止。
 
 未来 MVP 成功标准将在 Phase 3/4 规格中冻结，至少覆盖用户确认、本地保存、状态可追溯、无代理真实网络和数据不离开本机的默认行为。

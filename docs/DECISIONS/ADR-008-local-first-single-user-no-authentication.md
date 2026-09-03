@@ -25,7 +25,7 @@ JobPilot 的长期产品形态收缩为中国大陆用户自行安装的个人�
 2. 当前产品不提供账户、登录、身份提供方、OAuth/OIDC/PKCE、JWT、Web session、refresh token、账号恢复或多用户授权。
 3. Web 与 Extension 只连接本机 FastAPI；默认 API origin 为 `http://127.0.0.1:8000`。受支持的 launcher 只接受 IP-literal loopback bind，拒绝 `0.0.0.0`、`::`、LAN IP 和普通主机名。
 4. 没有登录不等于可以暴露公网。CORS 只接受精确 allowlist，不允许 `*`、wildcard pattern 或 credential allowance。未来写接口必须重新评审 localhost CSRF、Origin/Host/Fetch Metadata 和 DNS-rebinding 风险。
-5. PostgreSQL、SQLAlchemy 与 Alembic 工程骨架保留；当前所有 auth-only 表、revision、repository 和测试删除。当前 `/health`-only API 启动不创建数据库连接；保留的数据库 URL 只允许 loopback host，不支持远端 PostgreSQL。若未来确有个人资料需求，再设计产品数据 `LocalProfile`，不预留伪 User。
+5. **Storage portion superseded by ADR-009.** 本 ADR 当时保留 PostgreSQL、SQLAlchemy 与 Alembic 工程骨架；当前实现已经改为 SQLite + SQLAlchemy/Alembic，supported launcher 初始化 `runtime-data/jobpilot.db`。若未来确有个人资料需求，再设计产品数据 `LocalProfile`，不预留伪 User。
 6. Extension runtime 全部随 bundle 分发，不执行远程 JavaScript，不从 CDN 下载代码，不运行 telemetry，不修改/创建代理或 VPN。当前 Popup 只检查本机 `/health`。
 7. 招聘网站流量继续由用户浏览器直接访问，不经过 JobPilot 或境外服务器。未来 content script 只能在另行批准的精确平台域名上由用户主动触发并读取当前已呈现页面；禁止后台爬取、自动翻页、隐藏 API、绕过登录/验证码和扫描未打开页面。
 8. Auth0、Logto Cloud、Google API/reCAPTCHA、Turnstile、GitHub API/raw、公共 CDN、远程字体/脚本、境外 AI、telemetry 和 update API 均不是核心 runtime dependency。依赖下载镜像只属于 development acquisition；安装后的核心 runtime 不能要求代理。
@@ -47,4 +47,4 @@ JobPilot 的长期产品形态收缩为中国大陆用户自行安装的个人�
 
 ## Current Gate
 
-本轮只执行 Authentication & Repository Simplification，不实现 Phase 3。完成全部自动化、浏览器、secret、loopback/CORS、manifest 和远程依赖检查并取得 Critical 0 / Required 0 后停止，等待负责人决定是否进入 Phase 3。
+本 ADR 对应的 Authentication & Repository Simplification 已完成。后续 Phase 2.5 只收敛本地 SQLite、health timeout、Extension artifact 与真实 Chrome/no-proxy 验收，不实现 Phase 3；完成并取得 Critical 0 / Required 0 后仍须停止，等待负责人决定是否进入 Phase 3。

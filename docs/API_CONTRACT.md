@@ -11,7 +11,7 @@
 - 不支持公网、LAN 或远端 API；
 - 当前没有账号、登录、cookie、token、session 或用户资料 endpoint。
 
-CORS 只允许精确配置的 loopback Web origin 和 `chrome-extension://<exact-id>`。不允许 `*`、regex、userinfo、path/query suffix 或 credential allowance。
+CORS 只允许精确配置的 loopback Web origin。不允许 `*`、regex、userinfo、path/query suffix、Extension origin 或 credential allowance。Extension 通过 manifest 中精确的 loopback host permission 直接发送请求，不需要复制 Extension ID。
 
 ## 2. `GET /health`
 
@@ -32,6 +32,8 @@ redirect: error
 Accept: application/json
 ```
 
+客户端在 5000 ms 后中止未完成的请求。失败后只提供用户触发的 retry，不进行后台轮询或自动重试。
+
 ### Success
 
 `200 OK`，响应必须精确包含两个字段：
@@ -47,7 +49,7 @@ Accept: application/json
 
 ### Dependency boundary
 
-`GET /health` 不创建 database engine，不连接 PostgreSQL，不读取业务表，也不访问招聘网站、对象存储、模型服务、telemetry、update 或其他远程依赖。
+supported API launcher 在 Uvicorn 前初始化本地 SQLite 文件。`GET /health` 请求本身不创建 engine、不读取业务表，也不访问招聘网站、对象存储、模型服务、telemetry、update 或其他远程依赖。
 
 ## 3. Shared TypeScript contract
 
@@ -93,8 +95,8 @@ Phase 3 获批前不得添加 `/api/v1/jobs` 或其他业务路由。未来 Job�
 
 - OpenAPI path 只有 `/health`；
 - health 响应与 TypeScript contract 一致；
-- health-only startup 不触发数据库；
-- bind、client base URL 和数据库工具都拒绝非 loopback host；
+- supported startup 初始化默认 SQLite，重启不覆盖文件；health request 不执行数据库查询；
+- bind 与 client base URL 拒绝非 loopback host；数据库工具只接受显式的本地 SQLite file URL；
 - CORS 精确、GET-only、credential-free；
 - Web 对 `checking / ready / unavailable`、Extension 对 `checking / available / unavailable` 以及两端的 retry 动作有自动化测试；
 - Phase 3 业务路由为零。
