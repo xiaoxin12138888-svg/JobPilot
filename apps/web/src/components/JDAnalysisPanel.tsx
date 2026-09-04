@@ -17,7 +17,8 @@ export function JDAnalysisPanel({ apiClient, job }: JDAnalysisPanelProps) {
   const [state, setState] = useState<JobAnalysisResponse>();
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
-  const [error, setError] = useState<string>();
+  const [loadError, setLoadError] = useState<string>();
+  const [analysisError, setAnalysisError] = useState<string>();
   const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
@@ -28,7 +29,7 @@ export function JDAnalysisPanel({ apiClient, job }: JDAnalysisPanelProps) {
         if (active) setState(response);
       })
       .catch(() => {
-        if (active) setError('AI 分析状态暂时无法读取，请稍后重试。');
+        if (active) setLoadError('AI 分析状态暂时无法读取，请稍后重试。');
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -39,18 +40,18 @@ export function JDAnalysisPanel({ apiClient, job }: JDAnalysisPanelProps) {
   }, [apiClient, job.id, reloadToken]);
 
   const retryLoad = () => {
-    setError(undefined);
+    setLoadError(undefined);
     setLoading(true);
     setReloadToken((value) => value + 1);
   };
 
   const analyze = async () => {
     setAnalyzing(true);
-    setError(undefined);
+    setAnalysisError(undefined);
     try {
       setState(await apiClient.analyzeJob(job.id));
     } catch {
-      setError('AI 分析暂时不可用，请稍后重试。');
+      setAnalysisError('AI 分析暂时不可用，请稍后重试。');
     } finally {
       setAnalyzing(false);
     }
@@ -83,32 +84,35 @@ export function JDAnalysisPanel({ apiClient, job }: JDAnalysisPanelProps) {
           正在读取 AI 分析…
         </p>
       )}
-      {error && (
+      {loadError && (
         <div className="analysis-error" role="alert">
-          <p>{error}</p>
-          {!analyzing && (
-            <button type="button" className="text-button" onClick={retryLoad}>
-              重试读取
-            </button>
-          )}
+          <p>{loadError}</p>
+          <button type="button" className="text-button" onClick={retryLoad}>
+            重试读取
+          </button>
         </div>
       )}
-      {!loading && !error && state && !state.isConfigured && (
+      {analysisError && (
+        <div className="analysis-error" role="alert">
+          <p>{analysisError}</p>
+        </div>
+      )}
+      {!loading && !loadError && state && !state.isConfigured && (
         <div className="analysis-empty">
           <strong>AI 服务未配置</strong>
           <p>配置本机 FastAPI 的模型环境变量后，可按需分析此岗位；其他功能不受影响。</p>
         </div>
       )}
-      {!loading && !error && state?.isConfigured && !job.description && (
+      {!loading && !loadError && state?.isConfigured && !job.description && (
         <p className="muted">尚未填写 JD，无法进行结构化分析。</p>
       )}
-      {!loading && !error && state?.isConfigured && job.description && !analysis && (
+      {!loading && !loadError && state?.isConfigured && job.description && !analysis && (
         <div className="analysis-empty">
           <strong>尚未分析</strong>
           <p>仅在你点击按钮后，必要的岗位字段才会发送到已配置的模型服务。</p>
         </div>
       )}
-      {!error && analysis && (
+      {analysis && (
         <>
           {analysis.isStale && (
             <p className="analysis-stale" role="status">

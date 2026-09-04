@@ -282,6 +282,22 @@ describe('App', () => {
     expect(screen.queryByText('raw provider response and secret')).toBeNull();
   });
 
+  it('keeps the last valid result visible when reanalysis fails', async () => {
+    const job = createJob();
+    const apiClient = createApiClient({
+      listJobs: vi.fn().mockResolvedValue(page([{ ...job, applicationStatus: null }])),
+      getJob: vi.fn().mockResolvedValue(job),
+      getJobAnalysis: vi.fn().mockResolvedValue(createAnalysisResponse()),
+      analyzeJob: vi.fn().mockRejectedValue(new Error('provider failed')),
+    });
+    render(<App apiClient={apiClient} />);
+    fireEvent.click(await screen.findByRole('button', { name: '查看详情' }));
+    fireEvent.click(await screen.findByRole('button', { name: '重新分析' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('AI 分析暂时不可用，请稍后重试。');
+    expect(screen.getByText('聚焦 AI 产品需求与方案设计。')).toBeInTheDocument();
+  });
+
   it('creates an application and explicitly confirms applied status', async () => {
     const job = createJob();
     let application: Application | undefined;
