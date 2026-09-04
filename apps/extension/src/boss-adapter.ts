@@ -59,7 +59,17 @@ export function captureBossJobFromPage(pageUrl = window.location.href): BossCapt
     return style.display === 'none' || style.visibility === 'hidden';
   };
   const stripControlCharacters = (value: string): string =>
-    value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/gu, '');
+    [...value]
+      .filter((character) => {
+        const codePoint = character.codePointAt(0) ?? -1;
+        return !(
+          codePoint <= 8 ||
+          (codePoint >= 11 && codePoint <= 12) ||
+          (codePoint >= 14 && codePoint <= 31) ||
+          (codePoint >= 127 && codePoint <= 159)
+        );
+      })
+      .join('');
 
   let url: URL;
   try {
