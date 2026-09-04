@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from urllib.parse import urlsplit, urlunsplit
@@ -13,6 +14,7 @@ MAX_URL_LENGTH = 2_048
 MAX_DESCRIPTION_LENGTH = 100_000
 MAX_NOTES_LENGTH = 20_000
 SUPPORTED_JOB_SOURCES = frozenset({"manual", "boss"})
+BOSS_JOB_DETAIL_PATH = re.compile(r"/job_detail/[A-Za-z0-9_-]+\.html\Z")
 CONTROL_CHARACTER_TRANSLATION = {
     codepoint: None
     for codepoint in (*range(0, 9), *range(11, 13), *range(14, 32), *range(127, 160))
@@ -49,8 +51,21 @@ class JobDraft:
         if source not in SUPPORTED_JOB_SOURCES:
             raise DomainValidationError("source: must be manual or boss")
         clean_url = _optional_text("sourceUrl", source_url, MAX_URL_LENGTH)
-        if source == "boss" and not is_boss_job_detail_url(clean_url):
-            raise DomainValidationError("sourceUrl: boss source requires a BOSS job detail URL")
+        normalized_url = normalize_source_url(clean_url)
+        if source == "boss":
+            if normalized_url is None or not is_boss_job_detail_url(normalized_url):
+                raise DomainValidationError("sourceUrl: boss source requires a BOSS job detail URL")
+            parsed_boss_url = urlsplit(normalized_url)
+            clean_url = urlunsplit(
+                (
+                    parsed_boss_url.scheme,
+                    parsed_boss_url.netloc,
+                    parsed_boss_url.path,
+                    "",
+                    "",
+                )
+            )
+            normalized_url = clean_url
         return cls(
             title=clean_title,
             company=clean_company,
@@ -58,7 +73,7 @@ class JobDraft:
             salary_text=_optional_text("salaryText", salary_text, MAX_SHORT_TEXT_LENGTH),
             source=source,
             source_url=clean_url,
-            normalized_source_url=normalize_source_url(clean_url),
+            normalized_source_url=normalized_url,
             description=_optional_text("description", description, MAX_DESCRIPTION_LENGTH),
             notes=_optional_text("notes", notes, MAX_NOTES_LENGTH),
         )
@@ -111,15 +126,16 @@ def is_boss_job_detail_url(value: str | None) -> bool:
         return False
     try:
         parsed = urlsplit(value)
+        port = parsed.port
     except ValueError:
         return False
-    path = parsed.path
     return (
         parsed.scheme.lower() in {"http", "https"}
         and parsed.hostname == "www.zhipin.com"
-        and path.startswith("/job_detail/")
-        and len(path) > len("/job_detail/.html")
-        and path.endswith(".html")
+        and port is None
+        and parsed.username is None
+        and parsed.password is None
+        and BOSS_JOB_DETAIL_PATH.fullmatch(parsed.path) is not None
     )
 
 

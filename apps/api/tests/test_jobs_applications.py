@@ -93,6 +93,31 @@ def test_boss_job_uses_the_existing_job_api_without_creating_an_application(
     assert applications.json()["total"] == 0
 
 
+def test_boss_tracking_queries_are_not_stored_and_deduplicate_to_the_job_path(
+    client: TestClient,
+) -> None:
+    canonical_url = "https://www.zhipin.com/job_detail/fixture123.html"
+    existing = _create_job(
+        client,
+        source="boss",
+        source_url=f"{canonical_url}?ka=search_list_jname&sessionId=do-not-store#apply",
+    )
+
+    duplicate = _create_job_response(
+        client,
+        source="boss",
+        source_url=f"{canonical_url}?track=another-entry&sessionId=also-private",
+    )
+    stored = client.get(f"/api/v1/jobs/{existing['id']}")
+
+    assert existing["sourceUrl"] == canonical_url
+    assert duplicate.status_code == 409
+    assert duplicate.json()["error"]["code"] == "DUPLICATE_JOB_URL"
+    assert duplicate.json()["error"]["resourceId"] == existing["id"]
+    assert stored.json()["sourceUrl"] == canonical_url
+    assert "sessionId" not in stored.text
+
+
 def test_job_validation_and_pagination_are_bounded(client: TestClient) -> None:
     invalid = _create_job_response(client, title="   ")
     too_large = client.get("/api/v1/jobs", params={"limit": 101})

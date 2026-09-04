@@ -34,10 +34,8 @@ def test_job_draft_accepts_a_boss_job_detail_source() -> None:
     )
 
     assert draft.source == "boss"
-    assert (
-        draft.normalized_source_url
-        == "https://www.zhipin.com/job_detail/fixture123.html?ka=search_list_jname"
-    )
+    assert draft.source_url == "https://www.zhipin.com/job_detail/fixture123.html"
+    assert draft.normalized_source_url == "https://www.zhipin.com/job_detail/fixture123.html"
 
 
 @pytest.mark.parametrize(
@@ -47,6 +45,8 @@ def test_job_draft_accepts_a_boss_job_detail_source() -> None:
         ("boss", None),
         ("boss", "https://example.com/job_detail/fixture123.html"),
         ("boss", "https://www.zhipin.com/web/geek/job"),
+        ("boss", "https://www.zhipin.com:444/job_detail/fixture123.html"),
+        ("boss", "https://www.zhipin.com/job_detail/nested/fixture123.html"),
     ],
 )
 def test_job_draft_rejects_an_unsupported_source_or_boss_page(
