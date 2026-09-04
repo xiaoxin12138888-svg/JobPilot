@@ -37,3 +37,18 @@ class ApplicationAlreadyExistsError(DomainError):
 class DatabaseBusyError(DomainError):
     code = "DATABASE_BUSY"
     status_code = 503
+
+
+class AnalysisNotConfiguredError(DomainError):
+    code = "AI_NOT_CONFIGURED"
+    status_code = 503
+
+
+class AnalysisProviderUnavailableError(DomainError):
+    code = "AI_PROVIDER_UNAVAILABLE"
+    status_code = 503
+
+
+class AnalysisInvalidResponseError(DomainError):
+    code = "AI_INVALID_RESPONSE"
+    status_code = 502

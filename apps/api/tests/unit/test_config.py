@@ -10,8 +10,50 @@ def test_api_settings_use_safe_local_defaults() -> None:
 
     assert settings.bind_host == "127.0.0.1"
     assert settings.cors_origins == ("http://127.0.0.1:5173",)
+    assert settings.llm is None
     assert "database" not in repr(settings).lower()
     assert "auth" not in repr(settings).lower()
+
+
+def test_api_settings_enable_llm_only_with_complete_valid_environment() -> None:
+    settings = ApiSettings.from_environment(
+        {
+            "JOBPILOT_LLM_BASE_URL": "https://llm.example/v1/",
+            "JOBPILOT_LLM_API_KEY": "private-value",
+            "JOBPILOT_LLM_MODEL": "model-name",
+        }
+    )
+
+    assert settings.llm is not None
+    assert settings.llm.base_url == "https://llm.example/v1"
+    assert settings.llm.model == "model-name"
+    assert "private-value" not in repr(settings)
+
+
+@pytest.mark.parametrize(
+    "environment",
+    [
+        {"JOBPILOT_LLM_BASE_URL": "https://llm.example/v1"},
+        {
+            "JOBPILOT_LLM_BASE_URL": "https://llm.example/v1",
+            "JOBPILOT_LLM_API_KEY": "key",
+        },
+        {
+            "JOBPILOT_LLM_BASE_URL": "file:///tmp/provider",
+            "JOBPILOT_LLM_API_KEY": "key",
+            "JOBPILOT_LLM_MODEL": "model",
+        },
+        {
+            "JOBPILOT_LLM_BASE_URL": "https://user:pass@llm.example/v1",
+            "JOBPILOT_LLM_API_KEY": "key",
+            "JOBPILOT_LLM_MODEL": "model",
+        },
+    ],
+)
+def test_incomplete_or_invalid_llm_environment_keeps_core_unconfigured(
+    environment: dict[str, str],
+) -> None:
+    assert ApiSettings.from_environment(environment).llm is None
 
 
 @pytest.mark.parametrize("bind_host", ["127.0.0.1", "::1"])
