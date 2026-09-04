@@ -26,8 +26,9 @@ no-proxy、用户主动触发、最小权限和不自动投递边界。
    打开 JobPilot 详情，不返回招聘平台或账号数据。
 6. `jobs.source` CHECK 通过可逆 migration 从只允许 `manual` 扩展到 `manual|boss`。不新增表；
    migration 只在临时数据库和真实数据库副本上验证。
-7. BOSS source URL 必须是当前 active tab 的 HTTP/HTTPS Job detail URL。所有采集字段按不可信
-   外部纯文本处理，执行长度限制与控制字符清理；不保存 HTML。
+7. BOSS source URL 必须是当前 active tab 的 HTTP/HTTPS Job detail URL。Extension 与 API 都将
+   其收敛为 scheme、精确 hostname 与 Job detail path，不保存 tracking/session query 或 fragment。
+   所有采集字段按不可信外部纯文本处理，执行长度限制与控制字符清理；不保存 HTML。
 8. 保存或打开原平台均不创建 Application、不标记 applied，也不自动操作 BOSS 页面。
 9. 只有真实 Chrome 与关闭 VPN/系统/浏览器代理的完整链路全部通过，BOSS 状态才能标为
    `SUPPORTED — V1`；否则 Phase 4 必须报告 BLOCKED。

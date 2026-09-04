@@ -36,7 +36,7 @@ JD、备注和本地时间。来源允许 `manual` 与 Phase 4 的 `boss`。
 
 - title 与 company 必填，输入统一去除首尾空白；
 - source URL 只接受不带凭据的 HTTP/HTTPS；
-- URL 规范化 scheme、host、默认端口并移除 fragment，规范化结果在本地唯一；
+- URL 规范化 scheme、host、默认端口并移除 fragment，规范化结果在本地唯一；手动来源保留有意义的 query，BOSS 来源只保存岗位详情路径并移除 tracking/session query；
 - 没有 URL 时不做 company/title 模糊去重，允许保存相似岗位；
 - description 是本地快照，原岗位下架后仍保留；
 - 删除必须由 Web 明确确认，并同时删除该 Job 的 Application；当前没有归档/恢复系统。

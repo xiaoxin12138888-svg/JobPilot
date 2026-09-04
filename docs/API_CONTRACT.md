@@ -42,6 +42,9 @@ CORS 只列精确 Web origin 和 `GET, POST, PATCH, DELETE`，不允许 credenti
 `title`、`company` 必填；其他字段可为 null/省略，source 可为 `manual` 或 `boss`。`boss`
 必须携带属于受支持 BOSS 岗位详情页的 HTTP/HTTPS `sourceUrl`。成功为 201。Web 手动录入与
 Extension BOSS capture 均进入此 endpoint 和同一个 Job service；不存在 capture 专用保存接口。
+服务端会把 BOSS `sourceUrl` 规范化为 scheme、精确 `www.zhipin.com` hostname 与岗位详情 path，
+不保存 query 或 fragment；因此同一岗位的不同 tracking/session query 返回相同的 409 重复结果。
+`manual` URL 继续保留有意义的 query。
 
 ### `GET /api/v1/jobs`
 

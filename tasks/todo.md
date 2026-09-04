@@ -17,20 +17,20 @@
 
 ## BOSS Adapter
 
-- [ ] Observe a real current BOSS Job detail DOM with VPN/proxy off before choosing selectors.
-- [ ] RED/GREEN strict BOSS hostname + detail-page detection.
-- [ ] RED/GREEN title, company, location, salary, description and whitespace normalization.
-- [ ] Cover unsupported/non-BOSS/missing required/optional missing/odd text/URL cases.
-- [ ] Commit only a minimal sanitized DOM fixture; never full HTML, cookies, IDs, chats, HAR, or tokens.
+- [x] Observe a real current BOSS Job detail DOM with VPN/proxy off before choosing selectors.
+- [x] RED/GREEN strict BOSS hostname + detail-page detection.
+- [x] RED/GREEN title, company, location, salary, description and whitespace normalization.
+- [x] Cover unsupported/non-BOSS/missing required/optional missing/odd text/URL cases.
+- [x] Commit only a minimal sanitized DOM fixture; never full HTML, cookies, IDs, chats, HAR, or tokens.
 
 ## Extension and Web
 
-- [ ] Add only `activeTab` and `scripting`; keep exact loopback host permission and no content script.
-- [ ] RED/GREEN health, ready, parsing, preview/edit, warning, saving, saved, duplicate, failure, retry.
-- [ ] Use the shared api-client and existing Job creation endpoint/service.
-- [ ] Open the local Web detail using only the saved Job ID; manual fallback opens manual add.
+- [x] Add only `activeTab` and `scripting`; keep exact loopback host permission and no content script.
+- [x] RED/GREEN health, ready, parsing, preview/edit, warning, saving, saved, duplicate, failure, retry.
+- [x] Use the shared api-client and existing Job creation endpoint/service.
+- [x] Open the local Web detail using only the saved Job ID; manual fallback opens manual add.
 - [x] Show `BOSS直聘` in Web list/detail and keep original-platform links mutation-free.
-- [ ] Prove capture/save does not create or mark an Application.
+- [x] Prove capture/save does not create or mark an Application.
 
 ## Acceptance
 

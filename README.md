@@ -99,7 +99,7 @@ pnpm run dev:web
 pnpm run build:extension
 ```
 
-在 Chrome/Chromium 扩展管理页开启 Developer mode，选择 **Load unpacked**，并指向 `apps/extension/dist`。Popup 只检查精确的 `http://127.0.0.1:8000/health`。
+在 Chrome/Chromium 扩展管理页开启 Developer mode，选择 **Load unpacked**，并指向 `apps/extension/dist`。Popup 打开时只检查精确的 `http://127.0.0.1:8000/health`；用户随后明确点击时，开发中的 Phase 4 流程才会读取当前 BOSS 岗位详情页并显示可编辑预览。
 
 Extension 通过 manifest 中精确的 `http://127.0.0.1:8000/*` host permission 直接读取 health，不需要也不允许把 Extension ID 加到 API CORS。API CORS 仅服务精确的 loopback Web origin。
 

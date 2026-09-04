@@ -31,9 +31,10 @@
 | `updated_at` | DateTime, NOT NULL |
 
 索引：`updated_at`、`source`。SQLite UNIQUE 允许多个 NULL，因此无 URL Job 不做去重。
-规范化 URL 只接受 HTTP/HTTPS、无 userinfo；lowercase scheme/host、去默认端口和 fragment，
-保留 path/query。原始 `source_url` 供用户打开。`boss` 来源还要求 URL 属于受支持的 BOSS
-岗位详情页；所有招聘页面字段只作为有长度边界、去明显控制字符的纯文本保存。
+规范化 URL 只接受 HTTP/HTTPS、无 userinfo；lowercase scheme/host、去默认端口和 fragment。
+`manual` 保留 path/query，原始 `source_url` 供用户打开。`boss` 来源还要求 URL 属于精确
+`www.zhipin.com/job_detail/{id}.html`，并把 `source_url` 与去重字段都收敛到 scheme、host、path，
+不保存 tracking/session query 或 fragment。所有招聘页面字段只作为有长度边界、去明显控制字符的纯文本保存。
 
 ## 3. `applications`
 
