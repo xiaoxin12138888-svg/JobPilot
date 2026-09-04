@@ -3,10 +3,11 @@ import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const LOOPBACK_ORIGIN = 'http://127.0.0.1:8000';
+const API_LOOPBACK_ORIGIN = 'http://127.0.0.1:8000';
+const WEB_LOOPBACK_ORIGIN = 'http://127.0.0.1:5173';
 const EXPECTED_CSP =
   "default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; " +
-  `connect-src ${LOOPBACK_ORIGIN}; base-uri 'none'`;
+  `connect-src ${API_LOOPBACK_ORIGIN}; base-uri 'none'`;
 const distDirectory = fileURLToPath(new URL('../dist/', import.meta.url));
 
 async function listFiles(directory) {
@@ -39,7 +40,7 @@ const manifest = JSON.parse(await readFile(path.join(distDirectory, 'manifest.js
 assert.equal(manifest.manifest_version, 3);
 assert.equal(manifest.action?.default_popup, 'popup.html');
 assert.deepEqual(manifest.permissions, ['activeTab', 'scripting']);
-assert.deepEqual(manifest.host_permissions, [`${LOOPBACK_ORIGIN}/*`]);
+assert.deepEqual(manifest.host_permissions, [`${API_LOOPBACK_ORIGIN}/*`]);
 assert.equal(manifest.content_security_policy?.extension_pages, EXPECTED_CSP);
 
 for (const forbiddenKey of [
@@ -71,8 +72,9 @@ for (const [, attributes] of scriptTags) {
 
 const artifactSource = [...sourceByFile.values()].join('\n');
 const withoutApprovedLoopback = artifactSource
-  .replaceAll(`${LOOPBACK_ORIGIN}/*`, '')
-  .replaceAll(LOOPBACK_ORIGIN, '');
+  .replaceAll(`${API_LOOPBACK_ORIGIN}/*`, '')
+  .replaceAll(API_LOOPBACK_ORIGIN, '')
+  .replaceAll(WEB_LOOPBACK_ORIGIN, '');
 assert.doesNotMatch(withoutApprovedLoopback, /https?:\/\//iu, 'Remote runtime URL detected');
 assert.doesNotMatch(
   artifactSource,

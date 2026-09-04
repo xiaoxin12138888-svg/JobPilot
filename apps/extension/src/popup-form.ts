@@ -1,12 +1,22 @@
-import type { JobCaptureDraft } from './popup';
+import type { BossJobCaptureDraft } from './boss-adapter';
 import { actionButton, setRootState, statusText } from './popup-view';
+
+type EditableField = 'title' | 'company' | 'location' | 'salaryText' | 'description';
+
+const MAX_LENGTHS: Readonly<Record<EditableField, number>> = {
+  title: 200,
+  company: 200,
+  location: 300,
+  salaryText: 300,
+  description: 100_000,
+};
 
 export function renderPreview(
   root: HTMLElement,
-  draft: JobCaptureDraft,
+  draft: BossJobCaptureDraft,
   warnings: readonly string[],
   validationMessage: string | undefined,
-  onSave: (draft: JobCaptureDraft) => void,
+  onSave: (draft: BossJobCaptureDraft) => void,
 ): void {
   setRootState(root, 'preview');
   const form = document.createElement('form');
@@ -46,7 +56,7 @@ function warningList(warnings: readonly string[]): HTMLUListElement {
 
 function formField(
   labelText: string,
-  name: keyof JobCaptureDraft,
+  name: EditableField,
   value: string,
   required = false,
   multiline = false,
@@ -59,12 +69,16 @@ function formField(
   control.name = name;
   control.value = value;
   control.required = required;
+  control.maxLength = MAX_LENGTHS[name];
   if (multiline) (control as HTMLTextAreaElement).rows = 6;
   label.append(caption, control);
   return label;
 }
 
-function readDraft(form: HTMLFormElement, original: JobCaptureDraft): JobCaptureDraft {
+function readDraft(
+  form: HTMLFormElement,
+  original: BossJobCaptureDraft,
+): BossJobCaptureDraft {
   const data = new FormData(form);
   return {
     ...original,

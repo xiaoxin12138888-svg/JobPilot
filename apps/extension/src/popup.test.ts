@@ -160,6 +160,14 @@ describe('initializePopup', () => {
     expect(screen.getByRole('textbox', { name: '地点' })).toHaveValue('上海');
     expect(screen.getByRole('textbox', { name: '薪资' })).toHaveValue('20-30K');
     expect(screen.getByRole('textbox', { name: '岗位描述' })).toHaveValue('负责本地产品体验。');
+    expect(screen.getByRole('textbox', { name: '职位名称' })).toHaveAttribute('maxlength', '200');
+    expect(screen.getByRole('textbox', { name: '公司' })).toHaveAttribute('maxlength', '200');
+    expect(screen.getByRole('textbox', { name: '地点' })).toHaveAttribute('maxlength', '300');
+    expect(screen.getByRole('textbox', { name: '薪资' })).toHaveAttribute('maxlength', '300');
+    expect(screen.getByRole('textbox', { name: '岗位描述' })).toHaveAttribute(
+      'maxlength',
+      '100000',
+    );
     expect(screen.getByText('来源：BOSS直聘')).toBeVisible();
     expect(screen.getByText('请确认工作地点')).toBeVisible();
   });

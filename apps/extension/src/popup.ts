@@ -5,6 +5,7 @@ import {
   type Job,
 } from '@jobpilot/api-client';
 
+import type { BossCaptureResult, BossJobCaptureDraft } from './boss-adapter';
 import { renderPreview } from './popup-form';
 import {
   renderDuplicate,
@@ -17,25 +18,8 @@ import {
   renderUnsupported,
 } from './popup-view';
 
-export interface JobCaptureDraft {
-  company: string;
-  description: string;
-  location: string;
-  salaryText: string;
-  source: 'boss';
-  sourceUrl: string;
-  title: string;
-}
-
-export type CaptureResult =
-  | {
-      draft: JobCaptureDraft;
-      warnings: readonly string[];
-    }
-  | { status: 'unsupported' };
-
 export interface CaptureDependencies {
-  captureCurrentJob(): Promise<CaptureResult>;
+  captureCurrentJob(): Promise<BossCaptureResult>;
   closePopup(): void;
   createJob(input: CreateJobInput): Promise<Job>;
   openJobPilot(jobId?: string): void;
@@ -58,7 +42,7 @@ function getPopupRoot(): HTMLElement {
 export async function initializePopup(dependencies: PopupDependencies): Promise<void> {
   const root = getPopupRoot();
   let requestInFlight = false;
-  let currentDraft: JobCaptureDraft | undefined;
+  let currentDraft: BossJobCaptureDraft | undefined;
   let currentWarnings: readonly string[] = [];
   let lastSaveInput: CreateJobInput | undefined;
 
@@ -145,7 +129,7 @@ export async function initializePopup(dependencies: PopupDependencies): Promise<
   await checkHealth();
 }
 
-function toCreateJobInput(draft: JobCaptureDraft): CreateJobInput {
+function toCreateJobInput(draft: BossJobCaptureDraft): CreateJobInput {
   return {
     company: draft.company.trim(),
     description: optionalText(draft.description),
