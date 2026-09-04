@@ -1,6 +1,7 @@
 # JobPilot Roadmap
 
-> 当前阶段：Phase 4 — BOSS Direct Job Capture 已获负责人批准，contract 已冻结并正在实现。
+> 当前阶段：Phase 4 — BOSS Direct Job Capture 已完成；BOSS 为 `SUPPORTED — V1`。
+> Phase 5 尚未获负责人批准。
 
 ## 1. Global gates
 
@@ -38,6 +39,8 @@ Extension 在本阶段保持 health-only；没有 Adapter、content script、`ac
 
 ## 4. Phase 4 — BOSS Direct Job Capture
 
+状态：Completed（2026-09-04）。
+
 只实现 BOSS 直聘：`activeTab` + `scripting` 用户主动触发当前岗位页 DOM 读取、可编辑确认预览、
 复用 Job API 保存、重复岗位处理、Web source 展示和真实 no-proxy 验收。没有 BOSS host
 permission、常驻 content script、background、后台爬取、列表扫描、隐藏 API、登录/验证码/
@@ -58,4 +61,5 @@ update 或强制境外 AI。未来每个 Adapter 必须分别记录招聘页、E
 
 ## 7. Stop boundary
 
-Phase 4 完成后只等待项目负责人验收。不得自动创建 Phase 5 分支或实现其他平台。
+Phase 4 已完成并通过验收。当前只等待项目负责人决定是否进入 Phase 5；不得自动创建 Phase 5
+分支或实现其他平台。

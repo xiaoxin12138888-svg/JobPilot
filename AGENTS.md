@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Phase 4 BOSS Direct Job Capture is active on `phase/4-boss-job-capture` after explicit project-owner approval. The original branches, Phase 3 commits and recovery checkpoint `pre-local-first-cleanup` remain untouched. Implement only one BOSS 直聘 Adapter, explicit current-tab capture, editable Popup preview, save through the existing Job API/service, and the minimum source/Web support. Do not implement another recruitment platform, persistent content scripts, background capture, AI, RAG, uploads, recommendations, automatic submission, cloud sync, analytics or dashboards.
+Phase 4 BOSS Direct Job Capture is complete on `phase/4-boss-job-capture`; BOSS is `SUPPORTED — V1`. The original branches, Phase 3 commits and recovery checkpoint `pre-local-first-cleanup` remain untouched. Stop before Phase 5 until explicit project-owner approval. Do not implement another recruitment platform, persistent content scripts, background capture, AI, RAG, uploads, recommendations, automatic submission, cloud sync, analytics or dashboards.
 
 ## Canonical context
 

@@ -48,3 +48,10 @@ no-proxy、用户主动触发、最小权限和不自动投递边界。
 - 固定 Origin 排除普通网页和其他 Extension ID，但公开 key 不是抵御本机恶意进程，或用户主动
   加载复用同一公钥的其他 unpacked 代码的秘密认证；本机安装代码与操作系统账户仍是信任边界。
 - Phase 5 的多平台 Adapter 仍需负责人另行批准；本 ADR 不建立通用 Adapter framework。
+
+## Acceptance evidence
+
+2026-09-04 在用户保持 VPN/系统/浏览器代理关闭的真实 Chrome 中完成固定 ID Extension 的 BOSS
+岗位读取、可编辑预览、首次保存、重复识别与 Web 详情检查。服务重启后同一 Job ID、规范化无
+query/fragment 的 BOSS URL 与零 Application 状态保持不变；自动化、安全、artifact、审查与
+简化门禁均通过。因此 BOSS Adapter 状态为 `SUPPORTED — V1`。

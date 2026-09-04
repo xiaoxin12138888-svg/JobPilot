@@ -1,6 +1,7 @@
 # Implementation Plan: Phase 4 — BOSS Direct Job Capture
 
 > Owner-approved on 2026-09-03. Phase 5 is not authorized.
+> Completed and accepted on 2026-09-04. Stop before Phase 5.
 
 ## Objective
 
@@ -64,8 +65,9 @@ Web Job library. Do not crawl, call BOSS APIs, automate applications, or add ano
 - Duplicate save can race: keep normalized URL uniqueness in SQLite and return only the existing
   local Job ID in the bounded 409 error.
 
-## Open prerequisite
+## Acceptance evidence
 
-Before selector implementation and final acceptance, the project owner must keep one real BOSS Job
-detail tab open in Chrome with VPN/system/browser proxy off. No credentials or session material are
-to be shared with Codex.
+The project owner kept one real BOSS Job detail tab open with VPN/system/browser proxy off. The
+stable-ID unpacked Extension completed capture, editable preview, first save and duplicate handling;
+the Web detail showed the BOSS snapshot with no Application. API restart preserved the same Job ID,
+canonical queryless URL and zero Applications. No credentials or session material were collected.

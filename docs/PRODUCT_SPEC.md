@@ -1,7 +1,7 @@
 # JobPilot 产品规格
 
-> 状态：Phase 3 已通过。Phase 4 — BOSS Direct Job Capture 已获负责人批准，contract 已冻结，
-> 正在 `phase/4-boss-job-capture` 实现。
+> 状态：Phase 3 与 Phase 4 — BOSS Direct Job Capture 已通过。BOSS 为 `SUPPORTED — V1`；
+> 当前停在 `phase/4-boss-job-capture`，Phase 5 尚未获批。
 
 ## 1. 产品定位
 

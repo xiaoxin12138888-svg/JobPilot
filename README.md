@@ -6,7 +6,7 @@ JobPilot 不替代招聘网站，不建设职位数据库，也不代表用户�
 
 ## 当前状态
 
-项目已通过 **Phase 3 — Job & Application Domain Foundation**。负责人已批准 **Phase 4 — BOSS Direct Job Capture**，当前在 `phase/4-boss-job-capture` 按冻结 contract 实现。Phase 3 能力包括：
+项目已通过 **Phase 3 — Job & Application Domain Foundation** 与 **Phase 4 — BOSS Direct Job Capture**。当前停在 `phase/4-boss-job-capture`，等待负责人决定后续阶段；Phase 5 尚未获批。Phase 3 能力包括：
 
 - React Web：本机 API 状态、岗位库、手动录入、岗位详情/编辑/删除和投递状态管理；
 - Chrome Extension：无 privileged Chrome API permission、无后台进程的本地健康 Popup；唯一 host permission 是 `http://127.0.0.1:8000/*`；
@@ -14,7 +14,7 @@ JobPilot 不替代招聘网站，不建设职位数据库，也不代表用户�
 - SQLite、SQLAlchemy 与 Alembic：launcher 启动前自动升级 `runtime-data/jobpilot.db`，revision 只创建 `jobs` 与 `applications`；
 - `packages/shared-types` 与 `packages/api-client`：提供 camelCase 业务契约、credential-free 请求和不可信响应校验。
 
-Phase 4 只新增 BOSS 直聘当前岗位页的用户主动采集、确认编辑与本地保存。它不引入其他招聘平台、常驻 content script、后台抓取、AI、RAG、自动投递、云同步或上传。
+Phase 4 已交付 BOSS 直聘当前岗位页的用户主动采集、确认编辑与本地保存。它不引入其他招聘平台、常驻 content script、后台抓取、AI、RAG、自动投递、云同步或上传。
 
 ## 本地优先意味着什么
 
@@ -31,7 +31,7 @@ Phase 4 只新增 BOSS 直聘当前岗位页的用户主动采集、确认编辑
 
 Auth0、Logto Cloud、Google APIs、Google reCAPTCHA、Cloudflare Turnstile、GitHub API/raw content、jsDelivr、unpkg、cdnjs、远程字体/JavaScript、境外 AI API、境外 telemetry/analytics 或境外 update API 永远不能成为核心 runtime dependency。未来可选远程能力即使经单独 ADR/批准，也必须显式启用、可降级，并且不阻塞本地核心。
 
-当前 supported recruitment adapters：`none`。BOSS 直聘为 `IN PROGRESS / NOT SUPPORTED`；牛客、实习僧、猎聘和国聘均为 `NOT STARTED / NOT SUPPORTED`。必须等对应实现和以下 Gate 全部通过后才能改变状态。
+当前 supported recruitment adapters：BOSS 直聘 `SUPPORTED — V1`。牛客、实习僧、猎聘和国聘均为 `NOT STARTED / NOT SUPPORTED`；Phase 5 未获批准。
 
 Extension 必须满足：
 
@@ -99,7 +99,7 @@ pnpm run dev:web
 pnpm run build:extension
 ```
 
-在 Chrome/Chromium 扩展管理页开启 Developer mode，选择 **Load unpacked**，并指向 `apps/extension/dist`。Popup 打开时只检查精确的 `http://127.0.0.1:8000/health`；用户随后明确点击时，开发中的 Phase 4 流程才会读取当前 BOSS 岗位详情页并显示可编辑预览。
+在 Chrome/Chromium 扩展管理页开启 Developer mode，选择 **Load unpacked**，并指向 `apps/extension/dist`。Popup 打开时只检查精确的 `http://127.0.0.1:8000/health`；用户随后明确点击时，Phase 4 流程才会读取当前 BOSS 岗位详情页并显示可编辑预览。
 
 Manifest 提交的 `key` 只是可公开的扩展公钥，不包含私钥或 secret；它让 GitHub 源码用户通过
 **Load unpacked** 得到固定 ID `lgchonbleblfegkckndaaandoaekmgjf`。如果此前加载过不含该 key

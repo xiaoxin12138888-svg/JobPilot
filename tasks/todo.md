@@ -37,9 +37,9 @@
 
 - [x] Run frozen/locked installs and all TypeScript/Python tests, lint, format, typecheck, and builds.
 - [x] Run migration, API import/startup, SQLite persistence, artifact/CSP, secret, remote, and log scans.
-- [ ] Load unpacked in Chrome after action-time approval and run the real BOSS capture twice.
-- [ ] Verify Popup, parse, preview, save, library, detail, duplicate, original URL, and restart.
-- [ ] Verify console/network/privacy and full workflow with VPN/system/browser proxy off.
-- [ ] Verify Web at 320/768/1024/1440 and keyboard/accessibility states.
-- [ ] Run code review to Critical 0 / Required 0 and simplify confirmed complexity.
-- [ ] Synchronize all canonical docs, commit coherent increments, and stop before Phase 5.
+- [x] Load unpacked in Chrome after action-time approval and run the real BOSS capture twice.
+- [x] Verify Popup, parse, preview, save, library, detail, duplicate, original URL, and restart.
+- [x] Verify console/network/privacy and full workflow with VPN/system/browser proxy off.
+- [x] Verify Web at 320/768/1024/1440 and keyboard/accessibility states.
+- [x] Run code review to Critical 0 / Required 0 and simplify confirmed complexity.
+- [x] Synchronize all canonical docs, commit coherent increments, and stop before Phase 5.
