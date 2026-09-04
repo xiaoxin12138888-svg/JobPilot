@@ -5,21 +5,21 @@
 - [x] Receive explicit Phase 6 approval and branch from clean Phase 5 HEAD.
 - [x] Preserve `操作手册.txt`, runtime SQLite data, Phase 5 history and supported Adapters.
 - [x] Freeze ADR-013, schema, provider/input/security boundaries, API semantics and Phase 7 stop.
-- [ ] Keep Extension, other recruitment platforms, Resume/matching, RAG and Agents out of scope.
+- [x] Keep Extension, other recruitment platforms, Resume/matching, RAG and Agents out of scope.
 
 ## Backend
 
-- [ ] RED/GREEN strict structured schema, normalization and deterministic evidence grounding.
-- [ ] RED/GREEN prompt-injection separation and minimal five-field outbound input.
-- [ ] RED/GREEN optional config, explicit timeout and stable sanitized provider errors.
-- [ ] RED/GREEN migration, one-row upsert, cascade, restart persistence and stale fingerprint.
-- [ ] RED/GREEN GET/POST analysis API and Job/write-security regressions.
+- [x] RED/GREEN strict structured schema, normalization and deterministic evidence grounding.
+- [x] RED/GREEN prompt-injection separation and minimal five-field outbound input.
+- [x] RED/GREEN optional config, explicit timeout and stable sanitized provider errors.
+- [x] RED/GREEN migration, one-row upsert, cascade, restart persistence and stale fingerprint.
+- [x] RED/GREEN GET/POST analysis API and Job/write-security regressions.
 
 ## Client and Web
 
-- [ ] Extend shared types and api-client with strict response validation and no credentials.
-- [ ] Add unconfigured, not analyzed, loading, success, failure and stale UI states.
-- [ ] Show every frozen field with lightweight evidence while keeping original JD visible.
+- [x] Extend shared types and api-client with strict response validation and no credentials.
+- [x] Add unconfigured, not analyzed, loading, success, failure and stale UI states.
+- [x] Show every frozen field with lightweight evidence while keeping original JD visible.
 - [ ] Verify responsive, keyboard and accessible behavior without navigation redesign.
 
 ## Evaluation and acceptance

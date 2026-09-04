@@ -1,7 +1,7 @@
 # JobPilot Roadmap
 
-> 当前阶段：Phase 5 — Nowcoder Adapter & Shared Capture Contract 已完成；BOSS 与牛客均为
-> `SUPPORTED — V1`。Phase 6 尚未获负责人批准。
+> 当前阶段：Phase 6 — JD Structured AI Analysis 已批准并实现本地核心；真实评测与真实岗位 AI
+> 验收仍待完成。BOSS 与牛客保持 `SUPPORTED — V1`。
 
 ## 1. Global gates
 
@@ -56,20 +56,30 @@ registry、持久 content script、招聘网站 host permission、隐藏 API 或
 平台 detection、selectors 与 DOM helpers 继续留在自包含注入函数内。真实无代理牛客完整流程和
 BOSS 回归均已通过。
 
-## 6. Later phases
+## 6. Phase 6 — JD Structured AI Analysis
 
-Phase 6 候选是 Remaining Recruitment Adapters，只有 Phase 5 PASS 且负责人明确批准后才可开始。
-ResumeVersion、结构化 JD 分析、可选 AI、文档/RAG、Evidence Map、面试准备、复盘与发布加固
-均在更晚阶段单独评审。远程能力必须显式启用、可替换、可降级，不能成为本地
-Job/Application 核心依赖。
+状态：In progress（2026-09-04）。
 
-## 7. P0 no-proxy gate
+暂停横向 Adapter 扩展。对已保存 Job 增加用户主动触发的可选结构化分析、strict schema、
+evidence grounding、单条 SQLite 持久化、stale/reanalysis 与 Job Detail 状态展示。Provider 未配置
+或失败不影响本地核心。Resume、Evidence Map、matching、RAG、Agent 与模拟面试不进入本阶段。
+
+自动实现与 Fake Provider 回归已完成；20 条脱敏候选 gold、真实 Prompt V1/V2、Bad Cases、真实
+BOSS/牛客 AI 人工验收必须完成后才可标记 Phase 6 PASS。
+
+## 7. Later phases
+
+如果 Phase 6 PASS，下一候选是 Phase 7 — Resume Version & Evidence Map；仍需负责人明确批准。
+JD×Resume matching、RAG、模拟面试、其余招聘平台、复盘与发布加固均需更晚单独评审。远程能力
+必须显式启用、可替换、可降级，不能成为本地 Job/Application 核心依赖。
+
+## 8. P0 no-proxy gate
 
 installed runtime 不访问远程身份、公共 CDN、远程字体/脚本、GitHub runtime/raw、telemetry、
 update 或强制境外 AI。未来每个 Adapter 必须分别记录招聘页、Extension、识别、解析、
 确认保存和岗位库的真实关闭代理结果；任一核心步骤依赖代理就不能标为支持。
 
-## 8. Stop boundary
+## 9. Stop boundary
 
-Phase 5 已完成并通过验收。当前只等待项目负责人决定是否进入 Phase 6；不得自动创建 Phase 6
-分支或实现实习僧、猎聘、国聘等其他平台。
+不得在真实评测/验收 blocker 存在时宣称 Phase 6 PASS。不得自动开始 Phase 7，也不得实现智联、
+实习僧、猎聘、国聘等其他平台。

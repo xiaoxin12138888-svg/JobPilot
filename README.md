@@ -6,15 +6,15 @@ JobPilot 不替代招聘网站，不建设职位数据库，也不代表用户�
 
 ## 当前状态
 
-项目已通过 **Phase 3 — Job & Application Domain Foundation**、**Phase 4 — BOSS Direct Job Capture** 与 **Phase 5 — Nowcoder Adapter & Shared Capture Contract**。当前停在 `phase/5-nowcoder-adapter`，等待负责人决定后续阶段；Phase 6 尚未获批。核心能力包括：
+项目已通过 **Phase 3 — Job & Application Domain Foundation**、**Phase 4 — BOSS Direct Job Capture** 与 **Phase 5 — Nowcoder Adapter & Shared Capture Contract**。当前分支 `phase/6-jd-ai-analysis` 已实现 Phase 6 的可选 JD 结构化分析核心；真实 Provider V1/V2 评测与真实岗位人工验收仍待完成。核心能力包括：
 
 - React Web：本机 API 状态、岗位库、手动录入、岗位详情/编辑/删除和投递状态管理；
 - Chrome Extension：使用 `activeTab` + `scripting` 的用户主动采集 Popup，无后台进程；唯一 host permission 是 `http://127.0.0.1:8000/*`；
-- FastAPI：公开 `GET /health` 以及最小 Job/Application REST API，默认绑定 `127.0.0.1`；
-- SQLite、SQLAlchemy 与 Alembic：launcher 启动前自动升级 `runtime-data/jobpilot.db`，只保留 `jobs` 与 `applications` 两张业务表；
+- FastAPI：公开 `GET /health`、Job/Application 与每个 Job 的可选分析 API，默认绑定 `127.0.0.1`；
+- SQLite、SQLAlchemy 与 Alembic：launcher 启动前自动升级 `runtime-data/jobpilot.db`，业务表为 `jobs`、`applications` 与 `jd_analysis_records`；
 - `packages/shared-types` 与 `packages/api-client`：提供 camelCase 业务契约、credential-free 请求和不可信响应校验。
 
-Phase 4 已交付 BOSS 直聘当前岗位页采集；Phase 5 在同一确认编辑与本地保存链路上新增牛客岗位详情页。两个 Adapter 都只读取用户当前打开页面的必要可见文本，不引入常驻 content script、后台抓取、AI、RAG、自动投递、云同步或上传。
+Phase 4 已交付 BOSS 直聘当前岗位页采集；Phase 5 在同一确认编辑与本地保存链路上新增牛客岗位详情页。两个 Adapter 都只读取用户当前打开页面的必要可见文本。Phase 6 不改 Extension，只允许 Web 在用户点击后把单个已保存 Job 的最小 JD 字段经 FastAPI 发送给显式配置的 Provider；不开 AI 时所有核心功能照常工作。
 
 ## 本地优先意味着什么
 
@@ -31,7 +31,7 @@ Phase 4 已交付 BOSS 直聘当前岗位页采集；Phase 5 在同一确认编�
 
 Auth0、Logto Cloud、Google APIs、Google reCAPTCHA、Cloudflare Turnstile、GitHub API/raw content、jsDelivr、unpkg、cdnjs、远程字体/JavaScript、境外 AI API、境外 telemetry/analytics 或境外 update API 永远不能成为核心 runtime dependency。未来可选远程能力即使经单独 ADR/批准，也必须显式启用、可降级，并且不阻塞本地核心。
 
-当前 supported recruitment adapters：BOSS 直聘与牛客均为 `SUPPORTED — V1`。实习僧、猎聘和国聘为 `NOT SUPPORTED`；Phase 6 未获批准。
+当前 supported recruitment adapters：BOSS 直聘与牛客均为 `SUPPORTED — V1`。实习僧、猎聘、智联和国聘为 `NOT SUPPORTED`；Phase 6 暂停横向 Adapter 扩展。
 
 Extension 必须满足：
 
@@ -47,10 +47,12 @@ Extension 必须满足：
 
 ```text
 React Web ---------\
-                    > exact loopback HTTP -> FastAPI -> health + Job/Application
+                    > exact loopback HTTP -> FastAPI -> health + Job/Application/analysis
 Chrome Extension --/                            |
                                                  v
                                       runtime-data/jobpilot.db (SQLite)
+
+React Web -- explicit analysis click --> FastAPI -- optional --> configured LLM provider
 
 BOSS/Nowcoder current rendered DOM -- user click/read-only --> Chrome Extension
 Web original-platform link -> user's browser -> recruitment website
@@ -76,6 +78,11 @@ uv sync --project apps/api --locked
 ```
 
 默认首次运行不需要 `.env`、PostgreSQL、Docker、数据库账号、Extension ID、VPN 或代理。可选 `.env` 只供 Vite 读取 `VITE_*` 本机开发覆盖并已被 Git 忽略；API override 必须设置为启动进程的环境变量。不得提交 `.env` 或其他 secret。
+
+JD 分析是可选增强。要启用它，只在启动 FastAPI 的本地进程环境中设置
+`JOBPILOT_LLM_BASE_URL`、`JOBPILOT_LLM_API_KEY`、`JOBPILOT_LLM_MODEL`；三项不完整或非法时
+Web 显示“AI 服务未配置”，API 与本地核心仍正常启动。真实 Key 不得写入 `.env.example`、Git、
+Web 或 Extension。
 
 ### Start API and Web
 
@@ -116,6 +123,9 @@ Web origin。
 - `VITE_API_BASE_URL`：Web 与 Extension 共用的 build-time loopback API base；同时构建 Extension 时必须保持精确 `http://127.0.0.1:8000`，Web 单独运行才可接受 `localhost` 或 `[::1]`；
 - `JOBPILOT_API_BIND_HOST`：API 监听地址，只接受 IP-literal loopback；
 - `JOBPILOT_CORS_ORIGINS`：逗号分隔的精确 loopback Web origins；
+- `JOBPILOT_LLM_BASE_URL`：可选 OpenAI-compatible `/v1` base URL；
+- `JOBPILOT_LLM_API_KEY`：只存在于 API 进程环境的可选 secret；
+- `JOBPILOT_LLM_MODEL`：可选模型名；三项必须同时有效才启用分析。
 
 数据库固定为本地 SQLite 文件，不读取 database URL。默认路径是 `runtime-data/jobpilot.db`；整个目录被 Git 忽略，并且测试、clean、build 和格式化流程都不得删除、替换或写入真实数据库。测试与 Alembic 验证必须显式使用临时 SQLite 路径。
 
@@ -145,6 +155,8 @@ pnpm run api:import:check
 - [工程原则](docs/ENGINEERING_PRINCIPLES.md)
 - [路线图](docs/ROADMAP.md)
 - [招聘页面采集 Adapter](docs/technical/JOB_CAPTURE_ADAPTER.md)
+- [JD 结构化 AI 分析](docs/technical/JD_AI_ANALYSIS.md)
+- [JD 分析评测状态](docs/evaluation/JD_ANALYSIS_RESULTS.md)
 - [架构决策记录](docs/DECISIONS/README.md)
 
-本地产品边界由 [ADR-008](docs/DECISIONS/ADR-008-local-first-single-user-no-authentication.md) 固定，SQLite 存储由 [ADR-009](docs/DECISIONS/ADR-009-local-sqlite-storage.md) 固定，BOSS/牛客共享采集合同由 [ADR-012](docs/DECISIONS/ADR-012-nowcoder-shared-capture-contract.md) 固定。被移除的历史认证实现和 ADR 可从 annotated tag `pre-local-first-cleanup` 恢复；它们不是当前产品文档。
+本地产品边界由 [ADR-008](docs/DECISIONS/ADR-008-local-first-single-user-no-authentication.md) 固定，SQLite 存储由 [ADR-009](docs/DECISIONS/ADR-009-local-sqlite-storage.md) 固定，BOSS/牛客共享采集合同由 [ADR-012](docs/DECISIONS/ADR-012-nowcoder-shared-capture-contract.md) 固定，可选 JD 分析由 [ADR-013](docs/DECISIONS/ADR-013-jd-structured-ai-analysis.md) 固定。被移除的历史认证实现和 ADR 可从 annotated tag `pre-local-first-cleanup` 恢复；它们不是当前产品文档。

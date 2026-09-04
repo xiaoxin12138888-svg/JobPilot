@@ -1,8 +1,7 @@
 # JobPilot Local Data Model
 
-> 状态：Alembic revision `0001_job_application` 已创建 Phase 3 的 `jobs` 与
-> `applications`。`0002_boss_job_source` 与 `0003_nowcoder_job_source` 分别只扩展 Job source
-> CHECK；没有新业务表。
+> 状态：`0001_job_application` 创建 `jobs`/`applications`，`0002`/`0003` 扩展 Job source，
+> `0004_jd_analysis_records` 新增 Phase 6 的单 Job 当前分析。
 
 ## 1. Storage rules
 
@@ -52,7 +51,23 @@ scheme、host、path，不保存 tracking/session query 或 fragment。所有招
 索引：`(status, updated_at)`。唯一 `job_id` 固定一岗一个 Application。
 `applied_at` 在首次确认进入 applied 时写入，后续用户更正状态不抹除首次投递时间。
 
-## 4. State machine
+## 4. `jd_analysis_records`
+
+| 列 | 类型/约束 |
+| --- | --- |
+| `id` | String(36), PK |
+| `job_id` | String(36), NOT NULL, FK jobs.id ON DELETE CASCADE, UNIQUE |
+| `schema_version` | Integer, NOT NULL, CHECK = 1 |
+| `result_json` | Text, NOT NULL，canonical structured JSON |
+| `source_fingerprint` | String(64), NOT NULL，分析输入 SHA-256 |
+| `created_at` | DateTime, NOT NULL |
+| `updated_at` | DateTime, NOT NULL |
+
+每个 Job 至多一个分析；reanalysis 保留 id/created_at 并更新 result、指纹和 updated_at。指纹只覆盖
+实际发送的 title/company/description/location/salaryText，不包含 notes 或 Application。GET 用当前
+指纹计算 `isStale`，该布尔值不持久化。正式结果始终是 schema version 1 JSON，不拆 skill 表。
+
+## 5. Application state machine
 
 显式允许表（同状态更新为 no-op）：
 
@@ -68,9 +83,9 @@ scheme、host、path，不保存 tracking/session query 或 fragment。所有招
 
 任何目标为 applied 的流转都要求显式确认。不创建 event sourcing 或 audit table。
 
-## 5. Deletion and deferred models
+## 6. Deletion and deferred models
 
-Web 明确确认后真实删除 Job，SQLite 级联其 Application；当前无 archive/restore。
+Web 明确确认后真实删除 Job，SQLite 级联其 Application 与 JD analysis；当前无 archive/restore。
 
-Phase 3 不创建 ResumeVersion、Interview、Document、Evidence、AI result、User、Identity、
-Session 或 LocalProfile。任何新表必须在对应 Phase 获批后设计 migration 与生命周期。
+Phase 6 不创建 ResumeVersion、Interview、Document、Evidence、User、Identity、Session 或
+LocalProfile。任何新表必须在对应 Phase 获批后设计 migration 与生命周期。

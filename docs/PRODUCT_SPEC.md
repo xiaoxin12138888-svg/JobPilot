@@ -1,7 +1,7 @@
 # JobPilot 产品规格
 
-> 状态：Phase 3、Phase 4 与 Phase 5 — Nowcoder Adapter & Shared Capture Contract 已通过。
-> BOSS 与牛客均为 `SUPPORTED — V1`；当前停在 `phase/5-nowcoder-adapter`，Phase 6 尚未获批。
+> 状态：Phase 3、Phase 4 与 Phase 5 已通过，BOSS 与牛客均为 `SUPPORTED — V1`。
+> Phase 6 — JD Structured AI Analysis 已获批并实现本地核心；真实 V1/V2 评测尚未通过。
 
 ## 1. 产品定位
 
@@ -28,6 +28,15 @@ Phase 4/5 新增两条共享同一产品流程的受控入口：
 ```
 
 Popup 打开时只检查本地 API，不自动读取页面。采集失败可打开 JobPilot 手动添加。
+
+Phase 6 在保存后增加一条可选流程：
+
+```text
+岗位详情 -> 用户点击“AI 分析此岗位” -> FastAPI -> 显式配置的 Provider
+-> strict schema/evidence 校验 -> SQLite -> 岗位详情结构化结果
+```
+
+不点击、未配置或分析失败时，原 Job/Application/采集与 JD 查看流程不受影响。
 
 ## 3. Job
 
@@ -86,7 +95,19 @@ Phase 3 Web 包含：
 
 不建设复杂 Dashboard 或拖拽看板。
 
-## 7. 本地与 no-proxy 边界
+## 7. AI 岗位分析
+
+分析结果包含岗位摘要、核心职责、硬性要求、加分项、技能关键词、经验要求、学历要求、
+业务/领域关键词与面试准备重点。缺失信息为空，不允许补全匹配度、Offer 概率或其他伪精确分数。
+
+只发送 title、company、description 与可选 location/salaryText。JD 是不可信数据；其中的指令式
+文本不能改变系统任务。结果必须通过 strict JSON schema 与 evidence 子串检查，非法结果不持久化。
+每个 Job 保存一个当前分析；分析输入发生变化时旧结果保留但显示 stale，重新分析原位更新。
+
+Web 必须覆盖未配置、未分析、分析中、成功、失败和 stale。Evidence 可轻量展开；原始 JD 始终
+可见。Provider 未配置、超时、限流、不可达或 malformed 只影响本区块。
+
+## 8. 本地与 no-proxy 边界
 
 - Web、Extension 与 API 只通过精确 loopback 通信；
 - installed runtime 不依赖账号、云服务、CDN、远程字体/脚本、telemetry、update 或境外 AI；
@@ -97,16 +118,19 @@ Phase 3 Web 包含：
   `Sec-Fetch-Site: none` 组合写入 Job create，其他资源和 Extension ID 不受信任，Extension
   Origin 不加入 CORS；
 - 测试只使用显式临时数据库，不读取、替换或删除 `runtime-data/jobpilot.db`。
+- 外部 LLM 只属于显式启用的可选增强，Key 仅存在 FastAPI 进程环境；Web/Extension 不持有 Key，
+  本地核心不依赖 Provider，也不修改系统或浏览器代理。
 
-## 8. Phase 5 非目标
+## 9. Phase 6 非目标
 
-实习僧、猎聘、国聘 Adapter、通用 Adapter framework、后台/批量爬取、隐藏 API、
-ResumeVersion、Evidence Map、AI/RAG/LLM/Agent、推荐、自动投递、自动联系 HR、云同步、账号、
-认证和多用户均不属于 Phase 5。
+智联、实习僧、猎聘、国聘 Adapter、通用 AI/Adapter framework、ResumeVersion、Evidence Map、
+JD×Resume matching、匹配/推荐/Offer 分数、RAG、embedding、vector DB、upload、Agent/LangChain、
+模拟面试、自动投递、云同步、账号、认证和多用户均不属于 Phase 6。
 
-## 9. 成功标准
+## 10. 成功标准
 
-Phase 5 必须在关闭 VPN/系统/浏览器代理时，从真实牛客岗位详情页完成读取、预览编辑、保存、
-岗位库/详情、原链接、重复识别与重启持久化，并完整回归 BOSS；任何保存都不能创建或改变
-Application。自动化、真实 Chrome、manifest/CSP/network/privacy、loopback/security、代码审查
-和简化门禁必须全部通过。
+Phase 6 必须通过自动 schema/provider/persistence/stale/API/UI/security 测试，并在同一套至少 20
+条、经人工审核的脱敏 gold 数据上真实运行 Prompt V1、记录 Bad Cases、据此修改 V2 并复跑。
+还需对一个真实 BOSS Job 和一个真实牛客 Job 完成人工忠实度验收，同时完整回归采集、
+Job/Application、SQLite restart 与 no-proxy core。没有 Provider 或人工 gold 审核时必须报告
+BLOCKED，不得伪造指标。
