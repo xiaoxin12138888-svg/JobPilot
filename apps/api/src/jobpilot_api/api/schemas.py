@@ -5,8 +5,10 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
+from jobpilot_api.application.jd_analysis import JDAnalysisState
 from jobpilot_api.application.repositories import ApplicationListEntry, JobListEntry
 from jobpilot_api.domain.applications import Application, ApplicationStatus
+from jobpilot_api.domain.jd_analysis import EvidenceItem, JDAnalysis, JDAnalysisRecord
 from jobpilot_api.domain.jobs import Job
 
 
@@ -142,3 +144,92 @@ class ApplicationListResponse(ApiModel):
     total: int
     limit: int
     offset: int
+
+
+class AnalysisCreateRequest(ApiModel):
+    pass
+
+
+class EvidenceItemResponse(ApiModel):
+    text: str
+    evidence: str | None
+
+    @classmethod
+    def from_domain(cls, item: EvidenceItem) -> EvidenceItemResponse:
+        return cls(text=item.text, evidence=item.evidence)
+
+
+class JDAnalysisResultResponse(ApiModel):
+    summary: str
+    responsibilities: list[EvidenceItemResponse]
+    must_have_requirements: list[EvidenceItemResponse]
+    preferred_requirements: list[EvidenceItemResponse]
+    skills: list[str]
+    experience_requirements: list[EvidenceItemResponse]
+    education_requirements: list[EvidenceItemResponse]
+    domain_keywords: list[str]
+    interview_focus: list[EvidenceItemResponse]
+
+    @classmethod
+    def from_domain(cls, result: JDAnalysis) -> JDAnalysisResultResponse:
+        return cls(
+            summary=result.summary,
+            responsibilities=[
+                EvidenceItemResponse.from_domain(item) for item in result.responsibilities
+            ],
+            must_have_requirements=[
+                EvidenceItemResponse.from_domain(item) for item in result.must_have_requirements
+            ],
+            preferred_requirements=[
+                EvidenceItemResponse.from_domain(item) for item in result.preferred_requirements
+            ],
+            skills=list(result.skills),
+            experience_requirements=[
+                EvidenceItemResponse.from_domain(item) for item in result.experience_requirements
+            ],
+            education_requirements=[
+                EvidenceItemResponse.from_domain(item) for item in result.education_requirements
+            ],
+            domain_keywords=list(result.domain_keywords),
+            interview_focus=[
+                EvidenceItemResponse.from_domain(item) for item in result.interview_focus
+            ],
+        )
+
+
+class JDAnalysisRecordResponse(ApiModel):
+    id: str
+    job_id: str
+    schema_version: int
+    result: JDAnalysisResultResponse
+    is_stale: bool
+    created_at: datetime
+    updated_at: datetime
+
+    @classmethod
+    def from_domain(cls, record: JDAnalysisRecord, *, is_stale: bool) -> JDAnalysisRecordResponse:
+        return cls(
+            id=record.id,
+            job_id=record.job_id,
+            schema_version=record.schema_version,
+            result=JDAnalysisResultResponse.from_domain(record.result),
+            is_stale=is_stale,
+            created_at=record.created_at,
+            updated_at=record.updated_at,
+        )
+
+
+class JobAnalysisResponse(ApiModel):
+    is_configured: bool
+    analysis: JDAnalysisRecordResponse | None
+
+    @classmethod
+    def from_state(cls, state: JDAnalysisState) -> JobAnalysisResponse:
+        return cls(
+            is_configured=state.is_configured,
+            analysis=(
+                JDAnalysisRecordResponse.from_domain(state.record, is_stale=state.is_stale)
+                if state.record is not None
+                else None
+            ),
+        )

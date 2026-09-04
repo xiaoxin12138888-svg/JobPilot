@@ -103,6 +103,14 @@ class JDAnalysisRecord:
 
 
 def parse_and_ground_analysis(raw_content: str, description: str) -> JDAnalysis:
+    return _parse_analysis(raw_content, _normalize_text(description))
+
+
+def analysis_from_stored_json(raw_content: str) -> JDAnalysis:
+    return _parse_analysis(raw_content, None)
+
+
+def _parse_analysis(raw_content: str, normalized_description: str | None) -> JDAnalysis:
     try:
         value = json.loads(raw_content)
     except (json.JSONDecodeError, TypeError):
@@ -110,7 +118,6 @@ def parse_and_ground_analysis(raw_content: str, description: str) -> JDAnalysis:
     if not isinstance(value, dict) or frozenset(value) != ANALYSIS_KEYS:
         raise _invalid_response()
 
-    normalized_description = _normalize_text(description)
     return JDAnalysis(
         summary=_string(value["summary"], allow_empty=True),
         responsibilities=_evidence_items(value["responsibilities"], normalized_description),
@@ -132,28 +139,7 @@ def parse_and_ground_analysis(raw_content: str, description: str) -> JDAnalysis:
     )
 
 
-def analysis_from_stored_json(raw_content: str) -> JDAnalysis:
-    return parse_and_ground_analysis(raw_content, _all_evidence(raw_content))
-
-
-def _all_evidence(raw_content: str) -> str:
-    try:
-        value = json.loads(raw_content)
-    except json.JSONDecodeError:
-        return ""
-    if not isinstance(value, dict):
-        return ""
-    evidence: list[str] = []
-    for key in ANALYSIS_KEYS:
-        items = value.get(key)
-        if isinstance(items, list):
-            for item in items:
-                if isinstance(item, dict) and isinstance(item.get("evidence"), str):
-                    evidence.append(item["evidence"])
-    return " ".join(evidence)
-
-
-def _evidence_items(value: Any, description: str) -> tuple[EvidenceItem, ...]:
+def _evidence_items(value: Any, description: str | None) -> tuple[EvidenceItem, ...]:
     if not isinstance(value, list) or len(value) > MAX_ANALYSIS_ITEMS:
         raise _invalid_response()
     result: list[EvidenceItem] = []
@@ -170,7 +156,7 @@ def _evidence_items(value: Any, description: str) -> tuple[EvidenceItem, ...]:
         if raw_evidence is not None and not isinstance(raw_evidence, str):
             raise _invalid_response()
         evidence = _normalize_text(raw_evidence) if raw_evidence else None
-        if evidence and evidence not in description:
+        if evidence and description is not None and evidence not in description:
             evidence = None
         result.append(EvidenceItem(text=text, evidence=evidence))
     return tuple(result)

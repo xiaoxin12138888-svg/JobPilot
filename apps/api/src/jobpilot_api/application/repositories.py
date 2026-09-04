@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from jobpilot_api.domain.applications import Application, ApplicationStatus
+from jobpilot_api.domain.jd_analysis import JDAnalysis, JDAnalysisRecord
 from jobpilot_api.domain.jobs import Job, JobDraft
 
 
@@ -59,3 +60,14 @@ class ApplicationRepository(Protocol):
         limit: int,
         offset: int,
     ) -> tuple[list[ApplicationListEntry], int]: ...
+
+
+class JDAnalysisRepository(Protocol):
+    def get(self, job_id: str) -> JDAnalysisRecord | None: ...
+
+    def upsert(
+        self,
+        job_id: str,
+        result: JDAnalysis,
+        source_fingerprint: str,
+    ) -> JDAnalysisRecord: ...

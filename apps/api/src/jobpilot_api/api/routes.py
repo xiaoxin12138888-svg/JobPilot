@@ -4,19 +4,26 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, Response, status
 
-from jobpilot_api.api.dependencies import get_application_service, get_job_service
+from jobpilot_api.api.dependencies import (
+    get_analysis_service,
+    get_application_service,
+    get_job_service,
+)
 from jobpilot_api.api.schemas import (
+    AnalysisCreateRequest,
     ApplicationCreateRequest,
     ApplicationListItem,
     ApplicationListResponse,
     ApplicationResponse,
     ApplicationUpdateRequest,
+    JobAnalysisResponse,
     JobCreateRequest,
     JobListItem,
     JobListResponse,
     JobResponse,
     JobUpdateRequest,
 )
+from jobpilot_api.application.jd_analysis import JDAnalysisService
 from jobpilot_api.application.services import ApplicationService, JobService
 from jobpilot_api.domain.applications import ApplicationStatus
 from jobpilot_api.domain.jobs import JobDraft
@@ -86,6 +93,23 @@ def delete_job(
 ) -> Response:
     service.delete(job_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/jobs/{job_id}/analysis", response_model=JobAnalysisResponse)
+def get_job_analysis(
+    job_id: str,
+    service: Annotated[JDAnalysisService, Depends(get_analysis_service)],
+) -> JobAnalysisResponse:
+    return JobAnalysisResponse.from_state(service.get(job_id))
+
+
+@router.post("/jobs/{job_id}/analysis", response_model=JobAnalysisResponse)
+def analyze_job(
+    job_id: str,
+    _request: AnalysisCreateRequest,
+    service: Annotated[JDAnalysisService, Depends(get_analysis_service)],
+) -> JobAnalysisResponse:
+    return JobAnalysisResponse.from_state(service.analyze(job_id))
 
 
 @router.post(

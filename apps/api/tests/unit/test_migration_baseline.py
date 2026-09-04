@@ -10,11 +10,11 @@ from jobpilot_api.infrastructure.database.engine import sqlite_database_url
 from jobpilot_api.infrastructure.database.models import Base
 
 
-def test_model_metadata_and_migration_history_contain_only_job_application_tables() -> None:
+def test_model_metadata_and_migration_history_contain_phase_6_business_tables() -> None:
     config = Config("apps/api/alembic.ini")
     script = ScriptDirectory.from_config(config)
 
-    assert set(Base.metadata.tables) == {"jobs", "applications"}
+    assert set(Base.metadata.tables) == {"jobs", "applications", "jd_analysis_records"}
     assert len(script.get_heads()) == 1
 
 
@@ -113,7 +113,7 @@ def test_phase_4_source_migration_preserves_phase_3_data_and_is_reversible(tmp_p
     command.upgrade(config, "head")
     with sqlite3.connect(database_path) as connection:
         version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
-    assert version == ("0003_nowcoder_job_source",)
+    assert version == ("0004_jd_analysis_records",)
 
 
 def test_source_migration_refuses_to_downgrade_while_boss_jobs_exist(tmp_path: Path) -> None:
@@ -194,7 +194,7 @@ def test_phase_5_source_migration_preserves_existing_data_and_is_reversible(
 
     with sqlite3.connect(database_path) as connection:
         version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
-    assert version == ("0003_nowcoder_job_source",)
+    assert version == ("0004_jd_analysis_records",)
 
 
 def test_phase_5_source_migration_refuses_downgrade_while_nowcoder_jobs_exist(
@@ -226,3 +226,41 @@ def test_phase_5_source_migration_refuses_downgrade_while_nowcoder_jobs_exist(
         version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
     assert preserved == ("nowcoder",)
     assert version == ("0003_nowcoder_job_source",)
+
+
+def test_phase_6_analysis_migration_is_reversible_and_cascades(tmp_path: Path) -> None:
+    database_path = tmp_path / "migration" / "jobpilot.db"
+    database_path.parent.mkdir(parents=True)
+    config = Config("apps/api/alembic.ini")
+    config.set_main_option("sqlalchemy.url", sqlite_database_url(database_path).render_as_string())
+    command.upgrade(config, "head")
+
+    with sqlite3.connect(database_path) as connection:
+        connection.execute("PRAGMA foreign_keys=ON")
+        connection.execute(
+            """
+            INSERT INTO jobs (id, title, company, source, created_at, updated_at)
+            VALUES ('job-1', '岗位', '公司', 'manual', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO jd_analysis_records (
+                id, job_id, schema_version, result_json, source_fingerprint,
+                created_at, updated_at
+            ) VALUES (
+                'analysis-1', 'job-1', 1, '{}',
+                'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+                CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+            )
+            """
+        )
+        connection.execute("DELETE FROM jobs WHERE id = 'job-1'")
+        connection.commit()
+        assert connection.execute("SELECT count(*) FROM jd_analysis_records").fetchone()[0] == 0
+
+    command.downgrade(config, "0003_nowcoder_job_source")
+    command.upgrade(config, "head")
+    with sqlite3.connect(database_path) as connection:
+        version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
+    assert version == ("0004_jd_analysis_records",)
