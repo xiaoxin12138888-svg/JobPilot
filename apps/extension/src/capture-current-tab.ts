@@ -1,7 +1,4 @@
-import {
-  captureBossJobFromPage,
-  type BossCaptureResult,
-} from './boss-adapter';
+import { captureBossJobFromPage, type BossCaptureResult } from './boss-adapter';
 
 export async function captureCurrentBossJob(): Promise<BossCaptureResult> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });

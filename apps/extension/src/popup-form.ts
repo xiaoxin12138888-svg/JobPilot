@@ -75,10 +75,7 @@ function formField(
   return label;
 }
 
-function readDraft(
-  form: HTMLFormElement,
-  original: BossJobCaptureDraft,
-): BossJobCaptureDraft {
+function readDraft(form: HTMLFormElement, original: BossJobCaptureDraft): BossJobCaptureDraft {
   const data = new FormData(form);
   return {
     ...original,

@@ -24,9 +24,7 @@ describe('captureBossJobFromPage', () => {
     renderFixture();
 
     const result = requireCapture(
-      captureBossJobFromPage(
-        `${canonicalUrl}?pk=search&ka=list_job&sessionId=do-not-store#apply`,
-      ),
+      captureBossJobFromPage(`${canonicalUrl}?pk=search&ka=list_job&sessionId=do-not-store#apply`),
     );
 
     expect(result).toEqual({
@@ -41,9 +39,7 @@ describe('captureBossJobFromPage', () => {
       },
       warnings: [],
     });
-    expect(JSON.stringify(result)).not.toMatch(
-      /推荐产品经理|350-450元\/天|竞争力分析|sessionId/iu,
-    );
+    expect(JSON.stringify(result)).not.toMatch(/推荐产品经理|350-450元\/天|竞争力分析|sessionId/iu);
   });
 
   it.each([
@@ -72,10 +68,7 @@ describe('captureBossJobFromPage', () => {
 
     expect(result.draft.title).toBe('');
     expect(result.draft.company).toBe('');
-    expect(result.warnings).toEqual([
-      '未识别职位名称，请手动补充',
-      '未识别公司名称，请手动补充',
-    ]);
+    expect(result.warnings).toEqual(['未识别职位名称，请手动补充', '未识别公司名称，请手动补充']);
   });
 
   it('returns warnings when optional fields are absent', () => {

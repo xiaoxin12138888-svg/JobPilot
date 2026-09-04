@@ -83,8 +83,7 @@ export function captureBossJobFromPage(pageUrl = window.location.href): BossCapt
     (element) => singleLine(element.querySelector(':scope > .title')) === '公司基本信息',
   );
   const descriptionSection = [...document.querySelectorAll('.job-detail .job-detail-section')].find(
-    (element) =>
-      singleLine(element.querySelector('.detail-content-header > h3')) === '职位描述',
+    (element) => singleLine(element.querySelector('.detail-content-header > h3')) === '职位描述',
   );
   if (jobPrimary === null || companyCard === undefined || descriptionSection === undefined) {
     return { status: 'unsupported' };
