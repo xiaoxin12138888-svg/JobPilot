@@ -1,29 +1,35 @@
-import { captureBossJobFromPage, type BossCaptureResult } from './boss-adapter';
+import { captureBossJobFromPage } from './boss-adapter';
+import type { JobCapturePlatform, JobCaptureResult } from './job-capture';
+import { captureNowcoderJobFromPage } from './nowcoder-adapter';
 
-export async function captureCurrentBossJob(): Promise<BossCaptureResult> {
+export async function captureCurrentJob(): Promise<JobCaptureResult> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (tab?.id === undefined || tab.url === undefined || !isBossPage(tab.url)) {
+  if (tab?.id === undefined || tab.url === undefined) {
     return { status: 'unsupported' };
   }
+  const platform = platformForUrl(tab.url);
+  if (platform === undefined) return { status: 'unsupported' };
+  const parser = platform === 'boss' ? captureBossJobFromPage : captureNowcoderJobFromPage;
   const results = await chrome.scripting.executeScript({
-    func: captureBossJobFromPage,
+    func: parser,
     target: { tabId: tab.id },
   });
   const result = results[0]?.result;
-  if (result === undefined) throw new Error('BOSS parser returned no result');
+  if (result === undefined) throw new Error('Job parser returned no result');
+  if ('status' in result) return { ...result, platform };
   return result;
 }
 
-function isBossPage(value: string): boolean {
+function platformForUrl(value: string): JobCapturePlatform | undefined {
   try {
     const url = new URL(value);
-    return (
-      ['http:', 'https:'].includes(url.protocol) &&
-      url.hostname === 'www.zhipin.com' &&
-      url.username === '' &&
-      url.password === ''
-    );
+    if (!['http:', 'https:'].includes(url.protocol) || url.username !== '' || url.password !== '') {
+      return undefined;
+    }
+    if (url.hostname === 'www.zhipin.com') return 'boss';
+    if (url.hostname === 'www.nowcoder.com') return 'nowcoder';
+    return undefined;
   } catch {
-    return false;
+    return undefined;
   }
 }

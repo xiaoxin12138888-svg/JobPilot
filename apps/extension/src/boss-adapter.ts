@@ -1,21 +1,6 @@
-export interface BossJobCaptureDraft {
-  company: string;
-  description: string;
-  location: string;
-  salaryText: string;
-  source: 'boss';
-  sourceUrl: string;
-  title: string;
-}
+import type { JobCaptureResult } from './job-capture';
 
-export type BossCaptureResult =
-  | {
-      draft: BossJobCaptureDraft;
-      warnings: string[];
-    }
-  | { status: 'unsupported' };
-
-export function captureBossJobFromPage(pageUrl = window.location.href): BossCaptureResult {
+export function captureBossJobFromPage(pageUrl = window.location.href): JobCaptureResult {
   const singleLine = (element: Element | null): string => {
     const text = visibleText(element);
     return stripControlCharacters(text).replace(/\s+/gu, ' ').trim();
@@ -103,12 +88,12 @@ export function captureBossJobFromPage(pageUrl = window.location.href): BossCapt
     [...companyCard.querySelectorAll('.company-info a')]
       .map((element) => singleLine(element))
       .find(Boolean) ?? '';
-  const draft: BossJobCaptureDraft = {
+  const draft = {
     company,
     description: descriptionText(descriptionSection.querySelector('.job-sec-text')),
     location: singleLine(jobPrimary.querySelector('.text-desc.text-city')),
     salaryText: singleLine(jobPrimary.querySelector('.name > .salary')),
-    source: 'boss',
+    source: 'boss' as const,
     sourceUrl: `${url.protocol}//${url.hostname}${url.pathname}`,
     title: singleLine(jobPrimary.querySelector('.name > h1')),
   };

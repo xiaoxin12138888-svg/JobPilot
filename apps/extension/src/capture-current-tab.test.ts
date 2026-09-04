@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { captureBossJobFromPage } from './boss-adapter';
-import { captureCurrentBossJob } from './capture-current-tab';
+import { captureCurrentJob } from './capture-current-tab';
+import { captureNowcoderJobFromPage } from './nowcoder-adapter';
 
 const capturedResult = {
   draft: {
@@ -21,7 +22,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('captureCurrentBossJob', () => {
+describe('captureCurrentJob', () => {
   it('queries only the active tab and performs one explicit script injection', async () => {
     const query = vi.fn().mockResolvedValue([
       {
@@ -32,12 +33,38 @@ describe('captureCurrentBossJob', () => {
     const executeScript = vi.fn().mockResolvedValue([{ frameId: 0, result: capturedResult }]);
     vi.stubGlobal('chrome', { scripting: { executeScript }, tabs: { query } });
 
-    await expect(captureCurrentBossJob()).resolves.toEqual(capturedResult);
+    await expect(captureCurrentJob()).resolves.toEqual(capturedResult);
     expect(query).toHaveBeenCalledWith({ active: true, currentWindow: true });
     expect(executeScript).toHaveBeenCalledOnce();
     expect(executeScript).toHaveBeenCalledWith({
       func: captureBossJobFromPage,
       target: { tabId: 42 },
+    });
+  });
+
+  it('dispatches a Nowcoder tab to only the NowcoderAdapter', async () => {
+    const nowcoderResult = {
+      draft: {
+        ...capturedResult.draft,
+        source: 'nowcoder',
+        sourceUrl: 'https://www.nowcoder.com/jobs/detail/448241?channel=mainSiteSearch',
+      },
+      warnings: [],
+    } as const;
+    const query = vi.fn().mockResolvedValue([
+      {
+        id: 43,
+        url: nowcoderResult.draft.sourceUrl,
+      },
+    ]);
+    const executeScript = vi.fn().mockResolvedValue([{ frameId: 0, result: nowcoderResult }]);
+    vi.stubGlobal('chrome', { scripting: { executeScript }, tabs: { query } });
+
+    await expect(captureCurrentJob()).resolves.toEqual(nowcoderResult);
+    expect(executeScript).toHaveBeenCalledOnce();
+    expect(executeScript).toHaveBeenCalledWith({
+      func: captureNowcoderJobFromPage,
+      target: { tabId: 43 },
     });
   });
 
@@ -51,7 +78,7 @@ describe('captureCurrentBossJob', () => {
     const executeScript = vi.fn();
     vi.stubGlobal('chrome', { scripting: { executeScript }, tabs: { query } });
 
-    await expect(captureCurrentBossJob()).resolves.toEqual({ status: 'unsupported' });
+    await expect(captureCurrentJob()).resolves.toEqual({ status: 'unsupported' });
     expect(executeScript).not.toHaveBeenCalled();
   });
 
@@ -64,7 +91,7 @@ describe('captureCurrentBossJob', () => {
       .mockResolvedValue([{ frameId: 0, result: { status: 'unsupported' } }]);
     vi.stubGlobal('chrome', { scripting: { executeScript }, tabs: { query } });
 
-    await expect(captureCurrentBossJob()).resolves.toEqual({ status: 'unsupported' });
+    await expect(captureCurrentJob()).resolves.toEqual({ status: 'unsupported', platform: 'boss' });
     expect(executeScript).toHaveBeenCalledOnce();
   });
 
@@ -81,6 +108,6 @@ describe('captureCurrentBossJob', () => {
       },
     });
 
-    await expect(captureCurrentBossJob()).rejects.toThrow('BOSS parser returned no result');
+    await expect(captureCurrentJob()).rejects.toThrow('Job parser returned no result');
   });
 });

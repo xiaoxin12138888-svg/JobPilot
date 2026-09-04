@@ -172,6 +172,35 @@ describe('initializePopup', () => {
     expect(screen.getByText('请确认工作地点')).toBeVisible();
   });
 
+  it('reuses the editable preview and source label for a Nowcoder capture', async () => {
+    const root = renderPopupRoot();
+    const nowcoderJob = {
+      draft: {
+        ...capturedJob.draft,
+        source: 'nowcoder',
+        sourceUrl: 'https://www.nowcoder.com/jobs/detail/448241',
+      },
+      warnings: [],
+    } as const;
+    const capture = captureDependencies({
+      captureCurrentJob: vi.fn().mockResolvedValue(nowcoderJob),
+    });
+    await initializePopup({
+      getHealth: vi.fn().mockResolvedValue(healthyResponse),
+      capture,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '读取当前岗位' }));
+    await waitFor(() => expect(root.dataset.state).toBe('preview'));
+
+    expect(screen.getByText('来源：牛客')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: '保存到 JobPilot' }));
+    await waitFor(() => expect(root.dataset.state).toBe('saved'));
+    expect(capture.createJob).toHaveBeenCalledWith(
+      expect.objectContaining({ source: 'nowcoder', sourceUrl: nowcoderJob.draft.sourceUrl }),
+    );
+  });
+
   it('saves the edited preview and opens only the local Job detail', async () => {
     const root = renderPopupRoot();
     const saveResult = deferred<typeof savedJob>();
@@ -237,7 +266,7 @@ describe('initializePopup', () => {
   it('shows unsupported pages without guessing and opens manual fallback on request', async () => {
     const root = renderPopupRoot();
     const capture = captureDependencies({
-      captureCurrentJob: vi.fn().mockResolvedValue({ status: 'unsupported' }),
+      captureCurrentJob: vi.fn().mockResolvedValue({ status: 'unsupported', platform: 'boss' }),
     });
     await initializePopup({
       getHealth: vi.fn().mockResolvedValue(healthyResponse),
@@ -250,6 +279,25 @@ describe('initializePopup', () => {
     expect(screen.getByText('请先打开一个具体的 BOSS 直聘岗位详情页')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: '打开 JobPilot 手动添加' }));
     expect(capture.openManualFallback).toHaveBeenCalledOnce();
+  });
+
+  it('gives a Nowcoder-specific message for an unsupported Nowcoder page', async () => {
+    const root = renderPopupRoot();
+    const capture = captureDependencies({
+      captureCurrentJob: vi.fn().mockResolvedValue({
+        status: 'unsupported',
+        platform: 'nowcoder',
+      }),
+    });
+    await initializePopup({
+      getHealth: vi.fn().mockResolvedValue(healthyResponse),
+      capture,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '读取当前岗位' }));
+    await waitFor(() => expect(root.dataset.state).toBe('unsupported'));
+
+    expect(screen.getByText('请先打开一个具体的牛客招聘岗位详情页')).toBeVisible();
   });
 
   it('keeps parse errors bounded and allows capture retry', async () => {

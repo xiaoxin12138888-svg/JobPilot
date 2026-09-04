@@ -10,13 +10,13 @@ describe('createManifest', () => {
     expect(createManifest(config)).toEqual({
       manifest_version: 3,
       name: 'JobPilot Extension',
-      description: 'Capture the current BOSS job into the local JobPilot workspace',
+      description: 'Capture the current recruitment job into the local JobPilot workspace',
       version: '0.1.0',
       minimum_chrome_version: '106',
       key: extensionIdentity.publicKey,
       action: {
         default_popup: 'popup.html',
-        default_title: 'Capture current BOSS job',
+        default_title: 'Capture current recruitment job',
       },
       permissions: ['activeTab', 'scripting'],
       host_permissions: ['http://127.0.0.1:8000/*'],

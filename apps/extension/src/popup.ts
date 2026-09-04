@@ -5,7 +5,7 @@ import {
   type Job,
 } from '@jobpilot/api-client';
 
-import type { BossCaptureResult, BossJobCaptureDraft } from './boss-adapter';
+import type { JobCaptureDraft, JobCaptureResult } from './job-capture';
 import { renderPreview } from './popup-form';
 import {
   renderDuplicate,
@@ -19,7 +19,7 @@ import {
 } from './popup-view';
 
 export interface CaptureDependencies {
-  captureCurrentJob(): Promise<BossCaptureResult>;
+  captureCurrentJob(): Promise<JobCaptureResult>;
   closePopup(): void;
   createJob(input: CreateJobInput): Promise<Job>;
   openJobPilot(jobId?: string): void;
@@ -42,7 +42,7 @@ function getPopupRoot(): HTMLElement {
 export async function initializePopup(dependencies: PopupDependencies): Promise<void> {
   const root = getPopupRoot();
   let requestInFlight = false;
-  let currentDraft: BossJobCaptureDraft | undefined;
+  let currentDraft: JobCaptureDraft | undefined;
   let currentWarnings: readonly string[] = [];
   let lastSaveInput: CreateJobInput | undefined;
 
@@ -66,7 +66,7 @@ export async function initializePopup(dependencies: PopupDependencies): Promise<
     try {
       const result = await dependencies.capture.captureCurrentJob();
       if ('status' in result) {
-        renderUnsupported(root, capture, dependencies.capture.openManualFallback);
+        renderUnsupported(root, result.platform, capture, dependencies.capture.openManualFallback);
         return;
       }
       currentDraft = result.draft;
@@ -129,7 +129,7 @@ export async function initializePopup(dependencies: PopupDependencies): Promise<
   await checkHealth();
 }
 
-function toCreateJobInput(draft: BossJobCaptureDraft): CreateJobInput {
+function toCreateJobInput(draft: JobCaptureDraft): CreateJobInput {
   return {
     company: draft.company.trim(),
     description: optionalText(draft.description),

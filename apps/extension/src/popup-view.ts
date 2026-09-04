@@ -1,3 +1,5 @@
+import type { JobCapturePlatform } from './job-capture';
+
 export type PopupState =
   | 'checking'
   | 'available'
@@ -38,7 +40,7 @@ export function renderReady(root: HTMLElement, onCapture: () => Promise<void>): 
     root,
     'ready',
     '可以读取当前岗位',
-    '请确认当前标签是一个具体的 BOSS 直聘岗位详情页。',
+    '请确认当前标签是一个具体的 BOSS 直聘或牛客招聘岗位详情页。',
     [actionButton('读取当前岗位', 'primary-button', () => void onCapture())],
   );
 }
@@ -56,19 +58,20 @@ export function renderUnavailable(root: HTMLElement, retry: () => Promise<void>)
 
 export function renderUnsupported(
   root: HTMLElement,
+  platform: JobCapturePlatform | undefined,
   retry: () => Promise<void>,
   manualFallback: () => void,
 ): void {
-  renderActionState(
-    root,
-    'unsupported',
-    '请先打开一个具体的 BOSS 直聘岗位详情页',
-    '当前页面不会被读取或保存。',
-    [
-      actionButton('重新读取', 'primary-button', () => void retry()),
-      actionButton('打开 JobPilot 手动添加', 'secondary-button', manualFallback),
-    ],
-  );
+  renderActionState(root, 'unsupported', unsupportedTitle(platform), '当前页面不会被读取或保存。', [
+    actionButton('重新读取', 'primary-button', () => void retry()),
+    actionButton('打开 JobPilot 手动添加', 'secondary-button', manualFallback),
+  ]);
+}
+
+function unsupportedTitle(platform: JobCapturePlatform | undefined): string {
+  if (platform === 'boss') return '请先打开一个具体的 BOSS 直聘岗位详情页';
+  if (platform === 'nowcoder') return '请先打开一个具体的牛客招聘岗位详情页';
+  return '请先打开一个具体的 BOSS 直聘或牛客招聘岗位详情页';
 }
 
 export function renderParseError(

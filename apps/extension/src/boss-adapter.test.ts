@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { captureBossJobFromPage, type BossCaptureResult } from './boss-adapter';
+import { captureBossJobFromPage } from './boss-adapter';
+import type { JobCaptureResult } from './job-capture';
 import validBossJobDetail from './fixtures/boss-job-detail.html?raw';
 
 const canonicalUrl = 'https://www.zhipin.com/job_detail/fixture_123.html';
@@ -9,7 +10,7 @@ function renderFixture(html = validBossJobDetail): void {
   document.body.innerHTML = html;
 }
 
-function requireCapture(result: BossCaptureResult) {
+function requireCapture(result: JobCaptureResult) {
   expect(result).not.toHaveProperty('status');
   if ('status' in result) throw new Error('Expected a captured BOSS job');
   return result;

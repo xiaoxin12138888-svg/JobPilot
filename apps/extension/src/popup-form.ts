@@ -1,4 +1,6 @@
-import type { BossJobCaptureDraft } from './boss-adapter';
+import { JOB_SOURCE_LABELS } from '@jobpilot/api-client';
+
+import type { JobCaptureDraft } from './job-capture';
 import { actionButton, setRootState, statusText } from './popup-view';
 
 type EditableField = 'title' | 'company' | 'location' | 'salaryText' | 'description';
@@ -13,17 +15,17 @@ const MAX_LENGTHS: Readonly<Record<EditableField, number>> = {
 
 export function renderPreview(
   root: HTMLElement,
-  draft: BossJobCaptureDraft,
+  draft: JobCaptureDraft,
   warnings: readonly string[],
   validationMessage: string | undefined,
-  onSave: (draft: BossJobCaptureDraft) => void,
+  onSave: (draft: JobCaptureDraft) => void,
 ): void {
   setRootState(root, 'preview');
   const form = document.createElement('form');
   form.className = 'capture-form';
   form.append(
     statusText('确认岗位信息', 'status-title'),
-    statusText('来源：BOSS直聘', 'source-label'),
+    statusText(`来源：${JOB_SOURCE_LABELS[draft.source]}`, 'source-label'),
     formField('职位名称', 'title', draft.title, true),
     formField('公司', 'company', draft.company, true),
     formField('地点', 'location', draft.location),
@@ -75,7 +77,7 @@ function formField(
   return label;
 }
 
-function readDraft(form: HTMLFormElement, original: BossJobCaptureDraft): BossJobCaptureDraft {
+function readDraft(form: HTMLFormElement, original: JobCaptureDraft): JobCaptureDraft {
   const data = new FormData(form);
   return {
     ...original,
