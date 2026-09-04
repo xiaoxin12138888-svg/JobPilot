@@ -1,4 +1,73 @@
-# Implementation Plan: Phase 4 — BOSS Direct Job Capture
+# Implementation Plan: Phase 5 — Nowcoder Adapter & Shared Capture Contract
+
+> Owner-approved on 2026-09-04. Phase 6 is not authorized.
+
+## Objective
+
+Add one user-triggered Nowcoder Job-detail capture path to the existing Extension, Job API and Web
+library, then compare it with the supported BOSS V1 Adapter and extract only proven shared capture
+behavior. Do not add another platform, crawling, automatic submission, hidden APIs, AI/RAG, proxy
+changes, telemetry or remote runtime dependencies.
+
+## Frozen contract
+
+- Job sources are `manual`, `boss`, and the new `nowcoder`; UI labels are “手动录入”, “BOSS直聘”,
+  and “牛客”. No Job field or business table is added.
+- Both platform Adapters return one `JobCaptureDraft`: `source`, current-tab `sourceUrl`, `title`,
+  `company`, `location`, `salaryText`, plain-text `description`, plus Extension-only `warnings`.
+- BOSS-specific responsibility remains its hostname/path/DOM detection and selectors. Nowcoder owns
+  its independently verified hostname/path/DOM detection and selectors.
+- Platform-independent candidates are only the result contract, visible-text cleanup and warning
+  semantics. They may be extracted only after both Adapters exist and the review proves duplication.
+- Popup-specific behavior remains health, explicit read, preview/edit, source label, save, duplicate,
+  retry and manual fallback. API/domain-specific behavior remains validation, URL canonicalization,
+  duplicate detection, persistence and Application invariants.
+- The active tab uses a small explicit BOSS/Nowcoder dispatch; no factory, registry, DI container,
+  plugins, empty Adapters or persistent content scripts.
+- Permissions remain exactly `activeTab`, `scripting`, and the exact loopback API host. Stable
+  Extension ID and exact mutation Origin/Fetch-Metadata gate remain unchanged.
+- Save reuses `POST /api/v1/jobs`. The server canonicalizes supported platform URLs and SQLite owns
+  duplicate uniqueness. Save/open-source never creates or mutates an Application.
+- Nowcoder selectors must be based on a real user-opened current Job page with all proxies/VPN off.
+  Until real end-to-end acceptance passes, Nowcoder stays `NOT SUPPORTED`.
+
+## Ordered work
+
+1. Freeze ADR-012, this plan, responsibility classification, permission/privacy and Phase 6 stop.
+2. RED/GREEN `nowcoder` source validation, URL rules, shared types/client/Web label, and a reversible
+   SQLite CHECK migration; prove manual/BOSS/Application regression.
+3. Ask the project owner to keep one real Nowcoder Job detail page open with VPN/proxy off; inspect
+   only the minimum rendered DOM evidence needed for selectors.
+4. RED/GREEN `NowcoderAdapter` and explicit dual-platform current-tab dispatch with sanitized minimal
+   fixtures and fail-closed unsupported behavior.
+5. Reuse the existing Popup preview/save/error/duplicate flow and make only platform-neutral copy and
+   source-label changes.
+6. Run Shared Adapter Review; extract only demonstrated stable common contract/helpers and preserve
+   platform-specific detection/selectors.
+7. Run locked installs, all TypeScript/Python gates, builds, migration cycles, artifact/security/
+   permission scans, SQLite persistence, and `git diff --check`.
+8. Run user-assisted real Chrome Nowcoder acceptance, BOSS regression, no-proxy/network/privacy
+   checks, duplicate/original-link/zero-Application/restart checks.
+9. Resolve Critical/Required review findings, simplify, synchronize canonical docs, and stop before
+   Phase 6.
+
+## Phase 5 checkpoints and stop conditions
+
+- Contract checkpoint: Phase 5 boundaries are committed before implementation.
+- Backend checkpoint: source/migration/client/Web tests pass with manual/BOSS/Application regression.
+- Capture checkpoint: live-DOM-informed Adapter and multi-platform dispatch tests pass.
+- Final checkpoint: real no-proxy Nowcoder and BOSS flows pass; review is Critical 0 / Required 0;
+  tracked worktree is clean except untouched `操作手册.txt`.
+- If a real current Nowcoder page cannot be observed, do not guess selectors; report
+  `USER ACTION REQUIRED` and keep Nowcoder unsupported.
+- If `activeTab` + `scripting` is insufficient, stop before any permission change.
+- If the real flow requires proxy/VPN, hidden API, remote parser or over-collection, keep Nowcoder
+  `NOT SUPPORTED`.
+- Do not begin Phase 6 without explicit owner approval.
+
+---
+
+# Historical Plan: Phase 4 — BOSS Direct Job Capture
 
 > Owner-approved on 2026-09-03. Phase 5 is not authorized.
 > Completed and accepted on 2026-09-04. Stop before Phase 5.

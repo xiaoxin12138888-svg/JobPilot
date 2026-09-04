@@ -1,4 +1,51 @@
-# Phase 4 — BOSS Direct Job Capture Checklist
+# Phase 5 — Nowcoder Adapter & Shared Capture Contract Checklist
+
+## Contract and safety
+
+- [x] Receive explicit Phase 5 approval and branch from clean Phase 4 HEAD.
+- [x] Preserve `操作手册.txt`, runtime SQLite data, Phase 4 history and BOSS `SUPPORTED — V1`.
+- [x] Audit BossAdapter responsibilities as platform-specific, shared-candidate, Popup and API/domain.
+- [x] Freeze ADR-012, fields, permissions/privacy, acceptance and Phase 6 stop boundary.
+- [ ] Keep other platforms, AI/RAG, automation, crawling, hidden APIs and proxy changes out.
+
+## Backend, client and Web
+
+- [ ] RED/GREEN `manual|boss|nowcoder` source and strict Nowcoder source-URL validation.
+- [ ] Add/test a minimal reversible source CHECK migration using temporary databases only.
+- [ ] Preserve server-side URL canonicalization, duplicate handling and zero-Application behavior.
+- [ ] Extend shared types/api-client runtime validation and Web source label without redesigning UI.
+- [ ] Prove manual/BOSS Job and Application regressions remain green.
+
+## Real DOM evidence and Adapter
+
+- [ ] Observe one real current Nowcoder Job detail page with VPN/system/browser proxy off.
+- [ ] RED/GREEN strict Nowcoder hostname + detail-page + rendered DOM detection.
+- [ ] RED/GREEN title, company, location, salary, description and warning behavior.
+- [ ] Cover unsupported pages, non-Nowcoder, malformed URL, missing fields, whitespace and plain text.
+- [ ] Commit only a minimal sanitized DOM fixture; never full HTML, account data, chats, HAR or tokens.
+
+## Extension and shared review
+
+- [ ] Keep exact existing manifest permissions, stable ID, CSP and loopback mutation gate.
+- [ ] Add explicit BOSS/Nowcoder/unknown dispatch without factory/registry/plugins.
+- [ ] Reuse one Popup preview/edit/save/duplicate/error/retry/manual-fallback flow for both platforms.
+- [ ] Run Shared Adapter Review after both Adapters; extract only proven common contract/helpers.
+- [ ] Prove no save/open-source path creates or updates an Application.
+
+## Acceptance
+
+- [ ] Run frozen/locked installs, all tests, lint, format, typecheck, builds and API import/startup.
+- [ ] Run migration upgrade/downgrade/upgrade, persistence and duplicate checks on safe DBs.
+- [ ] Run artifact/CSP/secret/remote/network/permission/DOM-log scans.
+- [ ] Run real Chrome Nowcoder read/preview/save/library/detail/duplicate/original-link/restart flow.
+- [ ] Run real Chrome BOSS read/preview/save-or-duplicate/library regression.
+- [ ] Verify all real flows with VPN/system/browser proxy off.
+- [ ] Run code review to Critical 0 / Required 0 and execute simplification findings.
+- [ ] Synchronize canonical docs, commit coherent increments, and stop before Phase 6.
+
+---
+
+# Historical Phase 4 — BOSS Direct Job Capture Checklist
 
 ## Contract and safety
 
