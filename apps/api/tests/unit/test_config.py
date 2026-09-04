@@ -69,6 +69,7 @@ def test_api_settings_reject_duplicate_cors_origins() -> None:
         "https://web.example.invalid",
         "chrome-extension://not-a-valid-extension-id",
         "chrome-extension://abcdefghijklmnopabcdefghijklmnop",
+        "chrome-extension://lgchonbleblfegkckndaaandoaekmgjf",
     ],
 )
 def test_api_settings_reject_nonlocal_cors_origins(origin: str) -> None:

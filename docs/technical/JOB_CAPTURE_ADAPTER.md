@@ -13,6 +13,11 @@ Opening the Popup checks only `GET /health`. A second explicit click obtains the
 the parser once with `chrome.scripting.executeScript`. The manifest uses `activeTab`, `scripting` and
 the exact `http://127.0.0.1:8000/*` host permission. There is no BOSS host permission, `tabs`
 permission, background worker, registered content script, page listener, crawler, or timer.
+The manifest also carries a public key that fixes the unpacked Extension ID to
+`lgchonbleblfegkckndaaandoaekmgjf`; the API mutation gate permits that identity only for
+`POST /api/v1/jobs` and requires its exact Origin with `Sec-Fetch-Site: none`. The key is public
+identity material, not a private signing key or secret, and the Extension Origin is not added to the
+Web CORS allowlist.
 
 ## DOM read rules
 

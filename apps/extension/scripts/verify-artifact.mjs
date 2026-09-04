@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const API_LOOPBACK_ORIGIN = 'http://127.0.0.1:8000';
 const WEB_LOOPBACK_ORIGIN = 'http://127.0.0.1:5173';
+const EXPECTED_EXTENSION_ID = 'lgchonbleblfegkckndaaandoaekmgjf';
 const EXPECTED_CSP =
   "default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; " +
   `connect-src ${API_LOOPBACK_ORIGIN}; base-uri 'none'`;
@@ -42,6 +44,12 @@ assert.equal(manifest.action?.default_popup, 'popup.html');
 assert.deepEqual(manifest.permissions, ['activeTab', 'scripting']);
 assert.deepEqual(manifest.host_permissions, [`${API_LOOPBACK_ORIGIN}/*`]);
 assert.equal(manifest.content_security_policy?.extension_pages, EXPECTED_CSP);
+const extensionId = [...createHash('sha256').update(Buffer.from(manifest.key, 'base64')).digest()]
+  .slice(0, 16)
+  .flatMap((byte) => [byte >> 4, byte & 0x0f])
+  .map((nibble) => String.fromCharCode('a'.charCodeAt(0) + nibble))
+  .join('');
+assert.equal(extensionId, EXPECTED_EXTENSION_ID, 'Extension public key changed its fixed ID');
 
 for (const forbiddenKey of [
   'optional_permissions',

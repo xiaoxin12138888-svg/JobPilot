@@ -93,6 +93,9 @@ Phase 3 Web 包含：
 - JobPilot API 不请求或代理招聘网站；
 - Extension 使用 `activeTab` + `scripting` 在用户点击后对当前 tab 执行一次只读解析；没有
   BOSS host permission、`tabs` permission、background 或常驻 content script；
+- Extension Manifest 通过可公开公钥固定 ID；API 只允许该精确 Extension Origin 与
+  `Sec-Fetch-Site: none` 组合写入 Job create，其他资源和 Extension ID 不受信任，Extension
+  Origin 不加入 CORS；
 - 测试只使用显式临时数据库，不读取、替换或删除 `runtime-data/jobpilot.db`。
 
 ## 8. Phase 4 非目标

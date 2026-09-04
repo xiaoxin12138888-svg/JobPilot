@@ -58,6 +58,8 @@ Alembic revision `0001_job_application` 只创建 `jobs` 和 `applications`。Ap
 - CORS 只允许精确配置的 Web origin、无 credentials、无 wildcard/regex；
 - 写请求 Host 必须是 loopback；
 - 浏览器 cross-site Origin 或 `Sec-Fetch-Site: cross-site` 写入被拒绝；
+- Manifest 公开公钥把 JobPilot Extension 固定为 `lgchonbleblfegkckndaaandoaekmgjf`；扩展只可
+  写入 `POST /api/v1/jobs`，并要求该精确 Origin 与 `Sec-Fetch-Site: none`，且不加入 CORS；
 - POST/PATCH 只接受 `application/json`；
 - SQLite locked/busy 映射为不泄漏内部信息的 `503 DATABASE_BUSY`；
 - request ID 与统一错误信封覆盖 validation、domain 和 framework error。

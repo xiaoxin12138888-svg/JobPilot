@@ -13,10 +13,15 @@ def test_cors_allows_only_the_configured_exact_origin_without_credentials() -> N
         "/health",
         headers={"Origin": "http://localhost:5173"},
     )
+    extension = client.get(
+        "/health",
+        headers={"Origin": "chrome-extension://lgchonbleblfegkckndaaandoaekmgjf"},
+    )
 
     assert allowed.headers["access-control-allow-origin"] == origin
     assert "access-control-allow-credentials" not in allowed.headers
     assert "access-control-allow-origin" not in near_miss.headers
+    assert "access-control-allow-origin" not in extension.headers
 
 
 def test_cors_preflight_allows_only_phase_3_methods_and_is_credential_free() -> None:

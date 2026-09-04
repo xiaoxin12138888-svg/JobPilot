@@ -234,6 +234,89 @@ def test_browser_writes_reject_cross_site_origin_and_non_json_body(client: TestC
     assert non_json.json()["error"]["code"] == "JSON_REQUIRED"
 
 
+def test_browser_write_accepts_exact_jobpilot_extension_origin_with_none_fetch_site(
+    client: TestClient,
+) -> None:
+    response = client.post(
+        "/api/v1/jobs",
+        headers={
+            "Origin": "chrome-extension://lgchonbleblfegkckndaaandoaekmgjf",
+            "Sec-Fetch-Site": "none",
+        },
+        json={"title": "岗位", "company": "公司"},
+    )
+
+    assert response.status_code == 201
+
+
+@pytest.mark.parametrize(
+    "origin",
+    [
+        "chrome-extension://abcdefghijklmnopabcdefghijklmnop",
+        "chrome-extension://not-a-valid-extension-id",
+    ],
+)
+def test_browser_writes_reject_other_or_malformed_extension_origins(
+    client: TestClient, origin: str
+) -> None:
+    response = client.post(
+        "/api/v1/jobs",
+        headers={"Origin": origin, "Sec-Fetch-Site": "none"},
+        json={"title": "岗位", "company": "公司"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "LOCAL_WRITE_FORBIDDEN"
+
+
+@pytest.mark.parametrize("fetch_site", [None, "same-origin", "same-site", "cross-site"])
+def test_browser_writes_require_none_fetch_site_for_jobpilot_extension(
+    client: TestClient, fetch_site: str | None
+) -> None:
+    headers = {"Origin": "chrome-extension://lgchonbleblfegkckndaaandoaekmgjf"}
+    if fetch_site is not None:
+        headers["Sec-Fetch-Site"] = fetch_site
+    response = client.post(
+        "/api/v1/jobs",
+        headers=headers,
+        json={"title": "岗位", "company": "公司"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "LOCAL_WRITE_FORBIDDEN"
+
+
+def test_browser_write_preserves_allowed_loopback_web_origin(client: TestClient) -> None:
+    response = client.post(
+        "/api/v1/jobs",
+        headers={
+            "Origin": "http://127.0.0.1:5173",
+            "Sec-Fetch-Site": "same-site",
+        },
+        json={"title": "岗位", "company": "公司"},
+    )
+
+    assert response.status_code == 201
+
+
+def test_jobpilot_extension_origin_cannot_mutate_other_api_resources(
+    client: TestClient,
+) -> None:
+    job = _create_job(client, source_url=None)
+
+    response = client.post(
+        f"/api/v1/jobs/{job['id']}/application",
+        headers={
+            "Origin": "chrome-extension://lgchonbleblfegkckndaaandoaekmgjf",
+            "Sec-Fetch-Site": "none",
+        },
+        json={},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "LOCAL_WRITE_FORBIDDEN"
+
+
 def test_writes_reject_a_non_loopback_host(client: TestClient) -> None:
     response = client.post(
         "/api/v1/jobs",

@@ -101,7 +101,15 @@ pnpm run build:extension
 
 在 Chrome/Chromium 扩展管理页开启 Developer mode，选择 **Load unpacked**，并指向 `apps/extension/dist`。Popup 打开时只检查精确的 `http://127.0.0.1:8000/health`；用户随后明确点击时，开发中的 Phase 4 流程才会读取当前 BOSS 岗位详情页并显示可编辑预览。
 
-Extension 通过 manifest 中精确的 `http://127.0.0.1:8000/*` host permission 直接读取 health，不需要也不允许把 Extension ID 加到 API CORS。API CORS 仅服务精确的 loopback Web origin。
+Manifest 提交的 `key` 只是可公开的扩展公钥，不包含私钥或 secret；它让 GitHub 源码用户通过
+**Load unpacked** 得到固定 ID `lgchonbleblfegkckndaaandoaekmgjf`。如果此前加载过不含该 key
+的旧构建，应先在扩展管理页移除旧项，再重新 Load unpacked，并核对显示的 ID。
+
+Extension 通过 manifest 中精确的 `http://127.0.0.1:8000/*` host permission 直接读取 health。
+API 写入 gate 只为 `POST /api/v1/jobs` 额外接受精确 Origin
+`chrome-extension://lgchonbleblfegkckndaaandoaekmgjf` 与 `Sec-Fetch-Site: none` 的组合；其他
+合法或畸形 Extension ID 均拒绝。该 Origin 不加入 CORS；API CORS 仍仅服务精确的 loopback
+Web origin。
 
 ## Local configuration
 

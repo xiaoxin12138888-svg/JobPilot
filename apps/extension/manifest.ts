@@ -1,4 +1,5 @@
 import type { ExtensionConfig } from './src/config.ts';
+import extensionIdentity from './extension-public-key.json' with { type: 'json' };
 
 export function createManifest(config: ExtensionConfig): chrome.runtime.ManifestV3 {
   return {
@@ -7,6 +8,7 @@ export function createManifest(config: ExtensionConfig): chrome.runtime.Manifest
     description: 'Capture the current BOSS job into the local JobPilot workspace',
     version: '0.1.0',
     minimum_chrome_version: '106',
+    key: extensionIdentity.publicKey,
     action: {
       default_popup: 'popup.html',
       default_title: 'Capture current BOSS job',

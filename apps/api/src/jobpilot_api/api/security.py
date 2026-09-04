@@ -8,6 +8,7 @@ from jobpilot_api.api.errors import public_error_response
 from jobpilot_api.config import ApiSettings
 
 UNSAFE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+JOBPILOT_EXTENSION_ORIGIN = "chrome-extension://lgchonbleblfegkckndaaandoaekmgjf"
 
 
 def install_local_write_middleware(application: FastAPI, settings: ApiSettings) -> None:
@@ -22,8 +23,14 @@ def install_local_write_middleware(application: FastAPI, settings: ApiSettings) 
             )
         origin = request.headers.get("origin")
         fetch_site = request.headers.get("sec-fetch-site", "").lower()
+        is_jobpilot_extension = (
+            origin == JOBPILOT_EXTENSION_ORIGIN
+            and fetch_site == "none"
+            and request.method == "POST"
+            and request.url.path == "/api/v1/jobs"
+        )
         if (
-            origin is not None and origin not in settings.cors_origins
+            origin is not None and origin not in settings.cors_origins and not is_jobpilot_extension
         ) or fetch_site == "cross-site":
             return public_error_response(
                 request, 403, "LOCAL_WRITE_FORBIDDEN", "Cross-site writes are not allowed"

@@ -26,6 +26,7 @@
 ## Extension and Web
 
 - [x] Add only `activeTab` and `scripting`; keep exact loopback host permission and no content script.
+- [x] Fix the unpacked Extension ID with a public manifest key and allow only its exact write Origin.
 - [x] RED/GREEN health, ready, parsing, preview/edit, warning, saving, saved, duplicate, failure, retry.
 - [x] Use the shared api-client and existing Job creation endpoint/service.
 - [x] Open the local Web detail using only the saved Job ID; manual fallback opens manual add.

@@ -11,6 +11,9 @@ session 或用户 endpoint。客户端请求使用 `credentials: omit`、`cache:
 
 写入还要求 loopback Host、安全的 Origin/Fetch Metadata 与 `application/json`。
 CORS 只列精确 Web origin 和 `GET, POST, PATCH, DELETE`，不允许 credentials。
+JobPilot Extension 只可写入 `POST /api/v1/jobs`，并要求精确 Origin
+`chrome-extension://lgchonbleblfegkckndaaandoaekmgjf` 与 `Sec-Fetch-Site: none`；该 Origin
+不属于 CORS allowlist，其他 Chrome Extension ID 即使格式合法也不受信任。
 
 ## 2. Health
 

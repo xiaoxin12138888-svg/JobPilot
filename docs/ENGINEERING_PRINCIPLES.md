@@ -28,6 +28,8 @@
 - bundle 不执行远程 JavaScript，不下载 CDN 资源，不发送 telemetry，不修改代理；
 - 仅使用 `activeTab`、`scripting` 与精确 loopback host；没有 background、常驻 content
   script、`tabs` permission、storage、identity 或 recruitment host permission；
+- Manifest `key` 只能包含可公开公钥以固定 Extension ID；不得提交私钥或 secret。API 只精确
+  接受该 JobPilot Extension Origin 与安全 Fetch Metadata，不信任其他合法 Extension ID；
 - page capture 必须是明确用户手势、当前页面、一次性只读 DOM parser 和最小返回 schema。
 
 ### API
@@ -51,6 +53,7 @@
 - SQLite connections 启用 foreign keys 与有界 busy timeout；当前保留 rollback journal，WAL 必须由实测需要驱动；
 - 操作系统账户与文件权限保护本地静态数据；
 - CORS 是浏览器边界，不是本机恶意进程认证；
+- Extension Origin 不加入 Web CORS allowlist；扩展写入身份由固定 ID 的精确 Origin gate 约束；
 - DOM、粘贴文本、URL、文件和所有外部响应均为不可信输入；
 - 日志不得记录简历正文、完整 JD、文件内容、本机 secret 或未脱敏外部 payload。
 
