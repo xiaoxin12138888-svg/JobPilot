@@ -1,6 +1,6 @@
 # JobPilot API Contract
 
-> 状态：`GET /health`、Job/Application 与 Phase 4 BOSS capture 所复用的 Job contract 已冻结。
+> 状态：`GET /health`、Job/Application 与 BOSS/牛客 capture 共用的 Job contract 已冻结。
 > JSON 字段使用 camelCase。
 
 ## 1. Runtime boundary
@@ -42,10 +42,11 @@ JobPilot Extension 只可写入 `POST /api/v1/jobs`，并要求精确 Origin
 }
 ```
 
-`title`、`company` 必填；其他字段可为 null/省略，source 可为 `manual` 或 `boss`。`boss`
-必须携带属于受支持 BOSS 岗位详情页的 HTTP/HTTPS `sourceUrl`。成功为 201。Web 手动录入与
-Extension BOSS capture 均进入此 endpoint 和同一个 Job service；不存在 capture 专用保存接口。
-服务端会把 BOSS `sourceUrl` 规范化为 scheme、精确 `www.zhipin.com` hostname 与岗位详情 path，
+`title`、`company` 必填；其他字段可为 null/省略，source 可为 `manual`、`boss` 或 `nowcoder`。
+`boss` 必须携带精确 `www.zhipin.com/job_detail/{id}.html` 岗位详情 URL；`nowcoder` 必须携带
+精确 `www.nowcoder.com/jobs/detail/{numeric-id}` 岗位详情 URL。成功为 201。Web 手动录入与
+两个 Extension Adapter 均进入此 endpoint 和同一个 Job service；不存在 capture 专用保存接口。
+服务端会严格校验平台 hostname/path，并把 BOSS/牛客 `sourceUrl` 都规范化为 scheme、host、path，
 不保存 query 或 fragment；因此同一岗位的不同 tracking/session query 返回相同的 409 重复结果。
 `manual` URL 继续保留有意义的 query。
 
@@ -54,7 +55,7 @@ Extension BOSS capture 均进入此 endpoint 和同一个 Job service；不存�
 Query：
 
 - `keyword`：title/company/location 简单包含匹配，最多 200 字符；
-- `source=manual|boss`；
+- `source=manual|boss|nowcoder`；
 - `applicationStatus`：正式 Application status；
 - `limit`：默认 50，1–100；
 - `offset`：默认 0，非负。
@@ -125,8 +126,8 @@ Application response 字段为：`id`、`jobId`、`status`、`appliedAt`、
 }
 ```
 
-`resourceId` 仅在能安全标识相关本地资源时出现。BOSS 重复 URL 的 409 使用它指向已有 Job，
-便于 Extension 打开本机详情；其他错误保持原有三字段 envelope。
+`resourceId` 仅在能安全标识相关本地资源时出现。BOSS/牛客重复 URL 的 409 使用它指向已有
+Job，便于 Extension 打开本机详情；其他错误保持原有三字段 envelope。
 
 主要状态：
 

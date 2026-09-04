@@ -1,8 +1,8 @@
 # JobPilot Local Data Model
 
 > 状态：Alembic revision `0001_job_application` 已创建 Phase 3 的 `jobs` 与
-> `applications`。Phase 4 contract 由 `0002_boss_job_source` 仅扩展 Job source CHECK；没有
-> 新业务表。
+> `applications`。`0002_boss_job_source` 与 `0003_nowcoder_job_source` 分别只扩展 Job source
+> CHECK；没有新业务表。
 
 ## 1. Storage rules
 
@@ -22,7 +22,7 @@
 | `company` | String(200), NOT NULL |
 | `location` | String(300), nullable |
 | `salary_text` | String(300), nullable |
-| `source` | String(32), NOT NULL, CHECK IN (`manual`, `boss`) |
+| `source` | String(32), NOT NULL, CHECK IN (`manual`, `boss`, `nowcoder`) |
 | `source_url` | String(2048), nullable |
 | `normalized_source_url` | String(2048), nullable, UNIQUE |
 | `description` | Text, nullable |
@@ -32,9 +32,11 @@
 
 索引：`updated_at`、`source`。SQLite UNIQUE 允许多个 NULL，因此无 URL Job 不做去重。
 规范化 URL 只接受 HTTP/HTTPS、无 userinfo；lowercase scheme/host、去默认端口和 fragment。
-`manual` 保留 path/query，原始 `source_url` 供用户打开。`boss` 来源还要求 URL 属于精确
-`www.zhipin.com/job_detail/{id}.html`，并把 `source_url` 与去重字段都收敛到 scheme、host、path，
-不保存 tracking/session query 或 fragment。所有招聘页面字段只作为有长度边界、去明显控制字符的纯文本保存。
+`manual` 保留 path/query，原始 `source_url` 供用户打开。`boss` 来源要求 URL 属于精确
+`www.zhipin.com/job_detail/{id}.html`；`nowcoder` 来源要求 URL 属于精确
+`www.nowcoder.com/jobs/detail/{numeric-id}`。两个平台来源都会把 `source_url` 与去重字段收敛到
+scheme、host、path，不保存 tracking/session query 或 fragment。所有招聘页面字段只作为有
+长度边界、去明显控制字符的纯文本保存。
 
 ## 3. `applications`
 

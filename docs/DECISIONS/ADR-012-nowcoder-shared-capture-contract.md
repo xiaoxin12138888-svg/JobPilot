@@ -59,4 +59,3 @@ Phase 4 已用一个用户主动触发的 `BossAdapter` 验证从当前招聘岗
 - 固定 Extension ID、精确 Origin、Sec-Fetch-Site、loopback Host、JSON-only、no credentials、
   no-proxy、no telemetry 和 no remote dependency 安全边界保持不变。
 - Phase 6 与其他招聘平台仍需负责人另行批准。
-

@@ -2,6 +2,9 @@
 
 > Owner-approved on 2026-09-04. Phase 6 is not authorized.
 
+> Completed and accepted on 2026-09-04. BOSS and Nowcoder are `SUPPORTED — V1`; stop before
+> Phase 6.
+
 ## Objective
 
 Add one user-triggered Nowcoder Job-detail capture path to the existing Extension, Job API and Web
@@ -64,6 +67,20 @@ changes, telemetry or remote runtime dependencies.
 - If the real flow requires proxy/VPN, hidden API, remote parser or over-collection, keep Nowcoder
   `NOT SUPPORTED`.
 - Do not begin Phase 6 without explicit owner approval.
+
+## Completion evidence
+
+- Real Nowcoder page `https://www.nowcoder.com/jobs/detail/448241` passed page detection, field
+  parsing, editable preview, first save, local Job detail, original URL, duplicate handling and API
+  restart persistence with VPN/system/browser proxy off.
+- Persisted Job `715302b0-f6e5-402f-90d3-4f15926626bb` uses canonical queryless source URL; SQLite
+  contains one Nowcoder row and zero Applications for it.
+- The project owner confirmed the full BOSS regression passed.
+- Shared review extracted the draft/result contract, explicit dispatch, Popup/save/duplicate flow and
+  source labels. Platform detection/selectors and self-contained injected DOM helpers remain local to
+  each Adapter; no factory or registry was added.
+- Locked installs, 113 TypeScript tests, 102 Python tests, lint, format, typecheck, builds, API import,
+  migration, artifact/permission/CSP/secret/remote-runtime and Git checks passed.
 
 ---
 

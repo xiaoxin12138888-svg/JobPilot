@@ -1,6 +1,6 @@
 # JobPilot 总体架构
 
-> 状态：ADR-008 至 ADR-011 Accepted。Phase 4 contract 已冻结并保持 local-first、
+> 状态：ADR-008 至 ADR-012 Accepted。Phase 5 contract 已验收并保持 local-first、
 > single-user、no-account、SQLite。
 
 ## 1. 运行时
@@ -9,7 +9,7 @@
 flowchart LR
     U[用户]
     W[React Web]
-    E[Chrome Extension BOSS capture Popup]
+    E[Chrome Extension Job capture Popup]
     C[packages/api-client]
     A[FastAPI 127.0.0.1:8000]
     S[(runtime-data/jobpilot.db)]
@@ -32,7 +32,7 @@ SQLite；`GET /health` 仍不连接数据库。Web 与 Extension 永不直连 SQ
 
 ```text
 apps/web                 岗位库、手动录入、详情与投递跟踪
-apps/extension           BOSS 页面识别、一次性只读 Adapter、确认编辑 Popup
+apps/extension           BOSS/牛客页面分派、一次性只读 Adapter、确认编辑 Popup
 apps/api/domain          Job/Application 值、校验与状态规则
 apps/api/application     use-case service 与业务 repository port
 apps/api/infrastructure  SQLAlchemy repository 与 SQLite/Alembic
@@ -49,8 +49,9 @@ API 或 Web。两个业务 repository 保持专用，不建立 generic CRUD/fact
 唯一 runtime database 是 `runtime-data/jobpilot.db`。SQLAlchemy 2.x 管理 transaction，
 每个连接启用 foreign keys 和 5000 ms busy timeout；当前单进程继续使用 rollback journal。
 
-Alembic revision `0001_job_application` 只创建 `jobs` 和 `applications`。Application 的
-`job_id` 唯一并在 Job 删除时级联。自动化测试必须显式传入临时数据库路径。
+Alembic revision `0001_job_application` 只创建 `jobs` 和 `applications`；`0002_boss_job_source`
+与 `0003_nowcoder_job_source` 只扩展 Job source CHECK。Application 的 `job_id` 唯一并在 Job
+删除时级联。自动化测试必须显式传入临时数据库路径。
 
 ## 4. API 与 localhost 写入边界
 
@@ -77,9 +78,15 @@ Web 不引入路由或状态框架。App 只协调 health 和 library/create/det
 ## 6. Local-first 与后续边界
 
 installed runtime 不依赖远程身份、CDN、字体/脚本、telemetry、update、对象存储或 AI。
-Extension 只新增 `activeTab` 与 `scripting`；没有 background、常驻 content script、`tabs`
-permission 或招聘网站 host permission。一次性 `BossAdapter` 只能在明确用户手势后读取当前
-已呈现的必要 DOM 纯文本，随后由用户确认并通过共享 api-client 调用现有 Job service。
+Extension 只使用 `activeTab` 与 `scripting`；没有 background、常驻 content script、`tabs`
+permission 或招聘网站 host permission。当前 tab 通过一个显式 BOSS/牛客条件分派进入对应
+Adapter；两个一次性 parser 都只能在明确用户手势后读取当前已呈现的必要 DOM 纯文本，随后
+由用户确认并通过共享 api-client 调用现有 Job service。
 
-真实 BOSS、Extension、解析、保存与 Web 链路必须单独通过 no-proxy 验收，不得改变 Phase 3
-的本地事实边界或 Application 状态。
+两个 Adapter 共享 `JobCaptureDraft/JobCaptureResult`、Popup 状态/编辑/保存/duplicate 流程与
+source labels。平台检测、selectors、页面结构和可见文本 helper 保留在各 Adapter 内，因为
+`chrome.scripting.executeScript` 注入函数必须自包含；此时抽取 DOM helper 会引入更复杂的 runner、
+配置或 factory，不能降低整体复杂度。
+
+真实 BOSS 与牛客的 Extension、解析、保存和 Web 链路必须分别通过 no-proxy 验收，不得改变
+Phase 3 的本地事实边界或 Application 状态。

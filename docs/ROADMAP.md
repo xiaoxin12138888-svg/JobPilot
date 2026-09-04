@@ -1,7 +1,7 @@
 # JobPilot Roadmap
 
-> 当前阶段：Phase 4 — BOSS Direct Job Capture 已完成；BOSS 为 `SUPPORTED — V1`。
-> Phase 5 尚未获负责人批准。
+> 当前阶段：Phase 5 — Nowcoder Adapter & Shared Capture Contract 已完成；BOSS 与牛客均为
+> `SUPPORTED — V1`。Phase 6 尚未获负责人批准。
 
 ## 1. Global gates
 
@@ -46,20 +46,30 @@ Extension 在本阶段保持 health-only；没有 Adapter、content script、`ac
 permission、常驻 content script、background、后台爬取、列表扫描、隐藏 API、登录/验证码/
 风控绕过或 Application mutation。
 
-## 5. Later phases
+## 5. Phase 5 — Nowcoder Adapter & Shared Capture Contract
 
-Phase 5 候选是 Multi-platform Adapter Expansion，但只有 Phase 4 PASS 且负责人明确批准后才可
-开始。ResumeVersion、结构化 JD 分析、可选 AI、文档/RAG、Evidence Map、面试准备、
-复盘与发布加固均在更晚阶段单独评审。远程能力必须显式启用、可替换、可降级，不能成为
-本地 Job/Application 核心依赖。
+状态：Completed（2026-09-04）。
 
-## 6. P0 no-proxy gate
+只新增牛客具体岗位详情页 Adapter，并与 BOSS 共用 `JobCaptureDraft/JobCaptureResult`、Popup
+预览编辑、Job API、duplicate 和 source label。当前 tab 使用显式两平台分派，没有 factory、
+registry、持久 content script、招聘网站 host permission、隐藏 API 或 Application mutation。
+平台 detection、selectors 与 DOM helpers 继续留在自包含注入函数内。真实无代理牛客完整流程和
+BOSS 回归均已通过。
+
+## 6. Later phases
+
+Phase 6 候选是 Remaining Recruitment Adapters，只有 Phase 5 PASS 且负责人明确批准后才可开始。
+ResumeVersion、结构化 JD 分析、可选 AI、文档/RAG、Evidence Map、面试准备、复盘与发布加固
+均在更晚阶段单独评审。远程能力必须显式启用、可替换、可降级，不能成为本地
+Job/Application 核心依赖。
+
+## 7. P0 no-proxy gate
 
 installed runtime 不访问远程身份、公共 CDN、远程字体/脚本、GitHub runtime/raw、telemetry、
 update 或强制境外 AI。未来每个 Adapter 必须分别记录招聘页、Extension、识别、解析、
 确认保存和岗位库的真实关闭代理结果；任一核心步骤依赖代理就不能标为支持。
 
-## 7. Stop boundary
+## 8. Stop boundary
 
-Phase 4 已完成并通过验收。当前只等待项目负责人决定是否进入 Phase 5；不得自动创建 Phase 5
-分支或实现其他平台。
+Phase 5 已完成并通过验收。当前只等待项目负责人决定是否进入 Phase 6；不得自动创建 Phase 6
+分支或实现实习僧、猎聘、国聘等其他平台。

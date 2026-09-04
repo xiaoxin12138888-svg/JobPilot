@@ -6,15 +6,15 @@ JobPilot 不替代招聘网站，不建设职位数据库，也不代表用户�
 
 ## 当前状态
 
-项目已通过 **Phase 3 — Job & Application Domain Foundation** 与 **Phase 4 — BOSS Direct Job Capture**。当前停在 `phase/4-boss-job-capture`，等待负责人决定后续阶段；Phase 5 尚未获批。Phase 3 能力包括：
+项目已通过 **Phase 3 — Job & Application Domain Foundation**、**Phase 4 — BOSS Direct Job Capture** 与 **Phase 5 — Nowcoder Adapter & Shared Capture Contract**。当前停在 `phase/5-nowcoder-adapter`，等待负责人决定后续阶段；Phase 6 尚未获批。核心能力包括：
 
 - React Web：本机 API 状态、岗位库、手动录入、岗位详情/编辑/删除和投递状态管理；
-- Chrome Extension：无 privileged Chrome API permission、无后台进程的本地健康 Popup；唯一 host permission 是 `http://127.0.0.1:8000/*`；
+- Chrome Extension：使用 `activeTab` + `scripting` 的用户主动采集 Popup，无后台进程；唯一 host permission 是 `http://127.0.0.1:8000/*`；
 - FastAPI：公开 `GET /health` 以及最小 Job/Application REST API，默认绑定 `127.0.0.1`；
-- SQLite、SQLAlchemy 与 Alembic：launcher 启动前自动升级 `runtime-data/jobpilot.db`，revision 只创建 `jobs` 与 `applications`；
+- SQLite、SQLAlchemy 与 Alembic：launcher 启动前自动升级 `runtime-data/jobpilot.db`，只保留 `jobs` 与 `applications` 两张业务表；
 - `packages/shared-types` 与 `packages/api-client`：提供 camelCase 业务契约、credential-free 请求和不可信响应校验。
 
-Phase 4 已交付 BOSS 直聘当前岗位页的用户主动采集、确认编辑与本地保存。它不引入其他招聘平台、常驻 content script、后台抓取、AI、RAG、自动投递、云同步或上传。
+Phase 4 已交付 BOSS 直聘当前岗位页采集；Phase 5 在同一确认编辑与本地保存链路上新增牛客岗位详情页。两个 Adapter 都只读取用户当前打开页面的必要可见文本，不引入常驻 content script、后台抓取、AI、RAG、自动投递、云同步或上传。
 
 ## 本地优先意味着什么
 
@@ -31,13 +31,13 @@ Phase 4 已交付 BOSS 直聘当前岗位页的用户主动采集、确认编辑
 
 Auth0、Logto Cloud、Google APIs、Google reCAPTCHA、Cloudflare Turnstile、GitHub API/raw content、jsDelivr、unpkg、cdnjs、远程字体/JavaScript、境外 AI API、境外 telemetry/analytics 或境外 update API 永远不能成为核心 runtime dependency。未来可选远程能力即使经单独 ADR/批准，也必须显式启用、可降级，并且不阻塞本地核心。
 
-当前 supported recruitment adapters：BOSS 直聘 `SUPPORTED — V1`。牛客、实习僧、猎聘和国聘均为 `NOT STARTED / NOT SUPPORTED`；Phase 5 未获批准。
+当前 supported recruitment adapters：BOSS 直聘与牛客均为 `SUPPORTED — V1`。实习僧、猎聘和国聘为 `NOT SUPPORTED`；Phase 6 未获批准。
 
 Extension 必须满足：
 
 - 所有 JavaScript 与样式随 bundle 分发，不执行远程代码；
 - 不下载 CDN 资源，不修改或创建代理/VPN，不发送 telemetry；
-- Phase 4 contract 只允许 `activeTab`、`scripting` 与精确 loopback API host permission，没有后台、常驻 content script、`tabs` permission 或招聘网站 host permission；
+- 当前 contract 只允许 `activeTab`、`scripting` 与精确 loopback API host permission，没有后台、常驻 content script、`tabs` permission 或招聘网站 host permission；
 - 每个 Adapter 必须由用户主动触发，并且只读取当前已打开页面的已呈现 DOM；
 - 每个 Adapter 都要在无代理真实网络上分别记录：招聘平台页面、Extension Popup、页面识别、岗位解析、保存到 JobPilot、JobPilot 岗位库的 `PASS / FAIL`；任一步依赖代理就不能标为支持。
 
@@ -52,7 +52,7 @@ Chrome Extension --/                            |
                                                  v
                                       runtime-data/jobpilot.db (SQLite)
 
-BOSS current rendered DOM -- user click/read-only --> Chrome Extension
+BOSS/Nowcoder current rendered DOM -- user click/read-only --> Chrome Extension
 Web original-platform link -> user's browser -> recruitment website
 JobPilot API never proxies recruitment website traffic
 ```
@@ -99,7 +99,7 @@ pnpm run dev:web
 pnpm run build:extension
 ```
 
-在 Chrome/Chromium 扩展管理页开启 Developer mode，选择 **Load unpacked**，并指向 `apps/extension/dist`。Popup 打开时只检查精确的 `http://127.0.0.1:8000/health`；用户随后明确点击时，Phase 4 流程才会读取当前 BOSS 岗位详情页并显示可编辑预览。
+在 Chrome/Chromium 扩展管理页开启 Developer mode，选择 **Load unpacked**，并指向 `apps/extension/dist`。Popup 打开时只检查精确的 `http://127.0.0.1:8000/health`；用户随后明确点击时，才会读取当前 BOSS 或牛客岗位详情页并显示可编辑预览。
 
 Manifest 提交的 `key` 只是可公开的扩展公钥，不包含私钥或 secret；它让 GitHub 源码用户通过
 **Load unpacked** 得到固定 ID `lgchonbleblfegkckndaaandoaekmgjf`。如果此前加载过不含该 key
@@ -144,6 +144,7 @@ pnpm run api:import:check
 - [数据模型](docs/DATA_MODEL.md)
 - [工程原则](docs/ENGINEERING_PRINCIPLES.md)
 - [路线图](docs/ROADMAP.md)
+- [招聘页面采集 Adapter](docs/technical/JOB_CAPTURE_ADAPTER.md)
 - [架构决策记录](docs/DECISIONS/README.md)
 
-本地产品边界由 [ADR-008](docs/DECISIONS/ADR-008-local-first-single-user-no-authentication.md) 固定，SQLite 存储由 [ADR-009](docs/DECISIONS/ADR-009-local-sqlite-storage.md) 固定。被移除的历史认证实现和 ADR 可从 annotated tag `pre-local-first-cleanup` 恢复；它们不是当前产品文档。
+本地产品边界由 [ADR-008](docs/DECISIONS/ADR-008-local-first-single-user-no-authentication.md) 固定，SQLite 存储由 [ADR-009](docs/DECISIONS/ADR-009-local-sqlite-storage.md) 固定，BOSS/牛客共享采集合同由 [ADR-012](docs/DECISIONS/ADR-012-nowcoder-shared-capture-contract.md) 固定。被移除的历史认证实现和 ADR 可从 annotated tag `pre-local-first-cleanup` 恢复；它们不是当前产品文档。

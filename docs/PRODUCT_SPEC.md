@@ -1,7 +1,7 @@
 # JobPilot 产品规格
 
-> 状态：Phase 3 与 Phase 4 — BOSS Direct Job Capture 已通过。BOSS 为 `SUPPORTED — V1`；
-> 当前停在 `phase/4-boss-job-capture`，Phase 5 尚未获批。
+> 状态：Phase 3、Phase 4 与 Phase 5 — Nowcoder Adapter & Shared Capture Contract 已通过。
+> BOSS 与牛客均为 `SUPPORTED — V1`；当前停在 `phase/5-nowcoder-adapter`，Phase 6 尚未获批。
 
 ## 1. 产品定位
 
@@ -20,10 +20,10 @@ JobPilot 是个人求职者安装在自己电脑上的本地优先求职工作�
 
 即使没有任何招聘网站 Adapter，用户也能完成整个本地管理流程。
 
-Phase 4 新增一条受控入口：
+Phase 4/5 新增两条共享同一产品流程的受控入口：
 
 ```text
-用户主动打开具体 BOSS 岗位页 -> Popup 中点击读取 -> 当前可见 DOM 纯文本解析
+用户主动打开具体 BOSS 或牛客岗位页 -> Popup 中点击读取 -> 对应 Adapter 解析当前可见 DOM 纯文本
 -> 确认/编辑预览 -> POST /api/v1/jobs -> SQLite -> 岗位库/详情
 ```
 
@@ -32,11 +32,11 @@ Popup 打开时只检查本地 API，不自动读取页面。采集失败可打�
 ## 3. Job
 
 Job 是用户主动保存的岗位快照，包含职位、公司、地点、薪资文本、来源、原平台 URL、
-JD、备注和本地时间。来源允许 `manual` 与 Phase 4 的 `boss`。
+JD、备注和本地时间。来源允许 `manual`、`boss` 与 `nowcoder`。
 
 - title 与 company 必填，输入统一去除首尾空白；
 - source URL 只接受不带凭据的 HTTP/HTTPS；
-- URL 规范化 scheme、host、默认端口并移除 fragment，规范化结果在本地唯一；手动来源保留有意义的 query，BOSS 来源只保存岗位详情路径并移除 tracking/session query；
+- URL 规范化 scheme、host、默认端口并移除 fragment，规范化结果在本地唯一；手动来源保留有意义的 query，BOSS 与牛客来源只保存经过严格 hostname/path 校验的岗位详情 URL，并移除 tracking/session query；
 - 没有 URL 时不做 company/title 模糊去重，允许保存相似岗位；
 - description 是本地快照，原岗位下架后仍保留；
 - 删除必须由 Web 明确确认，并同时删除该 Job 的 Application；当前没有归档/恢复系统。
@@ -92,20 +92,21 @@ Phase 3 Web 包含：
 - installed runtime 不依赖账号、云服务、CDN、远程字体/脚本、telemetry、update 或境外 AI；
 - JobPilot API 不请求或代理招聘网站；
 - Extension 使用 `activeTab` + `scripting` 在用户点击后对当前 tab 执行一次只读解析；没有
-  BOSS host permission、`tabs` permission、background 或常驻 content script；
+  招聘网站 host permission、`tabs` permission、background 或常驻 content script；
 - Extension Manifest 通过可公开公钥固定 ID；API 只允许该精确 Extension Origin 与
   `Sec-Fetch-Site: none` 组合写入 Job create，其他资源和 Extension ID 不受信任，Extension
   Origin 不加入 CORS；
 - 测试只使用显式临时数据库，不读取、替换或删除 `runtime-data/jobpilot.db`。
 
-## 8. Phase 4 非目标
+## 8. Phase 5 非目标
 
-牛客、实习僧、猎聘、国聘 Adapter、通用 Adapter framework、后台/批量爬取、隐藏 API、
+实习僧、猎聘、国聘 Adapter、通用 Adapter framework、后台/批量爬取、隐藏 API、
 ResumeVersion、Evidence Map、AI/RAG/LLM/Agent、推荐、自动投递、自动联系 HR、云同步、账号、
-认证和多用户均不属于 Phase 4。
+认证和多用户均不属于 Phase 5。
 
 ## 9. 成功标准
 
-Phase 4 必须在关闭 VPN/系统/浏览器代理时，从真实 BOSS 岗位详情页完成读取、预览编辑、保存、
-岗位库/详情、原链接、重复识别与重启持久化；保存不能创建或改变 Application。自动化、真实
-Chrome、manifest/CSP/network/privacy、loopback/security、代码审查和简化门禁必须全部通过。
+Phase 5 必须在关闭 VPN/系统/浏览器代理时，从真实牛客岗位详情页完成读取、预览编辑、保存、
+岗位库/详情、原链接、重复识别与重启持久化，并完整回归 BOSS；任何保存都不能创建或改变
+Application。自动化、真实 Chrome、manifest/CSP/network/privacy、loopback/security、代码审查
+和简化门禁必须全部通过。
