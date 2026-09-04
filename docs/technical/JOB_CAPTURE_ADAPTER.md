@@ -4,7 +4,8 @@
 
 `BossAdapter` has three responsibilities only: reject unsupported pages, read the minimum visible
 Job detail text from the current page, and return an editable capture draft with warnings. It never
-saves a Job, calls BOSS network APIs, modifies the page, or owns business URL normalization.
+saves a Job, calls BOSS network APIs, or modifies the page. It strips query/fragment data before the
+draft leaves the page; the API repeats this canonicalization as the authoritative persistence boundary.
 
 ## User-triggered boundary
 
@@ -23,11 +24,21 @@ permission, background worker, registered content script, page listener, crawler
 - Selectors must be based on a real current BOSS page and kept to a small semantic set. This document
   records the final evidence-based selectors only after that observation.
 
+Verified selector scope:
+
+- title/salary/location: `.job-primary .name > h1`, `.job-primary .name > .salary`,
+  `.job-primary .text-desc.text-city`;
+- company: the `.sider-company` whose direct `.title` is `公司基本信息`, then its first non-empty
+  `.company-info a`;
+- description: the `.job-detail .job-detail-section` whose header is `职位描述`, then `.job-sec-text`;
+- recommendation cards, competition analysis, recruiter information, company introduction and maps
+  are outside the capture scope.
+
 ## Field contract
 
 ```text
 source       "boss"
-sourceUrl    active tab HTTP/HTTPS BOSS Job detail URL
+sourceUrl    canonical active-tab BOSS Job detail URL without query or fragment
 title        required plain text, max 200
 company      required plain text, max 200
 location     optional plain text, max 300

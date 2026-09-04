@@ -5,7 +5,7 @@
 - [x] Receive explicit Phase 4 approval and create `phase/4-boss-job-capture` from clean `c27a987`.
 - [x] Preserve `操作手册.txt`, real `runtime-data/jobpilot.db`, Phase 3 commits, and old branches.
 - [x] Freeze ADR-011, capture fields, duplicate metadata, permissions, and stop boundary.
-- [ ] Keep all non-BOSS platforms, AI/RAG, automation, crawling, hidden APIs, and proxy changes out.
+- [x] Keep all non-BOSS platforms, AI/RAG, automation, crawling, hidden APIs, and proxy changes out.
 
 ## Backend and client
 
@@ -34,8 +34,8 @@
 
 ## Acceptance
 
-- [ ] Run frozen/locked installs and all TypeScript/Python tests, lint, format, typecheck, and builds.
-- [ ] Run migration, API import/startup, SQLite persistence, artifact/CSP, secret, remote, and log scans.
+- [x] Run frozen/locked installs and all TypeScript/Python tests, lint, format, typecheck, and builds.
+- [x] Run migration, API import/startup, SQLite persistence, artifact/CSP, secret, remote, and log scans.
 - [ ] Load unpacked in Chrome after action-time approval and run the real BOSS capture twice.
 - [ ] Verify Popup, parse, preview, save, library, detail, duplicate, original URL, and restart.
 - [ ] Verify console/network/privacy and full workflow with VPN/system/browser proxy off.
