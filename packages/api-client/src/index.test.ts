@@ -181,6 +181,21 @@ describe('createApiClient', () => {
     ).resolves.toEqual(job);
   });
 
+  it('accepts and validates a Nowcoder job response', async () => {
+    const job = createJobPayload('nowcoder');
+    const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(job, 201));
+    const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
+
+    await expect(
+      client.createJob({
+        title: '产品经理',
+        company: '测试公司',
+        source: 'nowcoder',
+        sourceUrl: 'https://www.nowcoder.com/jobs/detail/448241',
+      }),
+    ).resolves.toEqual(job);
+  });
+
   it('lists jobs with bounded filters and validates the response', async () => {
     const payload = {
       items: [{ ...createJobPayload(), applicationStatus: 'planned' }],
@@ -286,7 +301,7 @@ function jsonResponse(payload: unknown, status = 200): Response {
   });
 }
 
-function createJobPayload(source: 'manual' | 'boss' = 'manual') {
+function createJobPayload(source: 'manual' | 'boss' | 'nowcoder' = 'manual') {
   return {
     id: 'job-1',
     title: 'AI 产品经理实习生',

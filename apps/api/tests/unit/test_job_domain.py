@@ -38,6 +38,21 @@ def test_job_draft_accepts_a_boss_job_detail_source() -> None:
     assert draft.normalized_source_url == "https://www.zhipin.com/job_detail/fixture123.html"
 
 
+def test_job_draft_accepts_and_canonicalizes_a_nowcoder_job_detail_source() -> None:
+    draft = JobDraft.create(
+        title="产品经理",
+        company="测试公司",
+        source="nowcoder",
+        source_url=(
+            "https://www.nowcoder.com/jobs/detail/448241?deliverSource=21&pageSource=5021#apply"
+        ),
+    )
+
+    assert draft.source == "nowcoder"
+    assert draft.source_url == "https://www.nowcoder.com/jobs/detail/448241"
+    assert draft.normalized_source_url == "https://www.nowcoder.com/jobs/detail/448241"
+
+
 @pytest.mark.parametrize(
     ("source", "source_url"),
     [
@@ -58,6 +73,28 @@ def test_job_draft_rejects_an_unsupported_source_or_boss_page(
             title="岗位",
             company="公司",
             source=source,
+            source_url=source_url,
+        )
+
+
+@pytest.mark.parametrize(
+    "source_url",
+    [
+        None,
+        "https://example.com/jobs/detail/448241",
+        "https://www.nowcoder.com/search/job?query=产品经理",
+        "https://www.nowcoder.com:444/jobs/detail/448241",
+        "https://www.nowcoder.com/jobs/detail/not-a-number",
+        "https://www.nowcoder.com/jobs/detail/448241/nested",
+        "https://www.zhipin.com/job_detail/fixture123.html",
+    ],
+)
+def test_job_draft_rejects_an_unsupported_nowcoder_page(source_url: str | None) -> None:
+    with pytest.raises(DomainValidationError, match="sourceUrl"):
+        JobDraft.create(
+            title="岗位",
+            company="公司",
+            source="nowcoder",
             source_url=source_url,
         )
 

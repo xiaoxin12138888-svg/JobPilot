@@ -14,7 +14,7 @@ class JobModel(Base):
     __tablename__ = "jobs"
     __table_args__ = (
         UniqueConstraint("normalized_source_url", name="uq_jobs_normalized_source_url"),
-        CheckConstraint("source IN ('manual','boss')", name="ck_jobs_source"),
+        CheckConstraint("source IN ('manual','boss','nowcoder')", name="ck_jobs_source"),
         Index("ix_jobs_updated_at", "updated_at"),
         Index("ix_jobs_source", "source"),
     )

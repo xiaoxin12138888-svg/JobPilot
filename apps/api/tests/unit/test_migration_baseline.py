@@ -113,7 +113,7 @@ def test_phase_4_source_migration_preserves_phase_3_data_and_is_reversible(tmp_p
     command.upgrade(config, "head")
     with sqlite3.connect(database_path) as connection:
         version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
-    assert version == ("0002_boss_job_source",)
+    assert version == ("0003_nowcoder_job_source",)
 
 
 def test_source_migration_refuses_to_downgrade_while_boss_jobs_exist(tmp_path: Path) -> None:
@@ -141,3 +141,88 @@ def test_source_migration_refuses_to_downgrade_while_boss_jobs_exist(tmp_path: P
         version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
     assert preserved == ("boss",)
     assert version == ("0002_boss_job_source",)
+
+
+def test_phase_5_source_migration_preserves_existing_data_and_is_reversible(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "migration" / "jobpilot.db"
+    database_path.parent.mkdir(parents=True)
+    config = Config("apps/api/alembic.ini")
+    config.set_main_option("sqlalchemy.url", sqlite_database_url(database_path).render_as_string())
+    command.upgrade(config, "0002_boss_job_source")
+
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """
+            INSERT INTO jobs (
+                id, title, company, source, created_at, updated_at
+            ) VALUES ('boss-job', '岗位', '公司', 'boss', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO applications (
+                id, job_id, status, created_at, updated_at
+            ) VALUES ('application-1', 'boss-job', 'planned', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """
+        )
+        connection.commit()
+
+    command.upgrade(config, "head")
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """
+            INSERT INTO jobs (
+                id, title, company, source, created_at, updated_at
+            ) VALUES ('nowcoder-job', '岗位', '公司', 'nowcoder', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """
+        )
+        preserved = connection.execute(
+            """
+            SELECT jobs.source, applications.status
+            FROM jobs JOIN applications ON applications.job_id = jobs.id
+            WHERE jobs.id = 'boss-job'
+            """
+        ).fetchone()
+        connection.execute("DELETE FROM jobs WHERE id = 'nowcoder-job'")
+        connection.commit()
+
+    assert preserved == ("boss", "planned")
+    command.downgrade(config, "0002_boss_job_source")
+    command.upgrade(config, "head")
+
+    with sqlite3.connect(database_path) as connection:
+        version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
+    assert version == ("0003_nowcoder_job_source",)
+
+
+def test_phase_5_source_migration_refuses_downgrade_while_nowcoder_jobs_exist(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "migration" / "jobpilot.db"
+    database_path.parent.mkdir(parents=True)
+    config = Config("apps/api/alembic.ini")
+    config.set_main_option("sqlalchemy.url", sqlite_database_url(database_path).render_as_string())
+    command.upgrade(config, "head")
+
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """
+            INSERT INTO jobs (
+                id, title, company, source, created_at, updated_at
+            ) VALUES ('nowcoder-job', '岗位', '公司', 'nowcoder', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """
+        )
+        connection.commit()
+
+    with pytest.raises(RuntimeError, match="Nowcoder jobs exist"):
+        command.downgrade(config, "0002_boss_job_source")
+
+    with sqlite3.connect(database_path) as connection:
+        preserved = connection.execute(
+            "SELECT source FROM jobs WHERE id = 'nowcoder-job'"
+        ).fetchone()
+        version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
+    assert preserved == ("nowcoder",)
+    assert version == ("0003_nowcoder_job_source",)

@@ -3,11 +3,12 @@ export interface ApiHealthResponse {
   service: 'jobpilot-api';
 }
 
-export type JobSource = 'manual' | 'boss';
+export type JobSource = 'manual' | 'boss' | 'nowcoder';
 
 export const JOB_SOURCE_LABELS: Readonly<Record<JobSource, string>> = {
   manual: '手动录入',
   boss: 'BOSS直聘',
+  nowcoder: '牛客',
 };
 
 export type ApplicationStatus =

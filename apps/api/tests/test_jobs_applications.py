@@ -118,6 +118,47 @@ def test_boss_tracking_queries_are_not_stored_and_deduplicate_to_the_job_path(
     assert "sessionId" not in stored.text
 
 
+def test_nowcoder_job_uses_the_existing_job_api_without_creating_an_application(
+    client: TestClient,
+) -> None:
+    created = _create_job(
+        client,
+        source="nowcoder",
+        source_url="https://www.nowcoder.com/jobs/detail/448241",
+    )
+
+    assert created["source"] == "nowcoder"
+    filtered = client.get("/api/v1/jobs", params={"source": "nowcoder"})
+    assert [item["id"] for item in filtered.json()["items"]] == [created["id"]]
+    applications = client.get("/api/v1/applications", params={"jobId": created["id"]})
+    assert applications.json()["total"] == 0
+
+
+def test_nowcoder_tracking_queries_are_not_stored_and_deduplicate_to_the_job_path(
+    client: TestClient,
+) -> None:
+    canonical_url = "https://www.nowcoder.com/jobs/detail/448241"
+    existing = _create_job(
+        client,
+        source="nowcoder",
+        source_url=f"{canonical_url}?deliverSource=21&pageSource=5021#apply",
+    )
+
+    duplicate = _create_job_response(
+        client,
+        source="nowcoder",
+        source_url=f"{canonical_url}?channel=mainSiteSearch&track=another-entry",
+    )
+    stored = client.get(f"/api/v1/jobs/{existing['id']}")
+
+    assert existing["sourceUrl"] == canonical_url
+    assert duplicate.status_code == 409
+    assert duplicate.json()["error"]["code"] == "DUPLICATE_JOB_URL"
+    assert duplicate.json()["error"]["resourceId"] == existing["id"]
+    assert stored.json()["sourceUrl"] == canonical_url
+    assert "deliverSource" not in stored.text
+
+
 def test_job_validation_and_pagination_are_bounded(client: TestClient) -> None:
     invalid = _create_job_response(client, title="   ")
     too_large = client.get("/api/v1/jobs", params={"limit": 101})

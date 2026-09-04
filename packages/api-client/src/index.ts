@@ -317,7 +317,7 @@ function isJobFields(value: Record<string, unknown>): boolean {
     typeof value.company === 'string' &&
     isNullableString(value.location) &&
     isNullableString(value.salaryText) &&
-    (value.source === 'manual' || value.source === 'boss') &&
+    (value.source === 'manual' || value.source === 'boss' || value.source === 'nowcoder') &&
     isNullableString(value.sourceUrl) &&
     isNullableString(value.description) &&
     isNullableString(value.notes) &&

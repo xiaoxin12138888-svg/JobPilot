@@ -68,6 +68,19 @@ describe('App', () => {
     expect(listJobs).toHaveBeenCalledWith({});
   });
 
+  it('lists captured Nowcoder jobs with their source label', async () => {
+    const nowcoderJob = createJob({
+      source: 'nowcoder',
+      sourceUrl: 'https://www.nowcoder.com/jobs/detail/448241',
+    });
+    const listJobs = vi.fn().mockResolvedValue(page([{ ...nowcoderJob, applicationStatus: null }]));
+
+    render(<App apiClient={createApiClient({ listJobs })} />);
+
+    expect(await screen.findByText('牛客')).toBeInTheDocument();
+    expect(listJobs).toHaveBeenCalledWith({});
+  });
+
   it('opens a local Job detail deep link without loading the library first', async () => {
     const jobId = '11111111-1111-4111-8111-111111111111';
     const bossJob = { ...createJob({ source: 'boss' }), id: jobId };

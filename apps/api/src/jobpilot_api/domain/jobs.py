@@ -13,8 +13,9 @@ MAX_SHORT_TEXT_LENGTH = 300
 MAX_URL_LENGTH = 2_048
 MAX_DESCRIPTION_LENGTH = 100_000
 MAX_NOTES_LENGTH = 20_000
-SUPPORTED_JOB_SOURCES = frozenset({"manual", "boss"})
+SUPPORTED_JOB_SOURCES = frozenset({"manual", "boss", "nowcoder"})
 BOSS_JOB_DETAIL_PATH = re.compile(r"/job_detail/[A-Za-z0-9_-]+\.html\Z")
+NOWCODER_JOB_DETAIL_PATH = re.compile(r"/jobs/detail/[0-9]+\Z")
 CONTROL_CHARACTER_TRANSLATION = {
     codepoint: None
     for codepoint in (*range(0, 9), *range(11, 13), *range(14, 32), *range(127, 160))
@@ -49,22 +50,20 @@ class JobDraft:
         clean_title = _required_text("title", title, MAX_TITLE_LENGTH)
         clean_company = _required_text("company", company, MAX_COMPANY_LENGTH)
         if source not in SUPPORTED_JOB_SOURCES:
-            raise DomainValidationError("source: must be manual or boss")
+            raise DomainValidationError("source: must be manual, boss, or nowcoder")
         clean_url = _optional_text("sourceUrl", source_url, MAX_URL_LENGTH)
         normalized_url = normalize_source_url(clean_url)
         if source == "boss":
             if normalized_url is None or not is_boss_job_detail_url(normalized_url):
                 raise DomainValidationError("sourceUrl: boss source requires a BOSS job detail URL")
-            parsed_boss_url = urlsplit(normalized_url)
-            clean_url = urlunsplit(
-                (
-                    parsed_boss_url.scheme,
-                    parsed_boss_url.netloc,
-                    parsed_boss_url.path,
-                    "",
-                    "",
+            clean_url = _without_query_or_fragment(normalized_url)
+            normalized_url = clean_url
+        if source == "nowcoder":
+            if normalized_url is None or not is_nowcoder_job_detail_url(normalized_url):
+                raise DomainValidationError(
+                    "sourceUrl: nowcoder source requires a Nowcoder job detail URL"
                 )
-            )
+            clean_url = _without_query_or_fragment(normalized_url)
             normalized_url = clean_url
         return cls(
             title=clean_title,
@@ -137,6 +136,29 @@ def is_boss_job_detail_url(value: str | None) -> bool:
         and parsed.password is None
         and BOSS_JOB_DETAIL_PATH.fullmatch(parsed.path) is not None
     )
+
+
+def is_nowcoder_job_detail_url(value: str | None) -> bool:
+    if value is None:
+        return False
+    try:
+        parsed = urlsplit(value)
+        port = parsed.port
+    except ValueError:
+        return False
+    return (
+        parsed.scheme.lower() in {"http", "https"}
+        and parsed.hostname == "www.nowcoder.com"
+        and port is None
+        and parsed.username is None
+        and parsed.password is None
+        and NOWCODER_JOB_DETAIL_PATH.fullmatch(parsed.path) is not None
+    )
+
+
+def _without_query_or_fragment(value: str) -> str:
+    parsed = urlsplit(value)
+    return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", ""))
 
 
 def _required_text(field: str, value: str, maximum: int) -> str:
