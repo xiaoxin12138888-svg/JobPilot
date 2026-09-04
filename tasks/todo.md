@@ -1,4 +1,42 @@
-# Phase 5 — Nowcoder Adapter & Shared Capture Contract Checklist
+# Phase 6 — JD Structured AI Analysis Checklist
+
+## Contract and safety
+
+- [x] Receive explicit Phase 6 approval and branch from clean Phase 5 HEAD.
+- [x] Preserve `操作手册.txt`, runtime SQLite data, Phase 5 history and supported Adapters.
+- [x] Freeze ADR-013, schema, provider/input/security boundaries, API semantics and Phase 7 stop.
+- [ ] Keep Extension, other recruitment platforms, Resume/matching, RAG and Agents out of scope.
+
+## Backend
+
+- [ ] RED/GREEN strict structured schema, normalization and deterministic evidence grounding.
+- [ ] RED/GREEN prompt-injection separation and minimal five-field outbound input.
+- [ ] RED/GREEN optional config, explicit timeout and stable sanitized provider errors.
+- [ ] RED/GREEN migration, one-row upsert, cascade, restart persistence and stale fingerprint.
+- [ ] RED/GREEN GET/POST analysis API and Job/write-security regressions.
+
+## Client and Web
+
+- [ ] Extend shared types and api-client with strict response validation and no credentials.
+- [ ] Add unconfigured, not analyzed, loading, success, failure and stale UI states.
+- [ ] Show every frozen field with lightweight evidence while keeping original JD visible.
+- [ ] Verify responsive, keyboard and accessible behavior without navigation redesign.
+
+## Evaluation and acceptance
+
+- [ ] Add at least 20 de-identified realistic samples with human-reviewed gold labels.
+- [ ] Record actual V1 metrics and real bad cases on the fixed dataset when Provider is available.
+- [ ] Make V2 changes only from V1 bad cases and rerun the identical dataset.
+- [ ] Run real BOSS and Nowcoder Job analysis acceptance when Provider is available.
+- [ ] Run locked installs, all tests/lint/format/typecheck/build and migration cycles.
+- [ ] Regress BOSS, Nowcoder, Job/Application, SQLite restart and no-proxy local-first core.
+- [ ] Run secret/prompt-injection/raw-response/runtime dependency/telemetry security checks.
+- [ ] Resolve code-review Critical/Required findings, simplify and synchronize docs.
+- [ ] Commit coherent increments and stop before Phase 7.
+
+---
+
+# Historical Phase 5 — Nowcoder Adapter & Shared Capture Contract Checklist
 
 ## Contract and safety
 

@@ -1,4 +1,55 @@
-# Implementation Plan: Phase 5 — Nowcoder Adapter & Shared Capture Contract
+# Implementation Plan: Phase 6 — JD Structured AI Analysis
+
+> Owner-approved on 2026-09-04. Phase 7 is not authorized.
+
+## Objective
+
+Turn one saved Job description into an optional, strict, evidence-grounded structured analysis,
+persist one current result in local SQLite, and display it beside the always-visible original JD.
+Do not add Resume/Evidence Map, matching scores, RAG, Agent frameworks, mock interviews or another
+recruitment platform.
+
+## Frozen contract
+
+- Call chain is Web → FastAPI → JDAnalysisService → one OpenAI-compatible provider adapter.
+- AI configuration is optional process environment; Key never enters browser bundles, Git, logs,
+  errors or SQLite. Missing/malformed configuration cannot prevent core startup.
+- Input is only title/company/description plus optional location/salary. JD is untrusted data.
+- Schema version 1 and EvidenceItem fields are frozen by ADR-013; missing data is empty, unsupported
+  evidence becomes null, invalid provider output is never persisted.
+- One `jd_analysis_records` row per Job stores canonical JSON and the exact analysis-input fingerprint.
+  GET computes stale; reanalysis updates; Job deletion cascades.
+- GET returns `200` with `isConfigured` and nullable analysis for an existing Job. POST accepts `{}`.
+- The Web shows all requested analysis states and fields without replacing the original JD.
+- Automated tests use a Fake Provider. Real Provider evaluation is never fabricated.
+
+## Ordered work
+
+1. Freeze ADR-013, schema/API/persistence/provider/security rules and this Phase 7 stop boundary.
+2. RED/GREEN domain parsing, normalization, evidence grounding and prompt-injection separation.
+3. RED/GREEN optional configuration and one bounded OpenAI-compatible HTTP adapter.
+4. RED/GREEN migration, repository, upsert, cascade, restart persistence and input-fingerprint stale.
+5. RED/GREEN job analysis endpoints, stable errors and existing write-security middleware regression.
+6. Extend shared types/api-client runtime validation and the Job Detail analysis states/fields.
+7. Add 20+ de-identified JDs, human-reviewed gold labels, evaluator and honest V1/V2 records.
+8. Run locked installs, full tests/lint/format/typecheck/build, migrations, security scans and core
+   BOSS/Nowcoder/Job/Application/no-proxy regression.
+9. When configuration is available, run the same V1/V2 evaluation and one real BOSS plus one real
+   Nowcoder Job browser acceptance; otherwise record the external blocker.
+10. Resolve Critical/Required findings, simplify and synchronize canonical docs; stop before Phase 7.
+
+## Stop conditions
+
+- Never weaken loopback Host/Origin/Fetch Metadata/JSON-only/no-credentials boundaries.
+- Never persist an invalid result or silently display stale analysis as current.
+- Never expose the Key or provider response through UI, logs, bundles, errors or evaluation fixtures.
+- Do not add SDK/framework/provider abstractions without evidence that the one adapter cannot work.
+- Do not claim real evaluation or acceptance when Provider configuration is unavailable.
+- Do not begin Phase 7 without explicit owner approval.
+
+---
+
+# Historical Implementation Plan: Phase 5 — Nowcoder Adapter & Shared Capture Contract
 
 > Owner-approved on 2026-09-04. Phase 6 is not authorized.
 
