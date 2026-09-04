@@ -20,7 +20,7 @@
 - [x] Extend shared types and api-client with strict response validation and no credentials.
 - [x] Add unconfigured, not analyzed, loading, success, failure and stale UI states.
 - [x] Show every frozen field with lightweight evidence while keeping original JD visible.
-- [ ] Verify responsive, keyboard and accessible behavior without navigation redesign.
+- [x] Verify responsive, keyboard and accessible behavior without navigation redesign.
 
 ## Evaluation and acceptance
 
@@ -28,11 +28,11 @@
 - [ ] Record actual V1 metrics and real bad cases on the fixed dataset when Provider is available.
 - [ ] Make V2 changes only from V1 bad cases and rerun the identical dataset.
 - [ ] Run real BOSS and Nowcoder Job analysis acceptance when Provider is available.
-- [ ] Run locked installs, all tests/lint/format/typecheck/build and migration cycles.
-- [ ] Regress BOSS, Nowcoder, Job/Application, SQLite restart and no-proxy local-first core.
-- [ ] Run secret/prompt-injection/raw-response/runtime dependency/telemetry security checks.
-- [ ] Resolve code-review Critical/Required findings, simplify and synchronize docs.
-- [ ] Commit coherent increments and stop before Phase 7.
+- [x] Run locked installs, all tests/lint/format/typecheck/build and migration cycles.
+- [x] Regress BOSS, Nowcoder, Job/Application, SQLite restart and no-proxy local-first core.
+- [x] Run secret/prompt-injection/raw-response/runtime dependency/telemetry security checks.
+- [x] Resolve code-review Critical/Required findings, simplify and synchronize docs.
+- [x] Commit coherent increments and stop before Phase 7.
 
 ---
 
