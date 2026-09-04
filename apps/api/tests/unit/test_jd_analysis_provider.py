@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 from email.message import Message
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from threading import Thread
 from typing import Any
 
 import pytest
@@ -65,6 +67,51 @@ def test_provider_keeps_untrusted_jd_out_of_system_instruction() -> None:
     assert opener.request.full_url == "https://llm.example/v1/chat/completions"
     assert opener.timeout == 30.0
     assert opener.request.get_header("Authorization") == "Bearer local-test-key"
+
+
+def test_provider_does_not_forward_api_key_across_redirects() -> None:
+    requests: list[tuple[str, str | None]] = []
+
+    class RedirectHandler(BaseHTTPRequestHandler):
+        def do_POST(self) -> None:
+            requests.append((self.path, self.headers.get("Authorization")))
+            self.send_response(302)
+            self.send_header("Location", "/redirected")
+            self.end_headers()
+
+        def do_GET(self) -> None:
+            requests.append((self.path, self.headers.get("Authorization")))
+            content = '{"summary":"","responsibilities":[],"mustHaveRequirements":[],"preferredRequirements":[],"skills":[],"experienceRequirements":[],"educationRequirements":[],"domainKeywords":[],"interviewFocus":[]}'
+            body = json.dumps({"choices": [{"message": {"content": content}}]}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, _format: str, *_args: object) -> None:
+            return
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), RedirectHandler)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        provider = OpenAICompatibleJDAnalysisProvider(
+            LLMSettings(
+                base_url=f"http://127.0.0.1:{server.server_port}/v1",
+                api_key="local-test-key",
+                model="test-model",
+            )
+        )
+
+        with pytest.raises(AnalysisProviderUnavailableError):
+            provider.analyze(_input("岗位描述"), system_instruction="system")
+
+        assert requests == [("/v1/chat/completions", "Bearer local-test-key")]
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()
 
 
 @pytest.mark.parametrize("error", [TimeoutError(), OSError("network details")])

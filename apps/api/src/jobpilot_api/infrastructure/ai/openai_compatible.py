@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.request import OpenerDirector, ProxyHandler, Request, build_opener
+from urllib.request import HTTPRedirectHandler, OpenerDirector, ProxyHandler, Request, build_opener
 
 from jobpilot_api.config import LLMSettings
 from jobpilot_api.domain.errors import (
@@ -15,6 +15,11 @@ from jobpilot_api.domain.jd_analysis import JDAnalysisInput
 MAX_PROVIDER_RESPONSE_BYTES = 1_000_000
 
 
+class _RejectRedirectHandler(HTTPRedirectHandler):
+    def redirect_request(self, *_args: Any, **_kwargs: Any) -> None:
+        return None
+
+
 class OpenAICompatibleJDAnalysisProvider:
     def __init__(
         self,
@@ -23,7 +28,7 @@ class OpenAICompatibleJDAnalysisProvider:
         opener: OpenerDirector | Any | None = None,
     ) -> None:
         self._settings = settings
-        self._opener = opener or build_opener(ProxyHandler({}))
+        self._opener = opener or build_opener(ProxyHandler({}), _RejectRedirectHandler())
 
     def analyze(self, analysis_input: JDAnalysisInput, *, system_instruction: str) -> str:
         request_body = json.dumps(
