@@ -8,6 +8,7 @@ import type { ApiClient, Application, Job } from '@jobpilot/api-client';
 
 import { ApplicationPanel } from './ApplicationPanel';
 import { JobForm } from './JobForm';
+import { JDAnalysisPanel } from './JDAnalysisPanel';
 
 interface JobDetailProps {
   apiClient: ApiClient;
@@ -119,6 +120,7 @@ export function JobDetail({ apiClient, jobId, onBack, onDeleted }: JobDetailProp
               </div>
             </dl>
           </section>
+          <JDAnalysisPanel apiClient={apiClient} job={job} />
           <TextSection title="JD 快照" value={job.description} fallback="尚未填写 JD。" />
           <TextSection title="备注" value={job.notes} fallback="尚未添加备注。" />
         </div>

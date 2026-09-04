@@ -6,6 +6,7 @@ import type {
   Application,
   CreateJobInput,
   Job,
+  JobAnalysisResponse,
   JobListItem,
 } from '@jobpilot/api-client';
 
@@ -201,6 +202,86 @@ describe('App', () => {
     expect(apiClient.listApplications).toHaveBeenCalledWith({ jobId: 'job-1', limit: 1 });
   });
 
+  it('shows unconfigured AI without hiding or blocking the original JD', async () => {
+    const job = createJob();
+    const apiClient = createApiClient({
+      listJobs: vi.fn().mockResolvedValue(page([{ ...job, applicationStatus: null }])),
+      getJob: vi.fn().mockResolvedValue(job),
+      getJobAnalysis: vi.fn().mockResolvedValue({ isConfigured: false, analysis: null }),
+    });
+    render(<App apiClient={apiClient} />);
+    fireEvent.click(await screen.findByRole('button', { name: '查看详情' }));
+
+    expect(await screen.findByText('AI 服务未配置')).toBeInTheDocument();
+    expect(screen.getByText('负责 AI 产品设计与需求分析')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'AI 分析此岗位' })).toBeNull();
+  });
+
+  it('shows analysis progress, structured fields and lightweight evidence', async () => {
+    const job = createJob();
+    let resolveAnalysis: ((value: JobAnalysisResponse) => void) | undefined;
+    const analysisRequest = new Promise<JobAnalysisResponse>((resolve) => {
+      resolveAnalysis = resolve;
+    });
+    const apiClient = createApiClient({
+      listJobs: vi.fn().mockResolvedValue(page([{ ...job, applicationStatus: null }])),
+      getJob: vi.fn().mockResolvedValue(job),
+      getJobAnalysis: vi.fn().mockResolvedValue({ isConfigured: true, analysis: null }),
+      analyzeJob: vi.fn().mockReturnValue(analysisRequest),
+    });
+    render(<App apiClient={apiClient} />);
+    fireEvent.click(await screen.findByRole('button', { name: '查看详情' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'AI 分析此岗位' }));
+
+    expect(screen.getByRole('button', { name: '分析中…' })).toBeDisabled();
+    await act(async () => {
+      resolveAnalysis?.(createAnalysisResponse());
+      await analysisRequest;
+    });
+
+    expect(screen.getByText('聚焦 AI 产品需求与方案设计。')).toBeInTheDocument();
+    expect(screen.getByText('负责产品设计')).toBeInTheDocument();
+    expect(screen.getByText('需求分析', { selector: '.analysis-tag' })).toBeInTheDocument();
+    expect(screen.getByText('准备说明产品设计方法')).toBeInTheDocument();
+    expect(screen.getAllByText('查看原文依据').length).toBeGreaterThan(0);
+    expect(screen.getByText('负责 AI 产品设计与需求分析')).toBeInTheDocument();
+    expect(apiClient.analyzeJob).toHaveBeenCalledWith(job.id);
+  });
+
+  it('retains a stale result and offers explicit reanalysis', async () => {
+    const job = createJob();
+    const stale = createAnalysisResponse();
+    if (stale.analysis) stale.analysis.isStale = true;
+    const apiClient = createApiClient({
+      listJobs: vi.fn().mockResolvedValue(page([{ ...job, applicationStatus: null }])),
+      getJob: vi.fn().mockResolvedValue(job),
+      getJobAnalysis: vi.fn().mockResolvedValue(stale),
+    });
+    render(<App apiClient={apiClient} />);
+    fireEvent.click(await screen.findByRole('button', { name: '查看详情' }));
+
+    expect(await screen.findByText('岗位信息已修改，当前分析可能已过期。')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '重新分析' })).toBeEnabled();
+    expect(screen.getByText('聚焦 AI 产品需求与方案设计。')).toBeInTheDocument();
+  });
+
+  it('shows a bounded analysis failure while the Job detail remains usable', async () => {
+    const job = createJob();
+    const apiClient = createApiClient({
+      listJobs: vi.fn().mockResolvedValue(page([{ ...job, applicationStatus: null }])),
+      getJob: vi.fn().mockResolvedValue(job),
+      getJobAnalysis: vi.fn().mockResolvedValue({ isConfigured: true, analysis: null }),
+      analyzeJob: vi.fn().mockRejectedValue(new Error('raw provider response and secret')),
+    });
+    render(<App apiClient={apiClient} />);
+    fireEvent.click(await screen.findByRole('button', { name: '查看详情' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'AI 分析此岗位' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('AI 分析暂时不可用，请稍后重试。');
+    expect(screen.getByText('负责 AI 产品设计与需求分析')).toBeInTheDocument();
+    expect(screen.queryByText('raw provider response and secret')).toBeNull();
+  });
+
   it('creates an application and explicitly confirms applied status', async () => {
     const job = createJob();
     let application: Application | undefined;
@@ -268,6 +349,8 @@ function createApiClient(overrides: Partial<ApiClient> = {}): ApiClient {
     listApplications: vi.fn().mockResolvedValue(page([])),
     getApplication: vi.fn(),
     updateApplication: vi.fn(),
+    getJobAnalysis: vi.fn().mockResolvedValue({ isConfigured: false, analysis: null }),
+    analyzeJob: vi.fn(),
     ...overrides,
   };
 }
@@ -314,4 +397,29 @@ function createApplication(status: Application['status']): Application {
 
 function page<T>(items: T[]) {
   return { items, total: items.length, limit: 50, offset: 0 };
+}
+
+function createAnalysisResponse(): JobAnalysisResponse {
+  return {
+    isConfigured: true,
+    analysis: {
+      id: 'analysis-1',
+      jobId: 'job-1',
+      schemaVersion: 1,
+      result: {
+        summary: '聚焦 AI 产品需求与方案设计。',
+        responsibilities: [{ text: '负责产品设计', evidence: '负责 AI 产品设计' }],
+        mustHaveRequirements: [{ text: '能够分析需求', evidence: '需求分析' }],
+        preferredRequirements: [],
+        skills: ['需求分析'],
+        experienceRequirements: [],
+        educationRequirements: [],
+        domainKeywords: ['AI 产品'],
+        interviewFocus: [{ text: '准备说明产品设计方法', evidence: 'AI 产品设计' }],
+      },
+      isStale: false,
+      createdAt: '2026-09-04T00:00:00Z',
+      updatedAt: '2026-09-04T00:00:00Z',
+    },
+  };
 }

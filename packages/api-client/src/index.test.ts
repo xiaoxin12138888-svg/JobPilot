@@ -292,6 +292,62 @@ describe('createApiClient', () => {
       'http://127.0.0.1:8000/api/v1/applications?jobId=job-1&limit=1',
     );
   });
+
+  it('gets and validates a nullable Job analysis resource', async () => {
+    const payload = { isConfigured: true, analysis: null };
+    const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(payload));
+    const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
+
+    await expect(client.getJobAnalysis('job-1')).resolves.toEqual(payload);
+    expect(fetchImplementation.mock.calls[0]?.[0]).toBe(
+      'http://127.0.0.1:8000/api/v1/jobs/job-1/analysis',
+    );
+    expect(fetchImplementation.mock.calls[0]?.[1]).toMatchObject({
+      method: 'GET',
+      credentials: 'omit',
+    });
+  });
+
+  it('requests analysis with strict empty JSON and accepts the structured result', async () => {
+    const payload = createAnalysisPayload();
+    const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(payload));
+    const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
+
+    await expect(client.analyzeJob('job-1')).resolves.toEqual(payload);
+    expect(fetchImplementation.mock.calls[0]?.[1]).toMatchObject({
+      method: 'POST',
+      body: '{}',
+      credentials: 'omit',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    });
+  });
+
+  it.each([
+    { ...createAnalysisPayload(), extra: true },
+    { isConfigured: true, analysis: { ...createAnalysisPayload().analysis, schemaVersion: 2 } },
+    {
+      isConfigured: true,
+      analysis: {
+        ...createAnalysisPayload().analysis,
+        result: { ...createAnalysisPayload().analysis.result, skills: 'SQL' },
+      },
+    },
+    {
+      isConfigured: true,
+      analysis: {
+        ...createAnalysisPayload().analysis,
+        result: {
+          ...createAnalysisPayload().analysis.result,
+          responsibilities: [{ text: '职责', evidence: 123 }],
+        },
+      },
+    },
+  ])('rejects an untrusted Job analysis payload', async (payload) => {
+    const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(payload));
+    const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
+
+    await expect(client.getJobAnalysis('job-1')).rejects.toThrow('invalid Job analysis response');
+  });
 });
 
 function jsonResponse(payload: unknown, status = 200): Response {
@@ -325,5 +381,30 @@ function createApplicationPayload(status: 'planned' | 'applied') {
     appliedAt: status === 'applied' ? '2026-09-03T00:01:00Z' : null,
     createdAt: '2026-09-03T00:00:00Z',
     updatedAt: '2026-09-03T00:01:00Z',
+  };
+}
+
+function createAnalysisPayload() {
+  return {
+    isConfigured: true,
+    analysis: {
+      id: 'analysis-1',
+      jobId: 'job-1',
+      schemaVersion: 1,
+      result: {
+        summary: '岗位摘要',
+        responsibilities: [{ text: '负责需求分析', evidence: '需求分析' }],
+        mustHaveRequirements: [],
+        preferredRequirements: [],
+        skills: ['需求分析'],
+        experienceRequirements: [],
+        educationRequirements: [],
+        domainKeywords: ['AI 产品'],
+        interviewFocus: [],
+      },
+      isStale: false,
+      createdAt: '2026-09-04T00:00:00Z',
+      updatedAt: '2026-09-04T00:00:00Z',
+    },
   };
 }

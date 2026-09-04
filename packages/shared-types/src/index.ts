@@ -98,6 +98,38 @@ export interface UpdateApplicationInput {
   confirmApplied: boolean;
 }
 
+export interface EvidenceItem {
+  text: string;
+  evidence: string | null;
+}
+
+export interface JDAnalysis {
+  summary: string;
+  responsibilities: EvidenceItem[];
+  mustHaveRequirements: EvidenceItem[];
+  preferredRequirements: EvidenceItem[];
+  skills: string[];
+  experienceRequirements: EvidenceItem[];
+  educationRequirements: EvidenceItem[];
+  domainKeywords: string[];
+  interviewFocus: EvidenceItem[];
+}
+
+export interface JDAnalysisRecord {
+  id: string;
+  jobId: string;
+  schemaVersion: 1;
+  result: JDAnalysis;
+  isStale: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface JobAnalysisResponse {
+  isConfigured: boolean;
+  analysis: JDAnalysisRecord | null;
+}
+
 export interface ApiErrorEnvelope {
   error: {
     code: string;

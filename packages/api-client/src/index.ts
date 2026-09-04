@@ -6,6 +6,7 @@ import type {
   ApplicationStatus,
   CreateJobInput,
   Job,
+  JobAnalysisResponse,
   JobListResponse,
   JobSource,
   UpdateApplicationInput,
@@ -21,7 +22,11 @@ export type {
   ApplicationListResponse,
   ApplicationStatus,
   CreateJobInput,
+  EvidenceItem,
+  JDAnalysis,
+  JDAnalysisRecord,
   Job,
+  JobAnalysisResponse,
   JobListItem,
   JobListResponse,
   JobSource,
@@ -30,6 +35,7 @@ export type {
 } from '@jobpilot/shared-types';
 
 const REQUEST_TIMEOUT_MILLISECONDS = 5_000;
+const ANALYSIS_REQUEST_TIMEOUT_MILLISECONDS = 35_000;
 const APPLICATION_STATUSES = new Set<ApplicationStatus>([
   'planned',
   'applied',
@@ -80,6 +86,8 @@ export interface ApiClient {
   getJob(jobId: string): Promise<Job>;
   updateJob(jobId: string, input: UpdateJobInput): Promise<Job>;
   deleteJob(jobId: string): Promise<void>;
+  getJobAnalysis(jobId: string): Promise<JobAnalysisResponse>;
+  analyzeJob(jobId: string): Promise<JobAnalysisResponse>;
   createApplication(jobId: string): Promise<Application>;
   listApplications(filters?: ApplicationListFilters): Promise<ApplicationListResponse>;
   getApplication(applicationId: string): Promise<Application>;
@@ -121,9 +129,10 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     path: string,
     method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
     body?: unknown,
+    timeoutMilliseconds = REQUEST_TIMEOUT_MILLISECONDS,
   ): Promise<unknown> {
     const abortController = new AbortController();
-    const timeout = setTimeout(() => abortController.abort(), REQUEST_TIMEOUT_MILLISECONDS);
+    const timeout = setTimeout(() => abortController.abort(), timeoutMilliseconds);
     const headers: Record<string, string> = { Accept: 'application/json' };
     if (body !== undefined) {
       headers['Content-Type'] = 'application/json';
@@ -219,6 +228,21 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     async deleteJob(jobId): Promise<void> {
       await request(`/api/v1/jobs/${encodeURIComponent(jobId)}`, 'DELETE');
     },
+    async getJobAnalysis(jobId): Promise<JobAnalysisResponse> {
+      return requireJobAnalysis(
+        await request(`/api/v1/jobs/${encodeURIComponent(jobId)}/analysis`, 'GET'),
+      );
+    },
+    async analyzeJob(jobId): Promise<JobAnalysisResponse> {
+      return requireJobAnalysis(
+        await request(
+          `/api/v1/jobs/${encodeURIComponent(jobId)}/analysis`,
+          'POST',
+          {},
+          ANALYSIS_REQUEST_TIMEOUT_MILLISECONDS,
+        ),
+      );
+    },
     async createApplication(jobId): Promise<Application> {
       return requireApplication(
         await request(`/api/v1/jobs/${encodeURIComponent(jobId)}/application`, 'POST', {}),
@@ -293,6 +317,79 @@ function requireApplicationList(value: unknown): ApplicationListResponse {
     throw new Error('JobPilot API returned an invalid Application list response');
   }
   return value as unknown as ApplicationListResponse;
+}
+
+function requireJobAnalysis(value: unknown): JobAnalysisResponse {
+  if (
+    !isRecordWithKeys(value, ['isConfigured', 'analysis']) ||
+    typeof value.isConfigured !== 'boolean' ||
+    (value.analysis !== null && !isJDAnalysisRecord(value.analysis))
+  ) {
+    throw new Error('JobPilot API returned an invalid Job analysis response');
+  }
+  return value as unknown as JobAnalysisResponse;
+}
+
+function isJDAnalysisRecord(value: unknown): boolean {
+  return (
+    isRecordWithKeys(value, [
+      'id',
+      'jobId',
+      'schemaVersion',
+      'result',
+      'isStale',
+      'createdAt',
+      'updatedAt',
+    ]) &&
+    typeof value.id === 'string' &&
+    typeof value.jobId === 'string' &&
+    value.schemaVersion === 1 &&
+    isJDAnalysis(value.result) &&
+    typeof value.isStale === 'boolean' &&
+    isDateString(value.createdAt) &&
+    isDateString(value.updatedAt)
+  );
+}
+
+function isJDAnalysis(value: unknown): boolean {
+  return (
+    isRecordWithKeys(value, [
+      'summary',
+      'responsibilities',
+      'mustHaveRequirements',
+      'preferredRequirements',
+      'skills',
+      'experienceRequirements',
+      'educationRequirements',
+      'domainKeywords',
+      'interviewFocus',
+    ]) &&
+    typeof value.summary === 'string' &&
+    isEvidenceItems(value.responsibilities) &&
+    isEvidenceItems(value.mustHaveRequirements) &&
+    isEvidenceItems(value.preferredRequirements) &&
+    isStrings(value.skills) &&
+    isEvidenceItems(value.experienceRequirements) &&
+    isEvidenceItems(value.educationRequirements) &&
+    isStrings(value.domainKeywords) &&
+    isEvidenceItems(value.interviewFocus)
+  );
+}
+
+function isEvidenceItems(value: unknown): boolean {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (item) =>
+        isRecordWithKeys(item, ['text', 'evidence']) &&
+        typeof item.text === 'string' &&
+        isNullableString(item.evidence),
+    )
+  );
+}
+
+function isStrings(value: unknown): boolean {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string');
 }
 
 const JOB_KEYS = [
