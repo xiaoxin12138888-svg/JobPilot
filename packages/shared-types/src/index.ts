@@ -76,6 +76,7 @@ export interface Application {
   id: string;
   jobId: string;
   status: ApplicationStatus;
+  resumeVersionId: string | null;
   appliedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -94,8 +95,36 @@ export interface ApplicationListResponse {
 }
 
 export interface UpdateApplicationInput {
-  status: ApplicationStatus;
-  confirmApplied: boolean;
+  status?: ApplicationStatus;
+  confirmApplied?: boolean;
+  resumeVersionId?: string | null;
+}
+
+export interface ResumeVersion {
+  id: string;
+  name: string;
+  content: string;
+  applicationCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ResumeVersionListResponse {
+  items: ResumeVersion[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface CreateResumeVersionInput {
+  name: string;
+  content: string;
+}
+
+export type UpdateResumeVersionInput = Partial<CreateResumeVersionInput>;
+
+export interface DuplicateResumeVersionInput {
+  name: string;
 }
 
 export interface EvidenceItem {
@@ -128,6 +157,41 @@ export interface JDAnalysisRecord {
 export interface JobAnalysisResponse {
   isConfigured: boolean;
   analysis: JDAnalysisRecord | null;
+}
+
+export type EvidenceRequirementType = 'MUST_HAVE' | 'PREFERRED';
+export type EvidenceCoverage = 'DIRECT' | 'PARTIAL' | 'GAP';
+
+export interface ResumeEvidence {
+  quote: string;
+}
+
+export interface EvidenceMapping {
+  requirementType: EvidenceRequirementType;
+  requirementText: string;
+  coverage: EvidenceCoverage;
+  resumeEvidence: ResumeEvidence[];
+  reason: string;
+}
+
+export interface EvidenceMap {
+  mappings: EvidenceMapping[];
+}
+
+export interface EvidenceMapRecord {
+  id: string;
+  jobId: string;
+  resumeVersionId: string;
+  schemaVersion: 1;
+  result: EvidenceMap;
+  isStale: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface JobEvidenceMapResponse {
+  isConfigured: boolean;
+  evidenceMap: EvidenceMapRecord | null;
 }
 
 export interface ApiErrorEnvelope {

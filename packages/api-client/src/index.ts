@@ -4,13 +4,19 @@ import type {
   Application,
   ApplicationListResponse,
   ApplicationStatus,
+  CreateResumeVersionInput,
+  DuplicateResumeVersionInput,
   CreateJobInput,
   Job,
   JobAnalysisResponse,
+  JobEvidenceMapResponse,
   JobListResponse,
   JobSource,
+  ResumeVersion,
+  ResumeVersionListResponse,
   UpdateApplicationInput,
   UpdateJobInput,
+  UpdateResumeVersionInput,
 } from '@jobpilot/shared-types';
 export { APPLICATION_STATUS_LABELS, JOB_SOURCE_LABELS } from '@jobpilot/shared-types';
 
@@ -22,20 +28,33 @@ export type {
   ApplicationListResponse,
   ApplicationStatus,
   CreateJobInput,
+  CreateResumeVersionInput,
+  DuplicateResumeVersionInput,
+  EvidenceCoverage,
   EvidenceItem,
+  EvidenceMap,
+  EvidenceMapRecord,
+  EvidenceMapping,
+  EvidenceRequirementType,
   JDAnalysis,
   JDAnalysisRecord,
   Job,
   JobAnalysisResponse,
+  JobEvidenceMapResponse,
   JobListItem,
   JobListResponse,
   JobSource,
+  ResumeEvidence,
+  ResumeVersion,
+  ResumeVersionListResponse,
   UpdateApplicationInput,
   UpdateJobInput,
+  UpdateResumeVersionInput,
 } from '@jobpilot/shared-types';
 
 const REQUEST_TIMEOUT_MILLISECONDS = 5_000;
 const ANALYSIS_REQUEST_TIMEOUT_MILLISECONDS = 35_000;
+const EVIDENCE_MAP_REQUEST_TIMEOUT_MILLISECONDS = 65_000;
 const APPLICATION_STATUSES = new Set<ApplicationStatus>([
   'planned',
   'applied',
@@ -88,10 +107,24 @@ export interface ApiClient {
   deleteJob(jobId: string): Promise<void>;
   getJobAnalysis(jobId: string): Promise<JobAnalysisResponse>;
   analyzeJob(jobId: string): Promise<JobAnalysisResponse>;
+  getJobEvidenceMap(jobId: string, resumeVersionId: string): Promise<JobEvidenceMapResponse>;
+  generateJobEvidenceMap(jobId: string, resumeVersionId: string): Promise<JobEvidenceMapResponse>;
   createApplication(jobId: string): Promise<Application>;
   listApplications(filters?: ApplicationListFilters): Promise<ApplicationListResponse>;
   getApplication(applicationId: string): Promise<Application>;
   updateApplication(applicationId: string, input: UpdateApplicationInput): Promise<Application>;
+  createResumeVersion(input: CreateResumeVersionInput): Promise<ResumeVersion>;
+  listResumeVersions(): Promise<ResumeVersionListResponse>;
+  getResumeVersion(resumeVersionId: string): Promise<ResumeVersion>;
+  updateResumeVersion(
+    resumeVersionId: string,
+    input: UpdateResumeVersionInput,
+  ): Promise<ResumeVersion>;
+  duplicateResumeVersion(
+    resumeVersionId: string,
+    input: DuplicateResumeVersionInput,
+  ): Promise<ResumeVersion>;
+  deleteResumeVersion(resumeVersionId: string): Promise<void>;
 }
 
 export interface ApiClientOptions {
@@ -243,6 +276,25 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         ),
       );
     },
+    async getJobEvidenceMap(jobId, resumeVersionId): Promise<JobEvidenceMapResponse> {
+      const query = new URLSearchParams({ resumeVersionId });
+      return requireJobEvidenceMap(
+        await request(
+          `/api/v1/jobs/${encodeURIComponent(jobId)}/evidence-map?${query.toString()}`,
+          'GET',
+        ),
+      );
+    },
+    async generateJobEvidenceMap(jobId, resumeVersionId): Promise<JobEvidenceMapResponse> {
+      return requireJobEvidenceMap(
+        await request(
+          `/api/v1/jobs/${encodeURIComponent(jobId)}/evidence-map`,
+          'POST',
+          { resumeVersionId, confirmExternalAi: true },
+          EVIDENCE_MAP_REQUEST_TIMEOUT_MILLISECONDS,
+        ),
+      );
+    },
     async createApplication(jobId): Promise<Application> {
       return requireApplication(
         await request(`/api/v1/jobs/${encodeURIComponent(jobId)}/application`, 'POST', {}),
@@ -261,6 +313,38 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       return requireApplication(
         await request(`/api/v1/applications/${encodeURIComponent(applicationId)}`, 'PATCH', input),
       );
+    },
+    async createResumeVersion(input): Promise<ResumeVersion> {
+      return requireResumeVersion(await request('/api/v1/resume-versions', 'POST', input));
+    },
+    async listResumeVersions(): Promise<ResumeVersionListResponse> {
+      return requireResumeVersionList(await request('/api/v1/resume-versions', 'GET'));
+    },
+    async getResumeVersion(resumeVersionId): Promise<ResumeVersion> {
+      return requireResumeVersion(
+        await request(`/api/v1/resume-versions/${encodeURIComponent(resumeVersionId)}`, 'GET'),
+      );
+    },
+    async updateResumeVersion(resumeVersionId, input): Promise<ResumeVersion> {
+      return requireResumeVersion(
+        await request(
+          `/api/v1/resume-versions/${encodeURIComponent(resumeVersionId)}`,
+          'PATCH',
+          input,
+        ),
+      );
+    },
+    async duplicateResumeVersion(resumeVersionId, input): Promise<ResumeVersion> {
+      return requireResumeVersion(
+        await request(
+          `/api/v1/resume-versions/${encodeURIComponent(resumeVersionId)}/duplicate`,
+          'POST',
+          input,
+        ),
+      );
+    },
+    async deleteResumeVersion(resumeVersionId): Promise<void> {
+      await request(`/api/v1/resume-versions/${encodeURIComponent(resumeVersionId)}`, 'DELETE');
     },
   };
 }
@@ -319,6 +403,20 @@ function requireApplicationList(value: unknown): ApplicationListResponse {
   return value as unknown as ApplicationListResponse;
 }
 
+function requireResumeVersion(value: unknown): ResumeVersion {
+  if (!isRecordWithKeys(value, RESUME_VERSION_KEYS) || !isResumeVersionFields(value)) {
+    throw new Error('JobPilot API returned an invalid Resume Version response');
+  }
+  return value as unknown as ResumeVersion;
+}
+
+function requireResumeVersionList(value: unknown): ResumeVersionListResponse {
+  if (!isPage(value) || !value.items.every(isResumeVersionFieldsWithExactKeys)) {
+    throw new Error('JobPilot API returned an invalid Resume Version list response');
+  }
+  return value as unknown as ResumeVersionListResponse;
+}
+
 function requireJobAnalysis(value: unknown): JobAnalysisResponse {
   if (
     !isRecordWithKeys(value, ['isConfigured', 'analysis']) ||
@@ -328,6 +426,62 @@ function requireJobAnalysis(value: unknown): JobAnalysisResponse {
     throw new Error('JobPilot API returned an invalid Job analysis response');
   }
   return value as unknown as JobAnalysisResponse;
+}
+
+function requireJobEvidenceMap(value: unknown): JobEvidenceMapResponse {
+  if (
+    !isRecordWithKeys(value, ['isConfigured', 'evidenceMap']) ||
+    typeof value.isConfigured !== 'boolean' ||
+    (value.evidenceMap !== null && !isEvidenceMapRecord(value.evidenceMap))
+  ) {
+    throw new Error('JobPilot API returned an invalid Evidence Map response');
+  }
+  return value as unknown as JobEvidenceMapResponse;
+}
+
+function isEvidenceMapRecord(value: unknown): boolean {
+  return (
+    isRecordWithKeys(value, [
+      'id',
+      'jobId',
+      'resumeVersionId',
+      'schemaVersion',
+      'result',
+      'isStale',
+      'createdAt',
+      'updatedAt',
+    ]) &&
+    typeof value.id === 'string' &&
+    typeof value.jobId === 'string' &&
+    typeof value.resumeVersionId === 'string' &&
+    value.schemaVersion === 1 &&
+    isRecordWithKeys(value.result, ['mappings']) &&
+    Array.isArray(value.result.mappings) &&
+    value.result.mappings.every(isEvidenceMapping) &&
+    typeof value.isStale === 'boolean' &&
+    isDateString(value.createdAt) &&
+    isDateString(value.updatedAt)
+  );
+}
+
+function isEvidenceMapping(value: unknown): boolean {
+  return (
+    isRecordWithKeys(value, [
+      'requirementType',
+      'requirementText',
+      'coverage',
+      'resumeEvidence',
+      'reason',
+    ]) &&
+    (value.requirementType === 'MUST_HAVE' || value.requirementType === 'PREFERRED') &&
+    typeof value.requirementText === 'string' &&
+    (value.coverage === 'DIRECT' || value.coverage === 'PARTIAL' || value.coverage === 'GAP') &&
+    Array.isArray(value.resumeEvidence) &&
+    value.resumeEvidence.every(
+      (item) => isRecordWithKeys(item, ['quote']) && typeof item.quote === 'string',
+    ) &&
+    typeof value.reason === 'string'
+  );
 }
 
 function isJDAnalysisRecord(value: unknown): boolean {
@@ -405,7 +559,23 @@ const JOB_KEYS = [
   'createdAt',
   'updatedAt',
 ] as const;
-const APPLICATION_KEYS = ['id', 'jobId', 'status', 'appliedAt', 'createdAt', 'updatedAt'] as const;
+const APPLICATION_KEYS = [
+  'id',
+  'jobId',
+  'status',
+  'resumeVersionId',
+  'appliedAt',
+  'createdAt',
+  'updatedAt',
+] as const;
+const RESUME_VERSION_KEYS = [
+  'id',
+  'name',
+  'content',
+  'applicationCount',
+  'createdAt',
+  'updatedAt',
+] as const;
 
 function isJobFields(value: Record<string, unknown>): boolean {
   return (
@@ -428,7 +598,25 @@ function isApplicationFields(value: Record<string, unknown>): boolean {
     typeof value.id === 'string' &&
     typeof value.jobId === 'string' &&
     isApplicationStatus(value.status) &&
+    isNullableString(value.resumeVersionId) &&
     (value.appliedAt === null || isDateString(value.appliedAt)) &&
+    isDateString(value.createdAt) &&
+    isDateString(value.updatedAt)
+  );
+}
+
+function isResumeVersionFieldsWithExactKeys(value: Record<string, unknown>): boolean {
+  return isRecordWithKeys(value, RESUME_VERSION_KEYS) && isResumeVersionFields(value);
+}
+
+function isResumeVersionFields(value: Record<string, unknown>): boolean {
+  return (
+    typeof value.id === 'string' &&
+    typeof value.name === 'string' &&
+    typeof value.content === 'string' &&
+    typeof value.applicationCount === 'number' &&
+    Number.isInteger(value.applicationCount) &&
+    value.applicationCount >= 0 &&
     isDateString(value.createdAt) &&
     isDateString(value.updatedAt)
   );

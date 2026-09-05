@@ -270,6 +270,21 @@ describe('createApiClient', () => {
     });
   });
 
+  it('sets and clears the explicitly selected Application Resume Version', async () => {
+    const application = { ...createApplicationPayload('planned'), resumeVersionId: 'resume-1' };
+    const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(application));
+    const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
+
+    await expect(
+      client.updateApplication('application-1', { resumeVersionId: 'resume-1' }),
+    ).resolves.toEqual(application);
+    expect(fetchImplementation.mock.calls[0]?.[1]).toMatchObject({
+      method: 'PATCH',
+      body: JSON.stringify({ resumeVersionId: 'resume-1' }),
+      credentials: 'omit',
+    });
+  });
+
   it('loads only the application belonging to one job', async () => {
     const payload = {
       items: [
@@ -348,6 +363,138 @@ describe('createApiClient', () => {
 
     await expect(client.getJobAnalysis('job-1')).rejects.toThrow('invalid Job analysis response');
   });
+
+  it('creates, lists, updates, duplicates and deletes a Resume Version', async () => {
+    const resume = createResumePayload();
+    const fetchImplementation = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(jsonResponse(resume, 201))
+      .mockResolvedValueOnce(jsonResponse({ items: [resume], total: 1, limit: 50, offset: 0 }))
+      .mockResolvedValueOnce(jsonResponse({ ...resume, name: 'AI 产品经理版 V2' }))
+      .mockResolvedValueOnce(
+        jsonResponse({ ...resume, id: 'resume-2', name: 'AI 产品经理版 V2' }, 201),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
+
+    await expect(
+      client.createResumeVersion({ name: resume.name, content: resume.content }),
+    ).resolves.toEqual(resume);
+    await expect(client.listResumeVersions()).resolves.toMatchObject({ total: 1 });
+    await expect(
+      client.updateResumeVersion(resume.id, { name: 'AI 产品经理版 V2' }),
+    ).resolves.toMatchObject({ name: 'AI 产品经理版 V2' });
+    await expect(
+      client.duplicateResumeVersion(resume.id, { name: 'AI 产品经理版 V2' }),
+    ).resolves.toMatchObject({ id: 'resume-2' });
+    await expect(client.deleteResumeVersion('resume-2')).resolves.toBeUndefined();
+
+    expect(fetchImplementation.mock.calls.map((call) => [call[0], call[1]?.method])).toEqual([
+      ['http://127.0.0.1:8000/api/v1/resume-versions', 'POST'],
+      ['http://127.0.0.1:8000/api/v1/resume-versions', 'GET'],
+      ['http://127.0.0.1:8000/api/v1/resume-versions/resume-1', 'PATCH'],
+      ['http://127.0.0.1:8000/api/v1/resume-versions/resume-1/duplicate', 'POST'],
+      ['http://127.0.0.1:8000/api/v1/resume-versions/resume-2', 'DELETE'],
+    ]);
+  });
+
+  it.each([
+    { ...createResumePayload(), applicationCount: -1 },
+    { ...createResumePayload(), content: 42 },
+    { ...createResumePayload(), privateField: 'must-not-pass' },
+  ])('rejects an untrusted Resume Version payload', async (payload) => {
+    const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(payload));
+    const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
+
+    await expect(client.getResumeVersion('resume-1')).rejects.toThrow(
+      'invalid Resume Version response',
+    );
+  });
+
+  it('gets and generates a grounded Evidence Map with explicit external-AI consent', async () => {
+    const payload = createEvidenceMapPayload();
+    const fetchImplementation = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(jsonResponse({ isConfigured: true, evidenceMap: null }))
+      .mockResolvedValueOnce(jsonResponse(payload));
+    const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
+
+    await expect(client.getJobEvidenceMap('job-1', 'resume-1')).resolves.toEqual({
+      isConfigured: true,
+      evidenceMap: null,
+    });
+    await expect(client.generateJobEvidenceMap('job-1', 'resume-1')).resolves.toEqual(payload);
+
+    expect(fetchImplementation.mock.calls[0]?.[0]).toBe(
+      'http://127.0.0.1:8000/api/v1/jobs/job-1/evidence-map?resumeVersionId=resume-1',
+    );
+    expect(fetchImplementation.mock.calls[1]?.[1]).toMatchObject({
+      method: 'POST',
+      body: JSON.stringify({ resumeVersionId: 'resume-1', confirmExternalAi: true }),
+      credentials: 'omit',
+      redirect: 'error',
+    });
+  });
+
+  it.each([
+    { ...createEvidenceMapPayload(), score: 98 },
+    {
+      isConfigured: true,
+      evidenceMap: {
+        ...createEvidenceMapPayload().evidenceMap,
+        result: {
+          mappings: [
+            {
+              ...createEvidenceMapPayload().evidenceMap.result.mappings[0],
+              coverage: 'HIGH',
+            },
+          ],
+        },
+      },
+    },
+    {
+      isConfigured: true,
+      evidenceMap: {
+        ...createEvidenceMapPayload().evidenceMap,
+        result: {
+          mappings: [
+            {
+              ...createEvidenceMapPayload().evidenceMap.result.mappings[0],
+              resumeEvidence: [{ quote: 42 }],
+            },
+          ],
+        },
+      },
+    },
+  ])('rejects an untrusted Evidence Map payload', async (payload) => {
+    const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(payload));
+    const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
+
+    await expect(client.getJobEvidenceMap('job-1', 'resume-1')).rejects.toThrow(
+      'invalid Evidence Map response',
+    );
+  });
+
+  it('allows an Evidence Map request its dedicated 65 second client window', async () => {
+    vi.useFakeTimers();
+    const fetchImplementation = vi.fn<typeof fetch>((_input, init) => {
+      return new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener(
+          'abort',
+          () => reject(new DOMException('The operation was aborted', 'AbortError')),
+          { once: true },
+        );
+      });
+    });
+    const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
+
+    const request = client.generateJobEvidenceMap('job-1', 'resume-1');
+    const timeoutExpectation = expect(request).rejects.toThrow('JobPilot API request timed out');
+    await vi.advanceTimersByTimeAsync(64_999);
+    expect(fetchImplementation.mock.calls[0]?.[1]?.signal?.aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    await timeoutExpectation;
+  });
 });
 
 function jsonResponse(payload: unknown, status = 200): Response {
@@ -378,9 +525,47 @@ function createApplicationPayload(status: 'planned' | 'applied') {
     id: 'application-1',
     jobId: 'job-1',
     status,
+    resumeVersionId: null,
     appliedAt: status === 'applied' ? '2026-09-03T00:01:00Z' : null,
     createdAt: '2026-09-03T00:00:00Z',
     updatedAt: '2026-09-03T00:01:00Z',
+  };
+}
+
+function createResumePayload() {
+  return {
+    id: 'resume-1',
+    name: 'AI 产品经理版',
+    content: '使用 SQL 完成业务数据统计。',
+    applicationCount: 0,
+    createdAt: '2026-09-05T00:00:00Z',
+    updatedAt: '2026-09-05T00:00:00Z',
+  };
+}
+
+function createEvidenceMapPayload() {
+  return {
+    isConfigured: true,
+    evidenceMap: {
+      id: 'map-1',
+      jobId: 'job-1',
+      resumeVersionId: 'resume-1',
+      schemaVersion: 1,
+      result: {
+        mappings: [
+          {
+            requirementType: 'MUST_HAVE',
+            requirementText: '熟练使用 SQL',
+            coverage: 'DIRECT',
+            resumeEvidence: [{ quote: '使用 SQL 完成业务数据统计' }],
+            reason: '简历原文直接说明 SQL 实践。',
+          },
+        ],
+      },
+      isStale: false,
+      createdAt: '2026-09-05T00:00:00Z',
+      updatedAt: '2026-09-05T00:00:00Z',
+    },
   };
 }
 
