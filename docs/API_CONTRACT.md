@@ -7,8 +7,8 @@
 
 默认 API origin 为 `http://127.0.0.1:8000`，只支持 loopback。没有账号、cookie、token、
 session 或用户 endpoint。客户端请求使用 `credentials: omit`、`cache: no-store`、
-`redirect: error`。核心请求 timeout 为 5000 ms；显式分析请求为 35000 ms，以覆盖后端 30 秒
-Provider timeout。
+`redirect: error`。核心请求 timeout 为 5000 ms；显式分析请求保留独立的 35000 ms 客户端
+timeout，后端 LLM Provider request timeout 集中配置为 60 秒。
 
 写入还要求 loopback Host、安全的 Origin/Fetch Metadata 与 `application/json`。
 CORS 只列精确 Web origin 和 `GET, POST, PATCH, DELETE`，不允许 credentials。

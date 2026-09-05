@@ -83,7 +83,7 @@ HTTP。分析请求使用 35 秒 client timeout，其余核心请求保持 5 秒
 ## 6. Optional AI boundary
 
 调用链固定为 Web → FastAPI → JDAnalysisService → JDAnalysisProvider。只有一个
-OpenAI-compatible infrastructure adapter，使用标准库 HTTP、30 秒 timeout、禁用代理继承，
+OpenAI-compatible infrastructure adapter，使用标准库 HTTP、60 秒 timeout、禁用代理继承，
 不引入 SDK、factory、registry、LangChain 或 Agent。可选配置只来自 FastAPI 进程环境；三项
 缺失/非法时服务仍启动并向 Web 返回未配置状态。
 

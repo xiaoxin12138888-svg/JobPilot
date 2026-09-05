@@ -23,9 +23,10 @@ JOBPILOT_LLM_MODEL=provider-model-name
 
 The API does not load `.env`. A missing, partial or invalid set leaves AI unconfigured without
 preventing FastAPI startup. `baseUrl` must be an absolute HTTP(S) URL without credentials, query or
-fragment. The adapter sends `POST {baseUrl}/chat/completions` with an explicit timeout. The API key
-is never persisted or returned. Provider redirects are rejected so the Authorization header cannot
-be forwarded beyond the exact configured request target.
+fragment. The adapter sends `POST {baseUrl}/chat/completions` with a centralized 60-second timeout.
+This optional-analysis window was raised from 30 seconds after two identical smoke attempts ended at
+the previous boundary. The API key is never persisted or returned. Provider redirects are rejected
+so the Authorization header cannot be forwarded beyond the exact configured request target.
 
 ## Schema version 1
 

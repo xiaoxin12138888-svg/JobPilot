@@ -9,7 +9,7 @@ from urllib.parse import urlsplit
 DEFAULT_API_BIND_HOST = "127.0.0.1"
 DEFAULT_CORS_ORIGINS = ("http://127.0.0.1:5173",)
 ALLOWED_CORS_SCHEMES = frozenset({"http", "https"})
-DEFAULT_LLM_TIMEOUT_SECONDS = 30.0
+DEFAULT_LLM_TIMEOUT_SECONDS = 60.0
 
 
 @dataclass(frozen=True, slots=True)
