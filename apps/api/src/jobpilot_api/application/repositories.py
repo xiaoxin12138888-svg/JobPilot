@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from jobpilot_api.domain.applications import Application, ApplicationStatus
+from jobpilot_api.domain.evidence_maps import EvidenceMap, EvidenceMapRecord
 from jobpilot_api.domain.jd_analysis import JDAnalysis, JDAnalysisRecord
 from jobpilot_api.domain.jobs import Job, JobDraft
 from jobpilot_api.domain.resume_versions import ResumeVersion, ResumeVersionDraft
@@ -87,3 +88,16 @@ class ResumeVersionRepository(Protocol):
     def delete(self, resume_version_id: str) -> bool: ...
 
     def list(self, *, limit: int, offset: int) -> tuple[list[ResumeVersion], int]: ...
+
+
+class EvidenceMapRepository(Protocol):
+    def get(self, job_id: str, resume_version_id: str) -> EvidenceMapRecord | None: ...
+
+    def upsert(
+        self,
+        job_id: str,
+        resume_version_id: str,
+        result: EvidenceMap,
+        job_analysis_fingerprint: str,
+        resume_content_fingerprint: str,
+    ) -> EvidenceMapRecord: ...

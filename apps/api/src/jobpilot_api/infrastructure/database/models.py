@@ -89,3 +89,29 @@ class JDAnalysisRecordModel(Base):
     source_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class EvidenceMapRecordModel(Base):
+    __tablename__ = "evidence_map_records"
+    __table_args__ = (
+        UniqueConstraint("job_id", "resume_version_id", name="uq_evidence_map_records_job_resume"),
+        CheckConstraint("schema_version = 1", name="ck_evidence_map_records_schema_version"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    job_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("jobs.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    resume_version_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("resume_versions.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    schema_version: Mapped[int] = mapped_column(nullable=False)
+    result_json: Mapped[str] = mapped_column(Text, nullable=False)
+    job_analysis_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    resume_content_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

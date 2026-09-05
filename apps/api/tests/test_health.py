@@ -26,6 +26,7 @@ def test_openapi_exposes_only_health_and_approved_business_routes() -> None:
         "/api/v1/jobs/{job_id}",
         "/api/v1/jobs/{job_id}/application",
         "/api/v1/jobs/{job_id}/analysis",
+        "/api/v1/jobs/{job_id}/evidence-map",
         "/api/v1/applications",
         "/api/v1/applications/{application_id}",
         "/api/v1/resume-versions",

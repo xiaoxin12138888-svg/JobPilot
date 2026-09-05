@@ -10,6 +10,7 @@ from jobpilot_api.domain.errors import (
     AnalysisInvalidResponseError,
     AnalysisProviderUnavailableError,
 )
+from jobpilot_api.domain.evidence_maps import EvidenceMapInput
 from jobpilot_api.domain.jd_analysis import JDAnalysisInput
 
 MAX_PROVIDER_RESPONSE_BYTES = 1_000_000
@@ -31,6 +32,12 @@ class OpenAICompatibleJDAnalysisProvider:
         self._opener = opener or build_opener(ProxyHandler({}), _RejectRedirectHandler())
 
     def analyze(self, analysis_input: JDAnalysisInput, *, system_instruction: str) -> str:
+        return self._complete(analysis_input.as_provider_data(), system_instruction)
+
+    def map_evidence(self, evidence_input: EvidenceMapInput, *, system_instruction: str) -> str:
+        return self._complete(evidence_input.as_provider_data(), system_instruction)
+
+    def _complete(self, provider_data: object, system_instruction: str) -> str:
         request_body = json.dumps(
             {
                 "model": self._settings.model,
@@ -39,7 +46,7 @@ class OpenAICompatibleJDAnalysisProvider:
                     {
                         "role": "user",
                         "content": json.dumps(
-                            analysis_input.as_provider_data(),
+                            provider_data,
                             ensure_ascii=False,
                             separators=(",", ":"),
                         ),

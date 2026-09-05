@@ -16,6 +16,12 @@ from jobpilot_api.domain.errors import (
     DuplicateJobError,
     ResumeVersionInUseError,
 )
+from jobpilot_api.domain.evidence_maps import (
+    EVIDENCE_MAP_SCHEMA_VERSION,
+    EvidenceMap,
+    EvidenceMapRecord,
+    evidence_map_from_stored_json,
+)
 from jobpilot_api.domain.jd_analysis import (
     JD_ANALYSIS_SCHEMA_VERSION,
     JDAnalysis,
@@ -26,6 +32,7 @@ from jobpilot_api.domain.jobs import Job, JobDraft
 from jobpilot_api.domain.resume_versions import ResumeVersion, ResumeVersionDraft
 from jobpilot_api.infrastructure.database.models import (
     ApplicationModel,
+    EvidenceMapRecordModel,
     JDAnalysisRecordModel,
     JobModel,
     ResumeVersionModel,
@@ -411,6 +418,67 @@ class SqlAlchemyResumeVersionRepository:
             raise _database_error(error) from error
 
 
+class SqlAlchemyEvidenceMapRepository:
+    def __init__(self, sessions: sessionmaker[Session]) -> None:
+        self._sessions = sessions
+
+    def get(self, job_id: str, resume_version_id: str) -> EvidenceMapRecord | None:
+        try:
+            with self._sessions() as session:
+                model = session.scalar(
+                    select(EvidenceMapRecordModel).where(
+                        EvidenceMapRecordModel.job_id == job_id,
+                        EvidenceMapRecordModel.resume_version_id == resume_version_id,
+                    )
+                )
+                return _evidence_map_record(model) if model is not None else None
+        except OperationalError as error:
+            raise _database_error(error) from error
+
+    def upsert(
+        self,
+        job_id: str,
+        resume_version_id: str,
+        result: EvidenceMap,
+        job_analysis_fingerprint: str,
+        resume_content_fingerprint: str,
+    ) -> EvidenceMapRecord:
+        now = datetime.now(UTC)
+        result_json = json.dumps(
+            result.as_dict(), ensure_ascii=False, separators=(",", ":"), sort_keys=True
+        )
+        try:
+            with self._sessions.begin() as session:
+                model = session.scalar(
+                    select(EvidenceMapRecordModel).where(
+                        EvidenceMapRecordModel.job_id == job_id,
+                        EvidenceMapRecordModel.resume_version_id == resume_version_id,
+                    )
+                )
+                if model is None:
+                    model = EvidenceMapRecordModel(
+                        id=str(uuid4()),
+                        job_id=job_id,
+                        resume_version_id=resume_version_id,
+                        schema_version=EVIDENCE_MAP_SCHEMA_VERSION,
+                        result_json=result_json,
+                        job_analysis_fingerprint=job_analysis_fingerprint,
+                        resume_content_fingerprint=resume_content_fingerprint,
+                        created_at=now,
+                        updated_at=now,
+                    )
+                    session.add(model)
+                else:
+                    model.schema_version = EVIDENCE_MAP_SCHEMA_VERSION
+                    model.result_json = result_json
+                    model.job_analysis_fingerprint = job_analysis_fingerprint
+                    model.resume_content_fingerprint = resume_content_fingerprint
+                    model.updated_at = now
+        except OperationalError as error:
+            raise _database_error(error) from error
+        return _evidence_map_record(model)
+
+
 def _draft_values(draft: JobDraft) -> dict[str, object]:
     return {
         "title": draft.title,
@@ -472,6 +540,20 @@ def _analysis_record(model: JDAnalysisRecordModel) -> JDAnalysisRecord:
         schema_version=model.schema_version,
         result=analysis_from_stored_json(model.result_json),
         source_fingerprint=model.source_fingerprint,
+        created_at=_utc(model.created_at),
+        updated_at=_utc(model.updated_at),
+    )
+
+
+def _evidence_map_record(model: EvidenceMapRecordModel) -> EvidenceMapRecord:
+    return EvidenceMapRecord(
+        id=model.id,
+        job_id=model.job_id,
+        resume_version_id=model.resume_version_id,
+        schema_version=model.schema_version,
+        result=evidence_map_from_stored_json(model.result_json),
+        job_analysis_fingerprint=model.job_analysis_fingerprint,
+        resume_content_fingerprint=model.resume_content_fingerprint,
         created_at=_utc(model.created_at),
         updated_at=_utc(model.updated_at),
     )

@@ -57,3 +57,11 @@ class AnalysisProviderUnavailableError(DomainError):
 class AnalysisInvalidResponseError(DomainError):
     code = "AI_INVALID_RESPONSE"
     status_code = 502
+
+
+class JDAnalysisRequiredError(DomainError):
+    code = "JD_ANALYSIS_REQUIRED"
+
+
+class JDAnalysisStaleError(DomainError):
+    code = "JD_ANALYSIS_STALE"

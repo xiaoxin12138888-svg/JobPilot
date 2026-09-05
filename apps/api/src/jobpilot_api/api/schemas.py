@@ -5,9 +5,16 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from jobpilot_api.application.evidence_maps import EvidenceMapState
 from jobpilot_api.application.jd_analysis import JDAnalysisState
 from jobpilot_api.application.repositories import ApplicationListEntry, JobListEntry
 from jobpilot_api.domain.applications import Application, ApplicationStatus
+from jobpilot_api.domain.evidence_maps import (
+    EvidenceMap,
+    EvidenceMapping,
+    EvidenceMapRecord,
+    ResumeEvidence,
+)
 from jobpilot_api.domain.jd_analysis import EvidenceItem, JDAnalysis, JDAnalysisRecord
 from jobpilot_api.domain.jobs import Job
 from jobpilot_api.domain.resume_versions import ResumeVersion
@@ -293,3 +300,84 @@ class ResumeVersionListResponse(ApiModel):
     total: int
     limit: int
     offset: int
+
+
+class EvidenceMapGenerateRequest(ApiModel):
+    resume_version_id: str = Field(max_length=36)
+    confirm_external_ai: Literal[True]
+
+
+class ResumeEvidenceResponse(ApiModel):
+    quote: str
+
+    @classmethod
+    def from_domain(cls, evidence: ResumeEvidence) -> ResumeEvidenceResponse:
+        return cls(quote=evidence.quote)
+
+
+class EvidenceMappingResponse(ApiModel):
+    requirement_type: Literal["MUST_HAVE", "PREFERRED"]
+    requirement_text: str
+    coverage: Literal["DIRECT", "PARTIAL", "GAP"]
+    resume_evidence: list[ResumeEvidenceResponse]
+    reason: str
+
+    @classmethod
+    def from_domain(cls, mapping: EvidenceMapping) -> EvidenceMappingResponse:
+        return cls(
+            requirement_type=mapping.requirement_type.value,
+            requirement_text=mapping.requirement_text,
+            coverage=mapping.coverage.value,
+            resume_evidence=[
+                ResumeEvidenceResponse.from_domain(evidence) for evidence in mapping.resume_evidence
+            ],
+            reason=mapping.reason,
+        )
+
+
+class EvidenceMapResultResponse(ApiModel):
+    mappings: list[EvidenceMappingResponse]
+
+    @classmethod
+    def from_domain(cls, result: EvidenceMap) -> EvidenceMapResultResponse:
+        return cls(mappings=[EvidenceMappingResponse.from_domain(item) for item in result.mappings])
+
+
+class EvidenceMapRecordResponse(ApiModel):
+    id: str
+    job_id: str
+    resume_version_id: str
+    schema_version: int
+    result: EvidenceMapResultResponse
+    is_stale: bool
+    created_at: datetime
+    updated_at: datetime
+
+    @classmethod
+    def from_domain(cls, record: EvidenceMapRecord, *, is_stale: bool) -> EvidenceMapRecordResponse:
+        return cls(
+            id=record.id,
+            job_id=record.job_id,
+            resume_version_id=record.resume_version_id,
+            schema_version=record.schema_version,
+            result=EvidenceMapResultResponse.from_domain(record.result),
+            is_stale=is_stale,
+            created_at=record.created_at,
+            updated_at=record.updated_at,
+        )
+
+
+class JobEvidenceMapResponse(ApiModel):
+    is_configured: bool
+    evidence_map: EvidenceMapRecordResponse | None
+
+    @classmethod
+    def from_state(cls, state: EvidenceMapState) -> JobEvidenceMapResponse:
+        return cls(
+            is_configured=state.is_configured,
+            evidence_map=(
+                EvidenceMapRecordResponse.from_domain(state.record, is_stale=state.is_stale)
+                if state.record is not None
+                else None
+            ),
+        )

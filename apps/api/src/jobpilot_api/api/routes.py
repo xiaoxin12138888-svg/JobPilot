@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Query, Response, status
 from jobpilot_api.api.dependencies import (
     get_analysis_service,
     get_application_service,
+    get_evidence_map_service,
     get_job_service,
     get_resume_version_service,
 )
@@ -17,8 +18,10 @@ from jobpilot_api.api.schemas import (
     ApplicationListResponse,
     ApplicationResponse,
     ApplicationUpdateRequest,
+    EvidenceMapGenerateRequest,
     JobAnalysisResponse,
     JobCreateRequest,
+    JobEvidenceMapResponse,
     JobListItem,
     JobListResponse,
     JobResponse,
@@ -29,6 +32,7 @@ from jobpilot_api.api.schemas import (
     ResumeVersionResponse,
     ResumeVersionUpdateRequest,
 )
+from jobpilot_api.application.evidence_maps import EvidenceMapService
 from jobpilot_api.application.jd_analysis import JDAnalysisService
 from jobpilot_api.application.services import ApplicationService, JobService, ResumeVersionService
 from jobpilot_api.domain.applications import ApplicationStatus
@@ -117,6 +121,24 @@ def analyze_job(
     service: Annotated[JDAnalysisService, Depends(get_analysis_service)],
 ) -> JobAnalysisResponse:
     return JobAnalysisResponse.from_state(service.analyze(job_id))
+
+
+@router.get("/jobs/{job_id}/evidence-map", response_model=JobEvidenceMapResponse)
+def get_job_evidence_map(
+    job_id: str,
+    service: Annotated[EvidenceMapService, Depends(get_evidence_map_service)],
+    resume_version_id: Annotated[str, Query(alias="resumeVersionId", max_length=36)],
+) -> JobEvidenceMapResponse:
+    return JobEvidenceMapResponse.from_state(service.get(job_id, resume_version_id))
+
+
+@router.post("/jobs/{job_id}/evidence-map", response_model=JobEvidenceMapResponse)
+def generate_job_evidence_map(
+    job_id: str,
+    request: EvidenceMapGenerateRequest,
+    service: Annotated[EvidenceMapService, Depends(get_evidence_map_service)],
+) -> JobEvidenceMapResponse:
+    return JobEvidenceMapResponse.from_state(service.generate(job_id, request.resume_version_id))
 
 
 @router.post(

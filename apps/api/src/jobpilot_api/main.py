@@ -14,7 +14,7 @@ from jobpilot_api.api.dependencies import ServiceProvider
 from jobpilot_api.api.errors import install_error_handlers, install_response_header_middleware
 from jobpilot_api.api.routes import router as business_router
 from jobpilot_api.api.security import install_local_write_middleware
-from jobpilot_api.application.providers import JDAnalysisProvider
+from jobpilot_api.application.providers import EvidenceMapProvider, JDAnalysisProvider
 from jobpilot_api.config import ApiSettings
 from jobpilot_api.infrastructure.database.engine import DEFAULT_DATABASE_PATH
 
@@ -29,10 +29,16 @@ def create_app(
     *,
     database_path: Path = DEFAULT_DATABASE_PATH,
     analysis_provider: JDAnalysisProvider | None = None,
+    evidence_map_provider: EvidenceMapProvider | None = None,
 ) -> FastAPI:
     install_uvicorn_access_query_redaction()
     active_settings = settings or ApiSettings.from_environment()
-    service_provider = ServiceProvider(database_path, active_settings.llm, analysis_provider)
+    service_provider = ServiceProvider(
+        database_path,
+        active_settings.llm,
+        analysis_provider,
+        evidence_map_provider,
+    )
 
     @asynccontextmanager
     async def lifespan(_application: FastAPI) -> AsyncIterator[None]:

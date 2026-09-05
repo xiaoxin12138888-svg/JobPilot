@@ -19,6 +19,7 @@ def test_model_metadata_and_migration_history_contain_phase_7_resume_tables() ->
         "applications",
         "jd_analysis_records",
         "resume_versions",
+        "evidence_map_records",
     }
     assert len(script.get_heads()) == 1
 
@@ -118,7 +119,7 @@ def test_phase_4_source_migration_preserves_phase_3_data_and_is_reversible(tmp_p
     command.upgrade(config, "head")
     with sqlite3.connect(database_path) as connection:
         version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
-    assert version == ("0005_resume_versions",)
+    assert version == ("0006_evidence_map_records",)
 
 
 def test_source_migration_refuses_to_downgrade_while_boss_jobs_exist(tmp_path: Path) -> None:
@@ -199,7 +200,7 @@ def test_phase_5_source_migration_preserves_existing_data_and_is_reversible(
 
     with sqlite3.connect(database_path) as connection:
         version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
-    assert version == ("0005_resume_versions",)
+    assert version == ("0006_evidence_map_records",)
 
 
 def test_phase_5_source_migration_refuses_downgrade_while_nowcoder_jobs_exist(
@@ -268,7 +269,7 @@ def test_phase_6_analysis_migration_is_reversible_and_cascades(tmp_path: Path) -
     command.upgrade(config, "head")
     with sqlite3.connect(database_path) as connection:
         version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
-    assert version == ("0005_resume_versions",)
+    assert version == ("0006_evidence_map_records",)
 
 
 def test_phase_7_resume_migration_is_reversible_and_preserves_applications(
@@ -335,3 +336,71 @@ def test_phase_7_resume_migration_is_reversible_and_preserves_applications(
     assert "resume_versions" not in tables
     assert "resume_version_id" not in columns
     assert application == ("application-1", "job-1", "planned")
+
+
+def test_phase_7_evidence_map_migration_is_reversible_unique_and_cascades(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "phase-7-evidence.db"
+    config = Config("apps/api/alembic.ini")
+    config.set_main_option("sqlalchemy.url", sqlite_database_url(database_path).render_as_string())
+    command.upgrade(config, "head")
+
+    with sqlite3.connect(database_path) as connection:
+        connection.execute("PRAGMA foreign_keys=ON")
+        connection.execute(
+            """
+            INSERT INTO jobs (id, title, company, source, created_at, updated_at)
+            VALUES ('job-1', '岗位', '公司', 'manual', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO resume_versions (id, name, content, created_at, updated_at)
+            VALUES ('resume-1', '版本', '虚构简历正文', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """
+        )
+        values = (
+            "map-1",
+            "job-1",
+            "resume-1",
+            1,
+            '{"mappings":[]}',
+            "a" * 64,
+            "b" * 64,
+        )
+        connection.execute(
+            """
+            INSERT INTO evidence_map_records (
+                id, job_id, resume_version_id, schema_version, result_json,
+                job_analysis_fingerprint, resume_content_fingerprint, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """,
+            values,
+        )
+        connection.commit()
+        with pytest.raises(sqlite3.IntegrityError):
+            connection.execute(
+                """
+                INSERT INTO evidence_map_records (
+                    id, job_id, resume_version_id, schema_version, result_json,
+                    job_analysis_fingerprint, resume_content_fingerprint, created_at, updated_at
+                ) VALUES (
+                    'map-2', 'job-1', 'resume-1', 1, '{"mappings":[]}', ?, ?,
+                    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                )
+                """,
+                ("c" * 64, "d" * 64),
+            )
+        connection.rollback()
+        connection.execute("DELETE FROM resume_versions WHERE id = 'resume-1'")
+        connection.commit()
+        remaining = connection.execute("SELECT count(*) FROM evidence_map_records").fetchone()[0]
+
+    assert remaining == 0
+    command.downgrade(config, "0005_resume_versions")
+    with sqlite3.connect(database_path) as connection:
+        table = connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'evidence_map_records'"
+        ).fetchone()
+    assert table is None
