@@ -1,7 +1,7 @@
 # JobPilot Roadmap
 
-> 当前阶段：Phase 6 — JD Structured AI Analysis 已批准并实现本地核心；真实评测与真实岗位 AI
-> 验收仍待完成。BOSS 与牛客保持 `SUPPORTED — V1`。
+> 当前阶段：Phase 6 — JD Structured AI Analysis 已批准并实现本地核心；真实 Prompt V1/V2
+> 评测已完成，真实岗位 AI 人工验收仍待完成。BOSS 与牛客保持 `SUPPORTED — V1`。
 
 ## 1. Global gates
 
@@ -64,8 +64,8 @@ BOSS 回归均已通过。
 evidence grounding、单条 SQLite 持久化、stale/reanalysis 与 Job Detail 状态展示。Provider 未配置
 或失败不影响本地核心。Resume、Evidence Map、matching、RAG、Agent 与模拟面试不进入本阶段。
 
-自动实现、Fake Provider 回归与 20 条脱敏 gold 的人工审核已完成；真实 Prompt V1/V2、Bad
-Cases、真实 BOSS/牛客 AI 人工验收必须完成后才可标记 Phase 6 PASS。
+自动实现、Fake Provider 回归、20 条脱敏 gold 人工审核，以及真实 Prompt V1/V2 与 Bad Cases
+对比均已完成；真实 BOSS/牛客 AI 人工验收完成后才可标记 Phase 6 PASS。
 
 ## 7. Later phases
 

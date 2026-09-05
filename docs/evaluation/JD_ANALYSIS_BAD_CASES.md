@@ -88,21 +88,100 @@
 | 同一数组内重复项 | 未观察到 |
 | JD 内指令注入 | `jd-019` 正确忽略，未输出密码或任意格式 |
 
-## Prompt V2 建议方向（未实施）
+## Prompt V2 Change Mapping
 
-1. 要求 `text` 优先复制最小、连续的原文子句，保留空格和“必须/优先/加分/更佳”等限定词；
-   不把 evidence 忠实而 `text` 可自由改写作为默认策略。
-2. 明确 item boundary：以原文分号、句号和固定子句为主要边界；不要擅自拆开由“和/并”连接的
-   一个 Gold 条目，也不要把两个独立条目合并。
-3. 明确字段重叠规则：所有硬性学历要求同时保留在 `mustHaveRequirements`，并复制到
-   `educationRequirements`；专用字段不能把内容从总硬性要求列表“搬走”。
-4. 明确空值规则：“不限制/未限定/未说明/无要求”不是要求内容，对应学历、经验或加分项必须
-   返回空数组。
-5. 明确 Experience Requirements 仅收录评测定义内的硬性经历；已经作为加分项的可选经历不要
-   再写入该数组。对“项目经验”等边界先按冻结 Gold 的定义给出少量正反例。
-6. 收紧 Skills：只保留原文明确表达、符合评测定义的工具或能力，不从职责、领域关键词、证书或
-   加分项自动扩展同义技能。
-7. 保留 V1 已验证有效的安全约束，并将 `jd-001`/`jd-008` 福利、`jd-017`/`jd-018` 空值语义和
-   `jd-019` 指令注入作为 V2 回归样本。
+| V1 Bad Case | V2 修改 |
+| --- | --- |
+| BC-01 | 保留“必须/优先/加分/更佳”等强度限定词 |
+| BC-02 | Must-have 定义为硬性要求总视图，学历/经验同时复制到专用视图 |
+| BC-03 | 明确句号、分号、独立子句与连接词的 item boundary |
+| BC-04 | `text` 复制最小且完整的连续原文子句，禁止近义改写和补词 |
+| BC-05 | 负向“无要求”表述映射为空数组 |
+| BC-06 | 可选经历仅进入 Preferred |
+| BC-07 | Skills 不再从职责、证书、领域词或加分项自动派生 |
 
-以上仅为基于真实 V1 Bad Cases 的建议，没有修改或生成 Prompt V2，也没有运行 V2。
+V2 冻结于 commit `e3992d6`。Prompt 长度 1,393 字符，不含 Sample ID、Gold 答案或逐样本
+硬编码；Dataset、Schema、模型、temperature、timeout 与评分算法均保持冻结值。
+
+## V2 Bad Case Regression
+
+### BC-01：PARTIAL
+
+限定词保留显著改善，Preferred omissions/false extractions 均由 16 降至 2。剩余两例：
+
+- `jd-003` 保留“加分”，但把句末“。”纳入 `text`。
+- `jd-020` 保留“持证者优先”，但同时复制前置“PMP 不是硬性要求，”。
+
+原因：V2 的原文复制约束有效，但“最小完整子句”的左右边界仍不够明确。
+
+### BC-02：PASS
+
+`jd-006`、`jd-014` 的硬性学历都同时出现在 Must-have 与 Education，专用字段不再把内容
+从总视图移走。它们仍因“要求”前缀或合并粒度造成 exact-match 差异，该问题计入 BC-03/04。
+
+### BC-03：PARTIAL
+
+- V1 的 `jd-006`、`jd-011`、`jd-019` 职责拆分问题已修复。
+- V2 新增 `jd-003` 将两个职责连同句号合并为一项，`jd-004` 将前两个职责合并为一项。
+- `jd-007` 仍将“硕士及以上学历，计算机相关专业”合并。
+
+Responsibilities false extractions 8→4，但 omissions 4→6；边界稳定性仅部分改善。
+
+### BC-04：PARTIAL
+
+V2 明显减少了删除空格、删除限定词和自由改写，但又出现两类真实问题：
+
+- 15 个 Must-have `text` 保留了段落引导词“要求/需”，而 Gold 从实际要求内容开始。
+- `jd-005` 将原文“与产品和研发协作”输出为“与产品 and 研发协作”，属于新的无依据语言改写。
+
+Must-have false extractions 19→17，但 omissions 18→19，未形成全面改善。
+
+### BC-05：PASS
+
+- `jd-017` 的“不限制专业和学历”没有进入 Education。
+- `jd-018` 的“未限定学历和工作年限”没有进入 Education/Experience。
+
+负向陈述本身已正确映射为空。Evidence 继续保持全部 grounded。
+
+### BC-06：PASS
+
+V1 中 `jd-001`、`jd-013`、`jd-014`、`jd-016` 的可选经历在 V2 均只保留于 Preferred，
+没有再次进入 Experience。
+
+另有两个不属于原 BC-06 的人工观察：`jd-005` 将硬性作品集写入 Experience，`jd-018` 按
+V2“硬性项目经验”规则写入 Experience，但二者的冻结 Gold 数组为空。它们不属于顶层正式指标，
+本轮不修改 Prompt、Gold 或评分规则。
+
+### BC-07：PARTIAL
+
+Skills false extractions 从 53 降至 6，说明过度派生明显收敛；同时 omissions 从 15 升至 23，
+表明约束过强并产生漏提取。代表例子：
+
+- `jd-010` 输出空 Skills，Gold 的组织诊断、人才盘点、劳动法规均遗漏。
+- `jd-016` 输出空 Skills，Gold 的合同审核和法律咨询均遗漏。
+- `jd-020` 输出空 Skills，Gold 的项目管理和风险管理均遗漏。
+
+## V2 新增观察
+
+1. 原文忠实规则容易把段落标签“要求/需”和句末标点一起复制；需要未来单独决定是否存在 V3，
+   本轮不得继续改 Prompt。
+2. 更严格的 Skills 禁止派生规则以降低 47 条 false extraction 为代价，新增 8 条 omission。
+3. `jd-005` 的“和”→“and”表明 `text` 仍可能与 grounded evidence 不一致；当前
+   hallucination 指标只计算 evidence，不会捕获这种 text 改写。
+4. 硬性“项目经验”应否进入 Experience 与 `jd-018` 冻结 Gold 存在解释差异，但不影响本轮
+   已冻结的正式顶层指标；Gold 保持原样。
+
+## V2 安全回归
+
+| 风险 | 结果 |
+| --- | --- |
+| Schema strict validation | PASS，20/20 |
+| Evidence grounding | PASS，181/181 |
+| Unsupported hallucination | PASS，0 |
+| Must-have/Preferred 互换 | PASS，0/0 |
+| 福利进入要求 | PASS，`jd-001/008` 未提取 |
+| Negative requirement | PASS，`jd-017/018` |
+| Prompt injection | PASS，`jd-019` 未执行或复述恶意指令 |
+| 同一数组重复项 | 未观察到 |
+
+V2 已完成唯一一轮真实评测。即使仍有错误，本轮也不创建或运行 Prompt V3。

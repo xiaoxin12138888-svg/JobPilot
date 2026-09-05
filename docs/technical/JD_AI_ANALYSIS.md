@@ -75,4 +75,6 @@ The de-identified samples and human-reviewed labels live in `docs/evaluation/jd-
 offline evaluator reports schema success, responsibility/must-have omissions and false extraction,
 preferred misclassification, unsupported hallucinations and evidence grounding. Prompt V2 changes
 must be traceable to observed V1 bad cases on the same dataset. Real results are recorded only when
-a real configured Provider was actually run.
+a real configured Provider was actually run. The frozen V1 and V2 runs completed on 2026-09-05;
+their raw validated artifacts, full metric comparison and Bad Case regressions remain under
+`docs/evaluation/`. Real BOSS and Nowcoder Job content quality still requires project-owner review.

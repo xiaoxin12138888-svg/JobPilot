@@ -25,8 +25,8 @@
 ## Evaluation and acceptance
 
 - [x] Add at least 20 de-identified realistic samples with human-reviewed gold labels.
-- [ ] Record actual V1 metrics and real bad cases on the fixed dataset when Provider is available.
-- [ ] Make V2 changes only from V1 bad cases and rerun the identical dataset.
+- [x] Record actual V1 metrics and real bad cases on the fixed dataset when Provider is available.
+- [x] Make V2 changes only from V1 bad cases and rerun the identical dataset.
 - [ ] Run real BOSS and Nowcoder Job analysis acceptance when Provider is available.
 - [x] Run locked installs, all tests/lint/format/typecheck/build and migration cycles.
 - [x] Regress BOSS, Nowcoder, Job/Application, SQLite restart and no-proxy local-first core.

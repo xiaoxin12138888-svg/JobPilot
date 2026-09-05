@@ -8,9 +8,10 @@ Gold 标签。
 `human-reviewed`，`reviewedSampleCount` 为 20；`GOLD_REVIEW_PACK.md` 保存中文审核包和历史。
 Evaluator 会校验这三类信号，部分审核或只修改顶层状态时会阻止运行。
 
-## Prompt V1 真实产物
+## Prompt V1/V2 真实产物
 
-`prompt-v1-run.json` 是冻结 Prompt V1 在同一 20 条数据集上的真实 Provider 运行记录，包含：
+`prompt-v1-run.json` 与 `prompt-v2-run.json` 是冻结 Prompt V1/V2 在同一 20 条数据集上的
+各一轮真实 Provider 运行记录，包含：
 
 - 数据集、Prompt、Schema、模型、temperature 和 timeout 版本信息；
 - 20/20 validated structured results；
@@ -18,18 +19,19 @@ Evaluator 会校验这三类信号，部分审核或只修改顶层状态时会�
 - 冻结的聚合指标与逐样本 exact-match 差异；
 - 不包含 API Key、Provider envelope 或无效 raw response。
 
-从仓库根目录执行相同 runner 的命令为：
+Runner 要求显式选择 Prompt 版本。V1 的可复现命令为：
 
 ```text
 uv run --project apps/api python apps/api/scripts/evaluate_jd_analysis.py \
   --dataset docs/evaluation/jd-analysis/dataset-v1.json \
-  --output docs/evaluation/jd-analysis/prompt-v1-run.json
+  --output docs/evaluation/jd-analysis/prompt-v1-run.json \
+  --prompt-version v1
 ```
 
-Runner 使用产品同一份 Prompt V1 和 Provider adapter。文本比较只做空白/大小写规范化后
+Runner 使用产品对应版本的 Prompt 和同一个 Provider adapter。文本比较只做空白/大小写规范化后
 exact-match；`unsupportedHallucinationCount` 则保守统计模型 evidence 是否为规范化 JD 的原文
 子串。Schema failure 与 evidence 不支持分别统计。
 
-V1 正式指标见 `../JD_ANALYSIS_RESULTS.md`，真实 Bad Cases 与尚未实施的 V2 建议见
-`../JD_ANALYSIS_BAD_CASES.md`。Prompt V2 必须经过项目负责人后续批准；本次没有创建、修改或
-运行 V2，也没有进入 Phase 7。
+V1/V2 完整指标见 `../JD_ANALYSIS_RESULTS.md`，真实 Bad Cases 与逐项回归见
+`../JD_ANALYSIS_BAD_CASES.md`。V2 仍有已记录错误，本轮不会自动创建 Prompt V3；真实 BOSS
+和 Nowcoder Job AI 内容质量需由项目负责人确认，Phase 7 尚未进入。
