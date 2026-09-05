@@ -122,6 +122,37 @@ textarea:focus-visible {
   padding: 1.25rem 0;
   border-bottom: 1px solid rgb(21 93 60 / 16%);
 }
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.workspace-nav {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border: 1px solid rgb(21 93 60 / 14%);
+  border-radius: 0.65rem;
+  background: rgb(255 255 255 / 62%);
+}
+.workspace-nav button {
+  min-height: 2.25rem;
+  padding: 0.45rem 0.75rem;
+  border: 0;
+  border-radius: 0.45rem;
+  color: var(--muted);
+  font-weight: 750;
+  background: transparent;
+  cursor: pointer;
+}
+.workspace-nav button:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.workspace-nav button[aria-current='page'] {
+  color: white;
+  background: var(--accent);
+}
 .wordmark {
   margin: 0;
   font-family: Georgia, 'Times New Roman', serif;
@@ -315,6 +346,62 @@ textarea {
   margin: 0 0 1.25rem;
   color: var(--muted);
   line-height: 1.6;
+}
+
+.resume-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.resume-card {
+  display: grid;
+  min-width: 0;
+  gap: 1rem;
+  align-content: start;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  background: var(--surface-strong);
+  box-shadow: 0 0.35rem 1.5rem rgb(25 48 35 / 5%);
+}
+.resume-card h2,
+.resume-card p {
+  margin: 0;
+}
+.resume-card h2 {
+  overflow-wrap: anywhere;
+  font-size: 1.3rem;
+  line-height: 1.35;
+}
+.resume-preview {
+  display: -webkit-box;
+  overflow: hidden;
+  min-height: 4.8rem;
+  color: #344139;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+.resume-usage {
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.resume-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.9rem;
+  margin-top: auto;
+}
+.danger-text {
+  color: var(--danger);
+}
+.resume-editor textarea {
+  min-height: 28rem;
 }
 
 .job-grid {
@@ -584,9 +671,135 @@ dd {
   font-weight: 700;
   background: var(--accent-soft);
 }
+.evidence-map-card {
+  border-color: #ccc4ac;
+  background: #fffdf8;
+}
+.evidence-resume-select {
+  margin-bottom: 1rem;
+}
+.evidence-result {
+  display: grid;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+.evidence-group {
+  min-width: 0;
+  padding-top: 1.25rem;
+  border-top: 1px solid #ded8c8;
+}
+.evidence-group-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.evidence-group-header h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+.evidence-counts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+.evidence-counts span {
+  padding: 0.3rem 0.55rem;
+  border: 1px solid #d8d1be;
+  border-radius: 999px;
+  color: #575247;
+  font-size: 0.76rem;
+  font-weight: 700;
+  background: #faf7ed;
+}
+.evidence-mappings {
+  display: grid;
+  gap: 0.75rem;
+}
+.evidence-mapping {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid #ded8c8;
+  border-left-width: 0.25rem;
+  border-radius: 0.55rem;
+  background: white;
+}
+.evidence-mapping h4 {
+  margin: 0.65rem 0 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.coverage-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.65rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+.coverage-direct {
+  color: var(--accent-dark);
+  background: var(--accent-soft);
+}
+.coverage-partial {
+  color: #704d0c;
+  background: #f6e9c4;
+}
+.coverage-gap {
+  color: #566059;
+  background: #eceeea;
+}
+.resume-quotes {
+  margin-top: 0.9rem;
+}
+.resume-quotes p {
+  margin: 0 0 0.35rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+.resume-quotes blockquote {
+  margin: 0.4rem 0 0;
+  padding: 0.7rem 0.85rem;
+  border-left: 3px solid #9ab3a5;
+  color: #344139;
+  background: #f5f8f5;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.evidence-reason {
+  margin: 0.85rem 0 0;
+  color: var(--muted);
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
 .application-card {
   position: sticky;
   top: 1rem;
+}
+.resume-association {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+.resume-association .form-error,
+.resume-association .muted {
+  margin: 0;
+}
+.success-note {
+  margin: 0 0 1rem !important;
+  padding: 0.7rem;
+  border-radius: 0.45rem;
+  color: var(--accent-dark) !important;
+  font-size: 0.82rem;
+  background: var(--accent-soft);
 }
 .application-card > p {
   color: var(--muted);
@@ -638,6 +851,9 @@ dd {
   .detail-layout {
     grid-template-columns: 1fr;
   }
+  .resume-grid {
+    grid-template-columns: 1fr;
+  }
   .application-card {
     position: static;
   }
@@ -649,6 +865,12 @@ dd {
   .detail-actions {
     justify-content: flex-start;
   }
+  .evidence-group-header {
+    flex-direction: column;
+  }
+  .evidence-counts {
+    justify-content: flex-start;
+  }
 }
 @media (max-width: 38rem) {
   .topbar,
@@ -657,6 +879,18 @@ dd {
   }
   .local-badge {
     display: none;
+  }
+  .topbar {
+    align-items: flex-start;
+  }
+  .topbar-actions {
+    align-items: flex-end;
+  }
+  .workspace-nav {
+    flex-direction: column;
+  }
+  .workspace-nav button {
+    width: 100%;
   }
   .job-grid,
   .form-grid,
@@ -677,6 +911,17 @@ dd {
   }
   .analysis-header .button {
     width: 100%;
+  }
+  .resume-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .resume-actions .button,
+  .resume-actions .text-button {
+    width: 100%;
+  }
+  .resume-editor textarea {
+    min-height: 20rem;
   }
   .danger-zone {
     align-items: stretch;

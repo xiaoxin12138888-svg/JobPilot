@@ -1,12 +1,19 @@
 import { useState } from 'react';
 
 import { APPLICATION_STATUS_LABELS as STATUS_LABELS } from '@jobpilot/api-client';
-import type { ApiClient, Application, ApplicationStatus } from '@jobpilot/api-client';
+import type {
+  ApiClient,
+  Application,
+  ApplicationStatus,
+  ResumeVersion,
+} from '@jobpilot/api-client';
 
 interface ApplicationPanelProps {
   apiClient: ApiClient;
   jobId: string;
   application: Application | undefined;
+  resumeVersions: ResumeVersion[];
+  resumeLoadError: string | undefined;
   onApplicationChange(application: Application): void;
 }
 
@@ -14,9 +21,12 @@ export function ApplicationPanel({
   apiClient,
   jobId,
   application,
+  resumeVersions,
+  resumeLoadError,
   onApplicationChange,
 }: ApplicationPanelProps) {
   const [error, setError] = useState<string>();
+  const [associationSaved, setAssociationSaved] = useState(false);
 
   async function changeStatus(status: ApplicationStatus, confirmApplied: boolean) {
     if (!application) return;
@@ -30,16 +40,41 @@ export function ApplicationPanel({
     }
   }
 
+  async function saveResumeVersion(resumeVersionId: string | null) {
+    if (!application) return;
+    setError(undefined);
+    setAssociationSaved(false);
+    try {
+      onApplicationChange(await apiClient.updateApplication(application.id, { resumeVersionId }));
+      setAssociationSaved(true);
+    } catch (updateError) {
+      setError(messageFor(updateError, '简历版本关联失败，请稍后重试。'));
+    }
+  }
+
   return (
     <aside className="application-card">
       <p className="eyebrow">APPLICATION</p>
       <h2>投递进度</h2>
       {application ? (
-        <ApplicationControl
-          key={application.status}
-          application={application}
-          onChange={changeStatus}
-        />
+        <>
+          <ResumeAssociation
+            application={application}
+            resumeVersions={resumeVersions}
+            resumeLoadError={resumeLoadError}
+            onSave={saveResumeVersion}
+          />
+          {associationSaved && (
+            <p className="success-note" role="status">
+              已记录本次投递使用的简历版本。
+            </p>
+          )}
+          <ApplicationControl
+            key={application.status}
+            application={application}
+            onChange={changeStatus}
+          />
+        </>
       ) : (
         <>
           <p>还没有投递记录。建立后初始状态为“计划投递”。</p>
@@ -69,6 +104,61 @@ export function ApplicationPanel({
         打开原平台不会改变状态；只有你确认完成投递后才会标记“已投递”。
       </p>
     </aside>
+  );
+}
+
+function ResumeAssociation({
+  application,
+  resumeVersions,
+  resumeLoadError,
+  onSave,
+}: {
+  application: Application;
+  resumeVersions: ResumeVersion[];
+  resumeLoadError: string | undefined;
+  onSave(resumeVersionId: string | null): Promise<void>;
+}) {
+  const [selected, setSelected] = useState(application.resumeVersionId ?? '');
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    setSaving(true);
+    await onSave(selected || null);
+    setSaving(false);
+  }
+
+  return (
+    <div className="resume-association">
+      <label className="field">
+        <span>本次投递使用简历</span>
+        <select
+          value={selected}
+          disabled={Boolean(resumeLoadError)}
+          onChange={(event) => setSelected(event.target.value)}
+        >
+          <option value="">未选择</option>
+          {resumeVersions.map((resume) => (
+            <option value={resume.id} key={resume.id}>
+              {resume.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      {resumeLoadError ? (
+        <p className="form-error">{resumeLoadError}</p>
+      ) : resumeVersions.length === 0 ? (
+        <p className="muted">暂无可选简历版本；不会自动选择。</p>
+      ) : (
+        <button
+          type="button"
+          className="button secondary full-width"
+          disabled={saving || selected === (application.resumeVersionId ?? '')}
+          onClick={() => void save()}
+        >
+          {saving ? '正在保存…' : '保存使用版本'}
+        </button>
+      )}
+    </div>
   );
 }
 

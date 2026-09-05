@@ -4,11 +4,18 @@ import {
   APPLICATION_STATUS_LABELS as STATUS_LABELS,
   JOB_SOURCE_LABELS,
 } from '@jobpilot/api-client';
-import type { ApiClient, Application, Job } from '@jobpilot/api-client';
+import type {
+  ApiClient,
+  Application,
+  Job,
+  JobAnalysisResponse,
+  ResumeVersion,
+} from '@jobpilot/api-client';
 
 import { ApplicationPanel } from './ApplicationPanel';
 import { JobForm } from './JobForm';
 import { JDAnalysisPanel } from './JDAnalysisPanel';
+import { EvidenceMapPanel } from './EvidenceMapPanel';
 
 interface JobDetailProps {
   apiClient: ApiClient;
@@ -20,6 +27,9 @@ interface JobDetailProps {
 export function JobDetail({ apiClient, jobId, onBack, onDeleted }: JobDetailProps) {
   const [job, setJob] = useState<Job>();
   const [application, setApplication] = useState<Application>();
+  const [resumeVersions, setResumeVersions] = useState<ResumeVersion[]>([]);
+  const [resumeLoadError, setResumeLoadError] = useState<string>();
+  const [analysisState, setAnalysisState] = useState<JobAnalysisResponse | null>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
   const [editing, setEditing] = useState(false);
@@ -35,6 +45,21 @@ export function JobDetail({ apiClient, jobId, onBack, onDeleted }: JobDetailProp
   }, [apiClient, jobId]);
 
   useEffect(load, [load]);
+
+  useEffect(() => {
+    let active = true;
+    void apiClient.listResumeVersions().then(
+      (response) => {
+        if (active) setResumeVersions(response.items);
+      },
+      () => {
+        if (active) setResumeLoadError('简历版本暂时无法读取，请稍后重试。');
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [apiClient]);
 
   if (loading) {
     return (
@@ -120,7 +145,14 @@ export function JobDetail({ apiClient, jobId, onBack, onDeleted }: JobDetailProp
               </div>
             </dl>
           </section>
-          <JDAnalysisPanel apiClient={apiClient} job={job} />
+          <JDAnalysisPanel apiClient={apiClient} job={job} onStateChange={setAnalysisState} />
+          <EvidenceMapPanel
+            apiClient={apiClient}
+            job={job}
+            analysisState={analysisState}
+            resumeVersions={resumeVersions}
+            resumeLoadError={resumeLoadError}
+          />
           <TextSection title="JD 快照" value={job.description} fallback="尚未填写 JD。" />
           <TextSection title="备注" value={job.notes} fallback="尚未添加备注。" />
         </div>
@@ -128,6 +160,8 @@ export function JobDetail({ apiClient, jobId, onBack, onDeleted }: JobDetailProp
           apiClient={apiClient}
           jobId={job.id}
           application={application}
+          resumeVersions={resumeVersions}
+          resumeLoadError={resumeLoadError}
           onApplicationChange={setApplication}
         />
       </div>

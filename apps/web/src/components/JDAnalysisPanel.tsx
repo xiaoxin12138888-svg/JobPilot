@@ -11,9 +11,10 @@ import type {
 interface JDAnalysisPanelProps {
   apiClient: ApiClient;
   job: Job;
+  onStateChange?(state: JobAnalysisResponse | null | undefined): void;
 }
 
-export function JDAnalysisPanel({ apiClient, job }: JDAnalysisPanelProps) {
+export function JDAnalysisPanel({ apiClient, job, onStateChange }: JDAnalysisPanelProps) {
   const [state, setState] = useState<JobAnalysisResponse>();
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
@@ -26,10 +27,16 @@ export function JDAnalysisPanel({ apiClient, job }: JDAnalysisPanelProps) {
     void apiClient
       .getJobAnalysis(job.id)
       .then((response) => {
-        if (active) setState(response);
+        if (active) {
+          setState(response);
+          onStateChange?.(response);
+        }
       })
       .catch(() => {
-        if (active) setLoadError('AI 分析状态暂时无法读取，请稍后重试。');
+        if (active) {
+          setLoadError('AI 分析状态暂时无法读取，请稍后重试。');
+          onStateChange?.(null);
+        }
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -37,11 +44,12 @@ export function JDAnalysisPanel({ apiClient, job }: JDAnalysisPanelProps) {
     return () => {
       active = false;
     };
-  }, [apiClient, job.id, reloadToken]);
+  }, [apiClient, job.id, onStateChange, reloadToken]);
 
   const retryLoad = () => {
     setLoadError(undefined);
     setLoading(true);
+    onStateChange?.(undefined);
     setReloadToken((value) => value + 1);
   };
 
@@ -49,7 +57,9 @@ export function JDAnalysisPanel({ apiClient, job }: JDAnalysisPanelProps) {
     setAnalyzing(true);
     setAnalysisError(undefined);
     try {
-      setState(await apiClient.analyzeJob(job.id));
+      const response = await apiClient.analyzeJob(job.id);
+      setState(response);
+      onStateChange?.(response);
     } catch {
       setAnalysisError('AI 分析暂时不可用，请稍后重试。');
     } finally {

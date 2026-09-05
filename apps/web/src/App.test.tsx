@@ -7,7 +7,9 @@ import type {
   CreateJobInput,
   Job,
   JobAnalysisResponse,
+  JobEvidenceMapResponse,
   JobListItem,
+  ResumeVersion,
 } from '@jobpilot/api-client';
 
 import { App } from './App';
@@ -312,7 +314,10 @@ describe('App', () => {
         return application;
       }),
       updateApplication: vi.fn(async (_id, input) => {
-        application = createApplication(input.status);
+        application = {
+          ...createApplication(input.status ?? application?.status ?? 'planned'),
+          resumeVersionId: input.resumeVersionId ?? application?.resumeVersionId ?? null,
+        };
         return application;
       }),
     });
@@ -330,6 +335,264 @@ describe('App', () => {
       status: 'applied',
       confirmApplied: true,
     });
+  });
+
+  it('manages plain-text Resume Versions from the dedicated workspace view', async () => {
+    let resumes: ResumeVersion[] = [];
+    const createResumeVersion = vi.fn(async (input: { name: string; content: string }) => {
+      const resume = createResume({ name: input.name, content: input.content });
+      resumes = [resume];
+      return resume;
+    });
+    const updateResumeVersion = vi.fn(async (_id: string, input: { name?: string }) => {
+      resumes = [{ ...resumes[0]!, ...input, updatedAt: '2026-09-05T01:00:00Z' }];
+      return resumes[0]!;
+    });
+    const duplicateResumeVersion = vi.fn(async () => {
+      const duplicate = createResume({ id: 'resume-2', name: 'AI 产品经理版 V2 定稿 副本' });
+      resumes = [duplicate, ...resumes];
+      return duplicate;
+    });
+    const deleteResumeVersion = vi.fn(async (id: string) => {
+      resumes = resumes.filter((item) => item.id !== id);
+    });
+    const apiClient = createApiClient({
+      listResumeVersions: vi.fn(async () => page(resumes)),
+      createResumeVersion,
+      updateResumeVersion,
+      duplicateResumeVersion,
+      deleteResumeVersion,
+    });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<App apiClient={apiClient} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '简历版本' }));
+    expect(await screen.findByText('还没有简历版本')).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole('button', { name: '新建简历版本' })[0]!);
+    fireEvent.change(screen.getByLabelText('版本名称 *'), {
+      target: { value: 'AI 产品经理版 V2' },
+    });
+    fireEvent.change(screen.getByLabelText('简历正文 *'), {
+      target: { value: '使用 SQL 完成业务数据统计。' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '保存简历版本' }));
+
+    expect(await screen.findByRole('heading', { name: 'AI 产品经理版 V2' })).toBeInTheDocument();
+    expect(createResumeVersion).toHaveBeenCalledWith({
+      name: 'AI 产品经理版 V2',
+      content: '使用 SQL 完成业务数据统计。',
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '查看/编辑' }));
+    fireEvent.change(screen.getByLabelText('版本名称 *'), {
+      target: { value: 'AI 产品经理版 V2 定稿' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '保存修改' }));
+    expect(
+      await screen.findByRole('heading', { name: 'AI 产品经理版 V2 定稿' }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '复制' }));
+    expect(
+      await screen.findByRole('heading', { name: 'AI 产品经理版 V2 定稿 副本' }),
+    ).toBeInTheDocument();
+    expect(duplicateResumeVersion).toHaveBeenCalledWith('resume-1', {
+      name: 'AI 产品经理版 V2 定稿 副本',
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: '删除' })[0]!);
+    expect(deleteResumeVersion).toHaveBeenCalledWith('resume-2');
+  });
+
+  it('keeps an in-use Resume Version visible when deletion is blocked', async () => {
+    const resume = createResume({ applicationCount: 1 });
+    const apiClient = createApiClient({
+      listResumeVersions: vi.fn().mockResolvedValue(page([resume])),
+      deleteResumeVersion: vi
+        .fn()
+        .mockRejectedValue(new Error('该简历版本已关联投递记录，无法直接删除。')),
+    });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<App apiClient={apiClient} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '简历版本' }));
+    fireEvent.click(await screen.findByRole('button', { name: '删除' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '该简历版本已关联投递记录，无法直接删除。',
+    );
+    expect(screen.getByRole('heading', { name: resume.name })).toBeInTheDocument();
+  });
+
+  it('explicitly saves the Resume Version used by an existing Application', async () => {
+    const job = createJob();
+    const resume = createResume();
+    const application = createApplication('planned');
+    const updateApplication = vi.fn(
+      async (_id: string, input: { resumeVersionId?: string | null }) => ({
+        ...application,
+        resumeVersionId: input.resumeVersionId ?? null,
+      }),
+    );
+    const apiClient = createApiClient({
+      listJobs: vi.fn().mockResolvedValue(page([{ ...job, applicationStatus: 'planned' }])),
+      getJob: vi.fn().mockResolvedValue(job),
+      listApplications: vi
+        .fn()
+        .mockResolvedValue(page([{ ...application, jobTitle: job.title, company: job.company }])),
+      listResumeVersions: vi.fn().mockResolvedValue(page([resume])),
+      updateApplication,
+    });
+    render(<App apiClient={apiClient} />);
+    fireEvent.click(await screen.findByRole('button', { name: '查看详情' }));
+
+    fireEvent.change(await screen.findByLabelText('本次投递使用简历'), {
+      target: { value: resume.id },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '保存使用版本' }));
+
+    expect(updateApplication).toHaveBeenCalledWith(application.id, {
+      resumeVersionId: resume.id,
+    });
+    expect(await screen.findByText('已记录本次投递使用的简历版本。')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('本次投递使用简历'), {
+      target: { value: '' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '保存使用版本' }));
+    await vi.waitFor(() => {
+      expect(updateApplication).toHaveBeenLastCalledWith(application.id, {
+        resumeVersionId: null,
+      });
+    });
+  });
+
+  it('requires a selected Resume and current JD analysis before Evidence Map generation', async () => {
+    const job = createJob();
+    const resume = createResume();
+    const apiClient = createApiClient({
+      listJobs: vi.fn().mockResolvedValue(page([{ ...job, applicationStatus: null }])),
+      getJob: vi.fn().mockResolvedValue(job),
+      listResumeVersions: vi.fn().mockResolvedValue(page([resume])),
+      getJobAnalysis: vi.fn().mockResolvedValue({ isConfigured: true, analysis: null }),
+    });
+    render(<App apiClient={apiClient} />);
+    fireEvent.click(await screen.findByRole('button', { name: '查看详情' }));
+
+    expect(await screen.findByText('请选择一个简历版本')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('用于证据匹配的简历版本'), {
+      target: { value: resume.id },
+    });
+    expect(await screen.findByText('请先完成岗位 AI 分析。')).toBeInTheDocument();
+    expect(apiClient.generateJobEvidenceMap).not.toHaveBeenCalled();
+  });
+
+  it('shows an Evidence prerequisite error when the JD analysis state cannot be loaded', async () => {
+    const job = createJob();
+    const resume = createResume();
+    const apiClient = createApiClient({
+      listJobs: vi.fn().mockResolvedValue(page([{ ...job, applicationStatus: null }])),
+      getJob: vi.fn().mockResolvedValue(job),
+      listResumeVersions: vi.fn().mockResolvedValue(page([resume])),
+      getJobAnalysis: vi.fn().mockRejectedValue(new Error('untrusted API response')),
+    });
+    render(<App apiClient={apiClient} />);
+    fireEvent.click(await screen.findByRole('button', { name: '查看详情' }));
+    fireEvent.change(await screen.findByLabelText('用于证据匹配的简历版本'), {
+      target: { value: resume.id },
+    });
+
+    expect(await screen.findByText('岗位分析状态暂时无法读取，请稍后重试。')).toBeInTheDocument();
+    expect(apiClient.getJobEvidenceMap).not.toHaveBeenCalled();
+  });
+
+  it('keeps local Resume features available when the Evidence provider is not configured', async () => {
+    const job = createJob();
+    const resume = createResume();
+    const apiClient = createApiClient({
+      listJobs: vi.fn().mockResolvedValue(page([{ ...job, applicationStatus: null }])),
+      getJob: vi.fn().mockResolvedValue(job),
+      listResumeVersions: vi.fn().mockResolvedValue(page([resume])),
+      getJobAnalysis: vi.fn().mockResolvedValue(createAnalysisResponse()),
+      getJobEvidenceMap: vi.fn().mockResolvedValue({ isConfigured: false, evidenceMap: null }),
+    });
+    render(<App apiClient={apiClient} />);
+    fireEvent.click(await screen.findByRole('button', { name: '查看详情' }));
+    fireEvent.change(await screen.findByLabelText('用于证据匹配的简历版本'), {
+      target: { value: resume.id },
+    });
+
+    expect(await screen.findByText('AI 服务未配置')).toBeInTheDocument();
+    expect(screen.getByText(resume.name)).toBeInTheDocument();
+    expect(apiClient.generateJobEvidenceMap).not.toHaveBeenCalled();
+  });
+
+  it('confirms external AI sending, shows progress, and renders deterministic Evidence totals', async () => {
+    const job = createJob();
+    const resume = createResume();
+    let resolveGeneration: ((value: JobEvidenceMapResponse) => void) | undefined;
+    const generation = new Promise<JobEvidenceMapResponse>((resolve) => {
+      resolveGeneration = resolve;
+    });
+    const generated = createEvidenceMapResponse();
+    const apiClient = createApiClient({
+      listJobs: vi.fn().mockResolvedValue(page([{ ...job, applicationStatus: null }])),
+      getJob: vi.fn().mockResolvedValue(job),
+      listResumeVersions: vi.fn().mockResolvedValue(page([resume])),
+      getJobAnalysis: vi.fn().mockResolvedValue(createAnalysisResponse()),
+      getJobEvidenceMap: vi.fn().mockResolvedValue({ isConfigured: true, evidenceMap: null }),
+      generateJobEvidenceMap: vi.fn().mockReturnValue(generation),
+    });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<App apiClient={apiClient} />);
+    fireEvent.click(await screen.findByRole('button', { name: '查看详情' }));
+    fireEvent.change(await screen.findByLabelText('用于证据匹配的简历版本'), {
+      target: { value: resume.id },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: '生成证据映射' }));
+
+    expect(screen.getByRole('button', { name: '正在匹配岗位要求与简历证据…' })).toBeDisabled();
+    expect(window.confirm).toHaveBeenCalledWith(
+      '本次分析会将当前选择的简历正文与岗位要求发送至你配置的 AI 服务，用于证据匹配。是否继续？',
+    );
+
+    await act(async () => resolveGeneration?.(generated));
+    expect(await screen.findByText('直接证据 1')).toBeInTheDocument();
+    expect(screen.getByText('部分证据 1')).toBeInTheDocument();
+    expect(screen.getByText('暂未发现证据 1')).toBeInTheDocument();
+    expect(screen.getByText('使用 SQL 完成业务数据统计')).toBeInTheDocument();
+    expect(screen.queryByText(/%|匹配率|Offer 概率/)).toBeNull();
+  });
+
+  it('keeps a stale Evidence Map visible when regeneration fails', async () => {
+    const job = createJob();
+    const resume = createResume();
+    const stale = createEvidenceMapResponse();
+    stale.evidenceMap!.isStale = true;
+    const apiClient = createApiClient({
+      listJobs: vi.fn().mockResolvedValue(page([{ ...job, applicationStatus: null }])),
+      getJob: vi.fn().mockResolvedValue(job),
+      listResumeVersions: vi.fn().mockResolvedValue(page([resume])),
+      getJobAnalysis: vi.fn().mockResolvedValue(createAnalysisResponse()),
+      getJobEvidenceMap: vi.fn().mockResolvedValue(stale),
+      generateJobEvidenceMap: vi.fn().mockRejectedValue(new Error('raw resume and provider error')),
+    });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<App apiClient={apiClient} />);
+    fireEvent.click(await screen.findByRole('button', { name: '查看详情' }));
+    fireEvent.change(await screen.findByLabelText('用于证据匹配的简历版本'), {
+      target: { value: resume.id },
+    });
+
+    expect(
+      await screen.findByText('岗位或简历内容已更新，请重新生成证据映射。'),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '重新生成证据映射' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'AI证据匹配暂时不可用，请稍后重试。',
+    );
+    expect(screen.getByText('使用 SQL 完成业务数据统计')).toBeInTheDocument();
+    expect(screen.queryByText('raw resume and provider error')).toBeNull();
   });
 
   it('ignores a stale health failure after the API client changes', async () => {
@@ -367,6 +630,14 @@ function createApiClient(overrides: Partial<ApiClient> = {}): ApiClient {
     updateApplication: vi.fn(),
     getJobAnalysis: vi.fn().mockResolvedValue({ isConfigured: false, analysis: null }),
     analyzeJob: vi.fn(),
+    getJobEvidenceMap: vi.fn().mockResolvedValue({ isConfigured: false, evidenceMap: null }),
+    generateJobEvidenceMap: vi.fn(),
+    createResumeVersion: vi.fn(),
+    listResumeVersions: vi.fn().mockResolvedValue(page([])),
+    getResumeVersion: vi.fn(),
+    updateResumeVersion: vi.fn(),
+    duplicateResumeVersion: vi.fn(),
+    deleteResumeVersion: vi.fn(),
     ...overrides,
   };
 }
@@ -405,9 +676,22 @@ function createApplication(status: Application['status']): Application {
     id: 'application-1',
     jobId: 'job-1',
     status,
+    resumeVersionId: null,
     appliedAt: status === 'applied' ? '2026-09-03T00:01:00Z' : null,
     createdAt: '2026-09-03T00:00:00Z',
     updatedAt: '2026-09-03T00:01:00Z',
+  };
+}
+
+function createResume(overrides: Partial<ResumeVersion> = {}): ResumeVersion {
+  return {
+    id: 'resume-1',
+    name: 'AI 产品经理版 V2',
+    content: '使用 SQL 完成业务数据统计。\n参与需求评审和版本验收。',
+    applicationCount: 0,
+    createdAt: '2026-09-05T00:00:00Z',
+    updatedAt: '2026-09-05T00:00:00Z',
+    ...overrides,
   };
 }
 
@@ -436,6 +720,46 @@ function createAnalysisResponse(): JobAnalysisResponse {
       isStale: false,
       createdAt: '2026-09-04T00:00:00Z',
       updatedAt: '2026-09-04T00:00:00Z',
+    },
+  };
+}
+
+function createEvidenceMapResponse(): JobEvidenceMapResponse {
+  return {
+    isConfigured: true,
+    evidenceMap: {
+      id: 'map-1',
+      jobId: 'job-1',
+      resumeVersionId: 'resume-1',
+      schemaVersion: 1,
+      result: {
+        mappings: [
+          {
+            requirementType: 'MUST_HAVE',
+            requirementText: '能够分析需求',
+            coverage: 'DIRECT',
+            resumeEvidence: [{ quote: '使用 SQL 完成业务数据统计' }],
+            reason: '简历原文提供了直接证据。',
+          },
+          {
+            requirementType: 'MUST_HAVE',
+            requirementText: '跨团队推进',
+            coverage: 'GAP',
+            resumeEvidence: [],
+            reason: '当前简历版本中未发现可证明该要求的内容。',
+          },
+          {
+            requirementType: 'PREFERRED',
+            requirementText: '完整上线经验',
+            coverage: 'PARTIAL',
+            resumeEvidence: [{ quote: '参与需求评审和版本验收' }],
+            reason: '有相关环节经验，但未完整证明。',
+          },
+        ],
+      },
+      isStale: false,
+      createdAt: '2026-09-05T00:00:00Z',
+      updatedAt: '2026-09-05T00:00:00Z',
     },
   };
 }

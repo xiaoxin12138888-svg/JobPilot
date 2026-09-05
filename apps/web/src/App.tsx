@@ -5,6 +5,7 @@ import type { ApiClient, Job } from '@jobpilot/api-client';
 import { JobDetail } from './components/JobDetail';
 import { JobForm } from './components/JobForm';
 import { JobLibrary } from './components/JobLibrary';
+import { ResumeVersionsPage } from './components/ResumeVersionsPage';
 import './styles.css';
 
 type LocalApiStatus = 'checking' | 'ready' | 'unavailable';
@@ -13,7 +14,11 @@ type SettledHealthRequest = {
   requestNumber: number;
   status: Exclude<LocalApiStatus, 'checking'>;
 };
-type View = { name: 'library' } | { name: 'create' } | { name: 'detail'; jobId: string };
+type View =
+  | { name: 'library' }
+  | { name: 'create' }
+  | { name: 'resumes' }
+  | { name: 'detail'; jobId: string };
 
 interface AppProps {
   apiClient: ApiClient;
@@ -38,13 +43,15 @@ function Workspace({ apiClient }: AppProps) {
         ? `?jobId=${encodeURIComponent(nextView.jobId)}`
         : nextView.name === 'create'
           ? '?view=create'
-          : '';
+          : nextView.name === 'resumes'
+            ? '?view=resumes'
+            : '';
     window.history.replaceState(null, '', `${window.location.pathname}${query}`);
   }
 
   if (view.name === 'create') {
     return (
-      <AppFrame>
+      <AppFrame active="jobs" onNavigate={navigate}>
         <JobForm
           onCancel={() => navigate({ name: 'library' })}
           onSubmit={async (input) => {
@@ -57,7 +64,7 @@ function Workspace({ apiClient }: AppProps) {
   }
   if (view.name === 'detail') {
     return (
-      <AppFrame>
+      <AppFrame active="jobs" onNavigate={navigate}>
         <JobDetail
           apiClient={apiClient}
           jobId={view.jobId}
@@ -67,8 +74,15 @@ function Workspace({ apiClient }: AppProps) {
       </AppFrame>
     );
   }
+  if (view.name === 'resumes') {
+    return (
+      <AppFrame active="resumes" onNavigate={navigate}>
+        <ResumeVersionsPage apiClient={apiClient} />
+      </AppFrame>
+    );
+  }
   return (
-    <AppFrame>
+    <AppFrame active="jobs" onNavigate={navigate}>
       <JobLibrary
         apiClient={apiClient}
         onAdd={() => navigate({ name: 'create' })}
@@ -83,10 +97,19 @@ function initialViewFromLocation(): View {
   const jobId = params.get('jobId')?.trim();
   if (jobId && jobId.length <= 36) return { name: 'detail', jobId };
   if (params.get('view') === 'create') return { name: 'create' };
+  if (params.get('view') === 'resumes') return { name: 'resumes' };
   return { name: 'library' };
 }
 
-function AppFrame({ children }: { children: React.ReactNode }) {
+function AppFrame({
+  children,
+  active,
+  onNavigate,
+}: {
+  children: React.ReactNode;
+  active: 'jobs' | 'resumes';
+  onNavigate(view: View): void;
+}) {
   return (
     <main className="workspace-shell">
       <header className="topbar">
@@ -94,7 +117,25 @@ function AppFrame({ children }: { children: React.ReactNode }) {
           <p className="product-label">本地个人求职工作台</p>
           <p className="wordmark">JobPilot</p>
         </div>
-        <span className="local-badge">仅保存在本机</span>
+        <div className="topbar-actions">
+          <nav className="workspace-nav" aria-label="工作台导航">
+            <button
+              type="button"
+              aria-current={active === 'jobs' ? 'page' : undefined}
+              onClick={() => onNavigate({ name: 'library' })}
+            >
+              岗位库
+            </button>
+            <button
+              type="button"
+              aria-current={active === 'resumes' ? 'page' : undefined}
+              onClick={() => onNavigate({ name: 'resumes' })}
+            >
+              简历版本
+            </button>
+          </nav>
+          <span className="local-badge">仅保存在本机</span>
+        </div>
       </header>
       {children}
     </main>
