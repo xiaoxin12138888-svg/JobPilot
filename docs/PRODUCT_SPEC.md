@@ -1,7 +1,8 @@
 # JobPilot 产品规格
 
 > 状态：Phase 3、Phase 4 与 Phase 5 已通过，BOSS 与牛客均为 `SUPPORTED — V1`。
-> Phase 6 — JD Structured AI Analysis 已获批并实现本地核心；真实 V1/V2 评测尚未通过。
+> Phase 6 — JD Structured AI Analysis 已于 2026-09-05 完成真实 V1/V2 评测与 BOSS/牛客 Web
+> 人工验收并标记 PASS；Phase 7 尚未获批或进入。
 
 ## 1. 产品定位
 

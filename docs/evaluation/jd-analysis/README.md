@@ -33,5 +33,6 @@ exact-match；`unsupportedHallucinationCount` 则保守统计模型 evidence 是
 子串。Schema failure 与 evidence 不支持分别统计。
 
 V1/V2 完整指标见 `../JD_ANALYSIS_RESULTS.md`，真实 Bad Cases 与逐项回归见
-`../JD_ANALYSIS_BAD_CASES.md`。V2 仍有已记录错误，本轮不会自动创建 Prompt V3；真实 BOSS
-和 Nowcoder Job AI 内容质量需由项目负责人确认，Phase 7 尚未进入。
+`../JD_ANALYSIS_BAD_CASES.md`。V2 仍有已记录错误，本轮不会自动创建 Prompt V3；项目负责人已
+于 2026-09-05 完成真实 BOSS 和 Nowcoder Job Web AI 内容质量确认。Phase 6 已标记 PASS，
+Phase 7 尚未获批或进入。

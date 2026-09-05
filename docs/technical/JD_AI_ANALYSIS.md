@@ -77,4 +77,6 @@ preferred misclassification, unsupported hallucinations and evidence grounding. 
 must be traceable to observed V1 bad cases on the same dataset. Real results are recorded only when
 a real configured Provider was actually run. The frozen V1 and V2 runs completed on 2026-09-05;
 their raw validated artifacts, full metric comparison and Bad Case regressions remain under
-`docs/evaluation/`. Real BOSS and Nowcoder Job content quality still requires project-owner review.
+`docs/evaluation/`. Real BOSS and Nowcoder Web Job content quality was reviewed by the project owner
+on 2026-09-05. Both were accepted; the Nowcoder run retained one non-blocking `and` text-fidelity
+observation that is recorded without changing the frozen metrics or creating Prompt V3.
