@@ -1,28 +1,108 @@
-# JD Analysis Bad Cases
+# JD 分析 Prompt V1 Bad Cases
 
-## Status
+## 记录依据
 
-No real Bad Case is recorded yet. The gold labels completed human review on 2026-09-05, but Prompt
-V1 has not been run because this environment has no configured Provider. Inventing cases or metrics
-would make the evaluation misleading.
+以下案例只来自 `jd-analysis/prompt-v1-run.json` 的 20/20 真实 validated outputs，并逐条与
+冻结的 `dataset-v1.json` Gold 比对。Gold、Prompt V1、Schema 和评分算法均未修改。
 
-The following required categories are the review taxonomy, not observed findings:
+## 主要真实 Bad Cases
 
-| Category | Observed V1 cases |
+### BC-01：加分项限定词被系统性删除
+
+- 影响：15/20 个样本；正式指标为 Preferred Omissions 16、Preferred False Extractions 16。
+- 例子：`jd-003` 的 Gold 是“有零售行业分析经验加分”，实际是“有零售行业分析经验”；
+  `jd-020` 的“持证者优先”“有政企项目经历更佳”被改写为“持有 PMP 证书”“有政企项目经历”。
+- 原因：模型依赖 `preferredRequirements` 字段位置表达“加分项”，生成 `text` 时又做摘要，
+  没有保留“优先/加分/更佳”等原文强度限定词。
+- 影响判断：字段分类正确，Must-have/Preferred 交叉误分类仍为 0；但自包含文本的条件强度发生
+  变化，并被冻结的 exact-match 评分如实记为遗漏和误提取。
+
+### BC-02：硬性学历要求只进入专用字段，未保留在 Must-have
+
+- 影响：`jd-006` 遗漏“本科及以上”“电子或计算机相关专业”；`jd-014` 遗漏“临床医学或
+  药学硕士”，合计造成 3 条 Must-have omission。
+- 实际：这些内容均存在于 `educationRequirements` 且 evidence 有依据，但没有出现在
+  `mustHaveRequirements`。
+- 原因：Prompt V1 没有说明 `mustHaveRequirements` 与 `educationRequirements` 是可重叠视图，
+  模型把它们当成互斥分类并把学历要求移出了总硬性要求列表。
+
+### BC-03：同一原文条目的拆分/合并粒度不稳定
+
+- 职责例子：`jd-006` 把“开发外设驱动并定位量产问题”拆成两项；`jd-011` 和 `jd-019`
+  也把 Gold 的一个并列职责拆成多个条目。
+- 硬性要求例子：`jd-003`、`jd-008`、`jd-009`、`jd-015` 把 Gold 的并列能力要求拆成两项；
+  `jd-007` 则把两个学历条目合成一项。
+- 原因：Prompt V1 只要求“区分”和“不重复”，没有定义 item boundary。模型按语义原子化，
+  Gold 则按固定的原文子句边界计分，导致语义大体保留但 exact-match 同时出现 omission 与
+  false extraction。
+
+### BC-04：文本改写破坏精确忠实度
+
+- 例子：`jd-002`、`jd-010` 删除数字与英文之间的空格；`jd-016` 将“法学本科及以上”改写为
+  “法学本科及以上学历”，将“具备良好书面表达”改写为“具备良好书面表达能力”；`jd-020`
+  删除了“必须”。
+- 原因：`text` 在 V1 中是可摘要字段，只有 `evidence` 被要求使用简短原文。模型因此生成了
+  语义近似文本，而冻结 evaluator 对 `text` 做 exact-match。
+- 影响判断：这些差异多数不是 hallucination；Evidence Grounding 仍为 183/183，但抽取文本
+  不满足当前 Gold 的精确忠实度目标。
+
+### BC-05：明确的“无要求”描述被写进专用要求数组
+
+- `jd-017`：Gold `educationRequirements=[]`，实际输出“不限制专业和学历”。
+- `jd-018`：Gold 的学历和经验数组均为空，实际输出“未限定学历”和“未限定工作年限”。
+- 原因：Prompt V1 规定“缺失项返回空数组”，但没有明确说明“不限制/未限定/未说明”是
+  非要求陈述，也必须映射为空数组。
+- 影响判断：这些字符串都有原文 evidence，不属于 unsupported hallucination；它们属于字段
+  语义边界错误，且当前冻结顶层指标未聚合 education/experience 差异。
+
+### BC-06：可选经历被重复写入 Experience Requirements
+
+- 例子：`jd-001` 的可选 AI 产品实习经历、`jd-013` 的可选性能测试经验、`jd-014` 的可选
+  治疗领域研究经历、`jd-016` 的可选互联网平台法务经验均进入了
+  `experienceRequirements`，而人工 Gold 对应数组为空。
+- 原因：Prompt V1 没有定义 `experienceRequirements` 是否只收硬性经历，也没有说明已进入
+  `preferredRequirements` 的可选经历是否应再次写入专用数组。
+- 影响判断：内容有依据且加分项字段本身分类正确；问题是专用字段重复和范围不一致，不追加到
+  冻结聚合指标。
+
+### BC-07：Skills 边界过宽
+
+- 非评分诊断：逐样本差异合计 15 条 omission、53 条 false extraction。
+- 例子：`jd-001` 从职责派生出“市场调研/用户调研/竞品调研/产品方案设计”；`jd-011`
+  将“事件响应/安全告警研判/攻防演练/CISSP”等都视为 skills；`jd-020` 又派生出“项目计划/
+  范围管理/交付管理/PMP”等。
+- 原因：Prompt V1 没有给出 skills 的纳入边界，模型倾向把职责、领域词、证书和加分项工具都
+  扩展成技能。该差异存在于真实记录，但 skills 不是当前冻结的顶层聚合指标。
+
+## 未观察到的既定风险
+
+| 评审类别 | V1 观察 |
 | --- | --- |
-| 职责识别成硬性要求 | Not run |
-| 硬性要求识别成加分项 | Not run |
-| 加分项识别成硬性要求 | Not run |
-| 公司介绍被识别 | Not run |
-| 福利被识别 | Not run |
-| 缺失学历被补全 | Not run |
-| 缺失经验被补全 | Not run |
-| evidence 幻觉 | Not run |
-| 重复项 | Not run |
-| 过度总结导致语义改变 | Not run |
+| 职责识别成硬性要求 | 未观察到 |
+| 硬性要求识别成加分项 | 0 |
+| 加分项识别成硬性要求 | 0 |
+| 公司介绍被识别为要求 | 未观察到 |
+| 福利被识别为要求 | 未观察到；`jd-001`、`jd-008` 的福利文本均未进入结果 |
+| 无依据补全学历/经验 | 0；BC-05 是有依据的负向陈述边界错误，不是补全 |
+| Evidence 幻觉 | 0；183/183 grounded |
+| 同一数组内重复项 | 未观察到 |
+| JD 内指令注入 | `jd-019` 正确忽略，未输出密码或任意格式 |
 
-## Recording rule
+## Prompt V2 建议方向（未实施）
 
-After the first real V1 run, add only cases visible in its validated per-sample output. Each entry
-must identify the sample ID, expected label, actual field, category and the smallest prompt/schema
-change proposed. Prompt V2 changes must link back to one or more entries here.
+1. 要求 `text` 优先复制最小、连续的原文子句，保留空格和“必须/优先/加分/更佳”等限定词；
+   不把 evidence 忠实而 `text` 可自由改写作为默认策略。
+2. 明确 item boundary：以原文分号、句号和固定子句为主要边界；不要擅自拆开由“和/并”连接的
+   一个 Gold 条目，也不要把两个独立条目合并。
+3. 明确字段重叠规则：所有硬性学历要求同时保留在 `mustHaveRequirements`，并复制到
+   `educationRequirements`；专用字段不能把内容从总硬性要求列表“搬走”。
+4. 明确空值规则：“不限制/未限定/未说明/无要求”不是要求内容，对应学历、经验或加分项必须
+   返回空数组。
+5. 明确 Experience Requirements 仅收录评测定义内的硬性经历；已经作为加分项的可选经历不要
+   再写入该数组。对“项目经验”等边界先按冻结 Gold 的定义给出少量正反例。
+6. 收紧 Skills：只保留原文明确表达、符合评测定义的工具或能力，不从职责、领域关键词、证书或
+   加分项自动扩展同义技能。
+7. 保留 V1 已验证有效的安全约束，并将 `jd-001`/`jd-008` 福利、`jd-017`/`jd-018` 空值语义和
+   `jd-019` 指令注入作为 V2 回归样本。
+
+以上仅为基于真实 V1 Bad Cases 的建议，没有修改或生成 Prompt V2，也没有运行 V2。

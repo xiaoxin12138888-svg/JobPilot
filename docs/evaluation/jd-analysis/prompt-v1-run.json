@@ -1,0 +1,1808 @@
+{
+  "datasetVersion": 1,
+  "promptVersion": "v1",
+  "schemaVersion": 1,
+  "model": "[K12]gemini-3.5-flash",
+  "temperature": 0,
+  "timeoutSeconds": 60.0,
+  "sampleCount": 20,
+  "metrics": {
+    "schemaSuccess": {
+      "valid": 20,
+      "total": 20
+    },
+    "responsibilitiesOmissions": 4,
+    "responsibilitiesFalseExtractions": 8,
+    "mustHaveRequirementsOmissions": 18,
+    "mustHaveRequirementsFalseExtractions": 19,
+    "preferredRequirementsOmissions": 16,
+    "preferredRequirementsFalseExtractions": 16,
+    "mustHaveMisclassifiedAsPreferred": 0,
+    "preferredMisclassifiedAsMustHave": 0,
+    "evidenceGrounding": {
+      "grounded": 183,
+      "provided": 183
+    },
+    "unsupportedHallucinationCount": 0
+  },
+  "samples": [
+    {
+      "id": "jd-001",
+      "schemaValid": true,
+      "responsibilitiesOmissions": [
+        "开展 ai 大模型市场、用户与竞品调研"
+      ],
+      "responsibilitiesFalseExtractions": [
+        "开展 ai 大模型市场、用户与竞品调研，输出分析结论"
+      ],
+      "mustHaveRequirementsOmissions": [],
+      "mustHaveRequirementsFalseExtractions": [],
+      "preferredRequirementsOmissions": [],
+      "preferredRequirementsFalseExtractions": [],
+      "skillsOmissions": [],
+      "skillsFalseExtractions": [
+        "产品方案设计",
+        "市场调研",
+        "用户调研",
+        "竞品调研"
+      ],
+      "mustHaveMisclassifiedAsPreferred": [],
+      "preferredMisclassifiedAsMustHave": [],
+      "result": {
+        "summary": "该岗位为AI产品经理实习生，主要负责AI大模型市场、用户与竞品调研，协同推进需求迭代和产品方案设计，并跟进项目上线。要求本科在读，每周到岗4天，可连续实习6个月，具备数据分析和沟通协作能力，有AI产品实习经历者优先。",
+        "responsibilities": [
+          {
+            "text": "开展 AI 大模型市场、用户与竞品调研，输出分析结论",
+            "evidence": "开展 AI 大模型市场、用户与竞品调研，输出分析结论"
+          },
+          {
+            "text": "协同推进需求迭代和产品方案设计",
+            "evidence": "协同推进需求迭代和产品方案设计"
+          },
+          {
+            "text": "跟进项目问题并保障上线",
+            "evidence": "跟进项目问题并保障上线"
+          }
+        ],
+        "mustHaveRequirements": [
+          {
+            "text": "本科在读",
+            "evidence": "本科在读"
+          },
+          {
+            "text": "每周到岗 4 天",
+            "evidence": "每周到岗 4 天"
+          },
+          {
+            "text": "可连续实习 6 个月",
+            "evidence": "可连续实习 6 个月"
+          },
+          {
+            "text": "具备数据分析和沟通协作能力",
+            "evidence": "具备数据分析和沟通协作能力"
+          }
+        ],
+        "preferredRequirements": [
+          {
+            "text": "有 AI 产品实习经历优先",
+            "evidence": "有 AI 产品实习经历优先"
+          }
+        ],
+        "skills": [
+          "数据分析",
+          "沟通协作",
+          "市场调研",
+          "用户调研",
+          "竞品调研",
+          "产品方案设计"
+        ],
+        "experienceRequirements": [
+          {
+            "text": "有 AI 产品实习经历优先",
+            "evidence": "有 AI 产品实习经历优先"
+          }
+        ],
+        "educationRequirements": [
+          {
+            "text": "本科在读",
+            "evidence": "本科在读"
+          }
+        ],
+        "domainKeywords": [
+          "AI",
+          "大模型",
+          "产品经理"
+        ],
+        "interviewFocus": []
+      },
+      "latencyMs": 21584
+    },
+    {
+      "id": "jd-002",
+      "schemaValid": true,
+      "responsibilitiesOmissions": [],
+      "responsibilitiesFalseExtractions": [],
+      "mustHaveRequirementsOmissions": [
+        "3 年以上 java 开发经验",
+        "熟悉 spring boot、mysql 和 redis"
+      ],
+      "mustHaveRequirementsFalseExtractions": [
+        "3年以上java开发经验",
+        "熟悉spring boot、mysql和redis"
+      ],
+      "preferredRequirementsOmissions": [
+        "具备 kubernetes 生产实践者优先"
+      ],
+      "preferredRequirementsFalseExtractions": [
+        "具备kubernetes生产实践经验"
+      ],
+      "skillsOmissions": [],
+      "skillsFalseExtractions": [
+        "kubernetes"
+      ],
+      "mustHaveMisclassifiedAsPreferred": [],
+      "preferredMisclassifiedAsMustHave": [],
+      "result": {
+        "summary": "该岗位为杭州某软件服务公司的Java后端开发工程师，主要负责订单系统的设计、开发与优化，要求3年以上Java经验及本科以上学历，熟悉主流开源框架及数据库，有Kubernetes经验者优先。",
+        "responsibilities": [
+          {
+            "text": "负责订单系统服务端设计、开发和性能优化",
+            "evidence": "负责订单系统服务端设计、开发和性能优化"
+          },
+          {
+            "text": "参与代码评审与线上故障复盘",
+            "evidence": "参与代码评审与线上故障复盘"
+          }
+        ],
+        "mustHaveRequirements": [
+          {
+            "text": "3年以上Java开发经验",
+            "evidence": "3 年以上 Java 开发经验"
+          },
+          {
+            "text": "熟悉Spring Boot、MySQL和Redis",
+            "evidence": "熟悉 Spring Boot、MySQL 和 Redis"
+          },
+          {
+            "text": "理解常见并发与事务问题",
+            "evidence": "理解常见并发与事务问题"
+          },
+          {
+            "text": "本科及以上学历",
+            "evidence": "本科及以上学历"
+          }
+        ],
+        "preferredRequirements": [
+          {
+            "text": "具备Kubernetes生产实践经验",
+            "evidence": "具备 Kubernetes 生产实践者优先"
+          }
+        ],
+        "skills": [
+          "Java",
+          "Spring Boot",
+          "MySQL",
+          "Redis",
+          "Kubernetes"
+        ],
+        "experienceRequirements": [
+          {
+            "text": "3年以上Java开发经验",
+            "evidence": "3 年以上 Java 开发经验"
+          }
+        ],
+        "educationRequirements": [
+          {
+            "text": "本科及以上学历",
+            "evidence": "本科及以上学历"
+          }
+        ],
+        "domainKeywords": [
+          "订单系统",
+          "后端开发"
+        ],
+        "interviewFocus": [
+          {
+            "text": "并发与事务问题理解",
+            "evidence": "理解常见并发与事务问题"
+          },
+          {
+            "text": "Spring Boot、MySQL和Redis应用",
+            "evidence": "熟悉 Spring Boot、MySQL 和 Redis"
+          }
+        ]
+      },
+      "latencyMs": 13540
+    },
+    {
+      "id": "jd-003",
+      "schemaValid": true,
+      "responsibilitiesOmissions": [],
+      "responsibilitiesFalseExtractions": [],
+      "mustHaveRequirementsOmissions": [
+        "具备统计学基础和清晰的书面表达能力"
+      ],
+      "mustHaveRequirementsFalseExtractions": [
+        "具备清晰的书面表达能力",
+        "具备统计学基础"
+      ],
+      "preferredRequirementsOmissions": [
+        "有零售行业分析经验加分"
+      ],
+      "preferredRequirementsFalseExtractions": [
+        "有零售行业分析经验"
+      ],
+      "skillsOmissions": [],
+      "skillsFalseExtractions": [
+        "可视化看板",
+        "数据分析",
+        "统计学"
+      ],
+      "mustHaveMisclassifiedAsPreferred": [],
+      "preferredMisclassifiedAsMustHave": [],
+      "result": {
+        "summary": "负责经营指标体系建设、专题分析和可视化看板维护，为业务团队提供决策支持的数据分析师岗位。",
+        "responsibilities": [
+          {
+            "text": "负责经营指标体系建设、专题分析和可视化看板维护",
+            "evidence": "负责经营指标体系建设、专题分析和可视化看板维护"
+          },
+          {
+            "text": "为业务团队提供决策支持",
+            "evidence": "为业务团队提供决策支持"
+          }
+        ],
+        "mustHaveRequirements": [
+          {
+            "text": "熟练使用 SQL",
+            "evidence": "要求熟练使用 SQL"
+          },
+          {
+            "text": "能够用 Python 完成数据清洗",
+            "evidence": "能够用 Python 完成数据清洗"
+          },
+          {
+            "text": "具备统计学基础",
+            "evidence": "具备统计学基础"
+          },
+          {
+            "text": "具备清晰的书面表达能力",
+            "evidence": "清晰的书面表达能力"
+          }
+        ],
+        "preferredRequirements": [
+          {
+            "text": "有零售行业分析经验",
+            "evidence": "有零售行业分析经验加分"
+          }
+        ],
+        "skills": [
+          "SQL",
+          "Python",
+          "数据清洗",
+          "统计学",
+          "数据分析",
+          "可视化看板"
+        ],
+        "experienceRequirements": [],
+        "educationRequirements": [],
+        "domainKeywords": [
+          "零售科技",
+          "数据分析"
+        ],
+        "interviewFocus": [
+          {
+            "text": "SQL 熟练度",
+            "evidence": "要求熟练使用 SQL"
+          },
+          {
+            "text": "Python 数据清洗能力",
+            "evidence": "能够用 Python 完成数据清洗"
+          },
+          {
+            "text": "统计学基础知识",
+            "evidence": "具备统计学基础"
+          }
+        ]
+      },
+      "latencyMs": 14712
+    },
+    {
+      "id": "jd-004",
+      "schemaValid": true,
+      "responsibilitiesOmissions": [],
+      "responsibilitiesFalseExtractions": [],
+      "mustHaveRequirementsOmissions": [
+        "2 年以上互联网用户运营经验",
+        "能够独立使用 excel 进行分析结果导向"
+      ],
+      "mustHaveRequirementsFalseExtractions": [
+        "2年以上互联网用户运营经验",
+        "结果导向",
+        "能够独立使用 excel 进行分析"
+      ],
+      "preferredRequirementsOmissions": [],
+      "preferredRequirementsFalseExtractions": [],
+      "skillsOmissions": [
+        "运营经验"
+      ],
+      "skillsFalseExtractions": [
+        "a/b 测试",
+        "数据分析",
+        "用户运营"
+      ],
+      "mustHaveMisclassifiedAsPreferred": [],
+      "preferredMisclassifiedAsMustHave": [],
+      "result": {
+        "summary": "负责制定用户拉新与召回方案，跟踪渠道转化数据并持续迭代活动，协调多部门按期上线，需具备2年以上互联网用户运营经验及Excel分析能力。",
+        "responsibilities": [
+          {
+            "text": "制定用户拉新与召回方案",
+            "evidence": "制定用户拉新与召回方案"
+          },
+          {
+            "text": "跟踪渠道转化数据并持续迭代活动",
+            "evidence": "跟踪渠道转化数据并持续迭代活动"
+          },
+          {
+            "text": "协调内容、设计和研发按期上线",
+            "evidence": "协调内容、设计和研发按期上线"
+          }
+        ],
+        "mustHaveRequirements": [
+          {
+            "text": "2年以上互联网用户运营经验",
+            "evidence": "2 年以上互联网用户运营经验"
+          },
+          {
+            "text": "能够独立使用 Excel 进行分析",
+            "evidence": "能够独立使用 Excel 进行分析"
+          },
+          {
+            "text": "结果导向",
+            "evidence": "结果导向"
+          }
+        ],
+        "preferredRequirements": [
+          {
+            "text": "有 A/B 测试经验优先",
+            "evidence": "有 A/B 测试经验优先"
+          }
+        ],
+        "skills": [
+          "Excel",
+          "A/B 测试",
+          "用户运营",
+          "数据分析"
+        ],
+        "experienceRequirements": [
+          {
+            "text": "2年以上互联网用户运营经验",
+            "evidence": "2 年以上互联网用户运营经验"
+          }
+        ],
+        "educationRequirements": [],
+        "domainKeywords": [
+          "在线教育",
+          "增长运营",
+          "用户运营"
+        ],
+        "interviewFocus": [
+          {
+            "text": "用户拉新与召回方案的设计与执行能力",
+            "evidence": "制定用户拉新与召回方案"
+          },
+          {
+            "text": "独立使用 Excel 进行数据分析的能力",
+            "evidence": "能够独立使用 Excel 进行分析"
+          },
+          {
+            "text": "A/B 测试实际应用经验",
+            "evidence": "有 A/B 测试经验优先"
+          }
+        ]
+      },
+      "latencyMs": 14124
+    },
+    {
+      "id": "jd-005",
+      "schemaValid": true,
+      "responsibilitiesOmissions": [],
+      "responsibilitiesFalseExtractions": [],
+      "mustHaveRequirementsOmissions": [],
+      "mustHaveRequirementsFalseExtractions": [],
+      "preferredRequirementsOmissions": [
+        "会使用 after effects 制作动效者优先"
+      ],
+      "preferredRequirementsFalseExtractions": [
+        "会使用 after effects 制作动效"
+      ],
+      "skillsOmissions": [
+        "可访问性"
+      ],
+      "skillsFalseExtractions": [
+        "after effects"
+      ],
+      "mustHaveMisclassifiedAsPreferred": [],
+      "preferredMisclassifiedAsMustHave": [],
+      "result": {
+        "summary": "负责移动端产品界面、设计规范和交互视觉方案，与产品和研发协作完成设计验收。",
+        "responsibilities": [
+          {
+            "text": "负责移动端产品界面、设计规范和交互视觉方案",
+            "evidence": "负责移动端产品界面、设计规范和交互视觉方案"
+          },
+          {
+            "text": "与产品和研发协作完成设计验收",
+            "evidence": "与产品和研发协作完成设计验收"
+          }
+        ],
+        "mustHaveRequirements": [
+          {
+            "text": "熟练使用 Figma",
+            "evidence": "需熟练使用 Figma"
+          },
+          {
+            "text": "具备完整上线项目作品集",
+            "evidence": "具备完整上线项目作品集"
+          },
+          {
+            "text": "关注可访问性",
+            "evidence": "关注可访问性"
+          }
+        ],
+        "preferredRequirements": [
+          {
+            "text": "会使用 After Effects 制作动效",
+            "evidence": "会使用 After Effects 制作动效者优先"
+          }
+        ],
+        "skills": [
+          "Figma",
+          "After Effects"
+        ],
+        "experienceRequirements": [],
+        "educationRequirements": [],
+        "domainKeywords": [
+          "移动端",
+          "设计规范",
+          "交互视觉"
+        ],
+        "interviewFocus": []
+      },
+      "latencyMs": 19028
+    },
+    {
+      "id": "jd-006",
+      "schemaValid": true,
+      "responsibilitiesOmissions": [
+        "开发外设驱动并定位量产问题"
+      ],
+      "responsibilitiesFalseExtractions": [
+        "定位量产问题",
+        "开发外设驱动"
+      ],
+      "mustHaveRequirementsOmissions": [
+        "本科及以上",
+        "电子或计算机相关专业"
+      ],
+      "mustHaveRequirementsFalseExtractions": [],
+      "preferredRequirementsOmissions": [
+        "有低功耗蓝牙项目经验优先"
+      ],
+      "preferredRequirementsFalseExtractions": [
+        "有低功耗蓝牙项目经验"
+      ],
+      "skillsOmissions": [],
+      "skillsFalseExtractions": [
+        "mcu",
+        "低功耗蓝牙"
+      ],
+      "mustHaveMisclassifiedAsPreferred": [],
+      "preferredMisclassifiedAsMustHave": [],
+      "result": {
+        "summary": "负责MCU固件架构设计、外设驱动开发及量产问题定位的嵌入式软件工程师，要求本科及以上学历，电子或计算机相关专业，熟练掌握C语言并理解RTOS，有低功耗蓝牙项目经验者优先。",
+        "responsibilities": [
+          {
+            "text": "参与 MCU 固件架构设计",
+            "evidence": "参与 MCU 固件架构设计"
+          },
+          {
+            "text": "开发外设驱动",
+            "evidence": "开发外设驱动"
+          },
+          {
+            "text": "定位量产问题",
+            "evidence": "定位量产问题"
+          }
+        ],
+        "mustHaveRequirements": [
+          {
+            "text": "熟练掌握 C 语言",
+            "evidence": "熟练掌握 C 语言"
+          },
+          {
+            "text": "理解 RTOS 调度和常用通信协议",
+            "evidence": "理解 RTOS 调度和常用通信协议"
+          },
+          {
+            "text": "能阅读英文芯片手册",
+            "evidence": "能阅读英文芯片手册"
+          }
+        ],
+        "preferredRequirements": [
+          {
+            "text": "有低功耗蓝牙项目经验",
+            "evidence": "有低功耗蓝牙项目经验优先"
+          }
+        ],
+        "skills": [
+          "MCU",
+          "C 语言",
+          "RTOS",
+          "通信协议",
+          "低功耗蓝牙"
+        ],
+        "experienceRequirements": [],
+        "educationRequirements": [
+          {
+            "text": "本科及以上，电子或计算机相关专业",
+            "evidence": "要求本科及以上，电子或计算机相关专业"
+          }
+        ],
+        "domainKeywords": [
+          "嵌入式",
+          "智能硬件",
+          "MCU",
+          "固件"
+        ],
+        "interviewFocus": [
+          {
+            "text": "C 语言掌握程度",
+            "evidence": "熟练掌握 C 语言"
+          },
+          {
+            "text": "RTOS 调度和常用通信协议的理解",
+            "evidence": "理解 RTOS 调度和常用通信协议"
+          }
+        ]
+      },
+      "latencyMs": 16947
+    },
+    {
+      "id": "jd-007",
+      "schemaValid": true,
+      "responsibilitiesOmissions": [],
+      "responsibilitiesFalseExtractions": [],
+      "mustHaveRequirementsOmissions": [
+        "硕士及以上学历",
+        "计算机相关专业"
+      ],
+      "mustHaveRequirementsFalseExtractions": [
+        "硕士及以上学历，计算机相关专业"
+      ],
+      "preferredRequirementsOmissions": [],
+      "preferredRequirementsFalseExtractions": [],
+      "skillsOmissions": [],
+      "skillsFalseExtractions": [
+        "召回模型",
+        "排序模型"
+      ],
+      "mustHaveMisclassifiedAsPreferred": [],
+      "preferredMisclassifiedAsMustHave": [],
+      "result": {
+        "summary": "负责推荐系统召回与排序模型研发，建设离线评估和在线实验体系。",
+        "responsibilities": [
+          {
+            "text": "负责推荐系统召回与排序模型研发",
+            "evidence": "负责推荐系统召回与排序模型研发"
+          },
+          {
+            "text": "建设离线评估和在线实验体系",
+            "evidence": "建设离线评估和在线实验体系"
+          }
+        ],
+        "mustHaveRequirements": [
+          {
+            "text": "硕士及以上学历，计算机相关专业",
+            "evidence": "要求硕士及以上学历，计算机相关专业"
+          },
+          {
+            "text": "熟练使用 Python 和 PyTorch",
+            "evidence": "熟练使用 Python 和 PyTorch"
+          },
+          {
+            "text": "具有 2 年以上推荐或广告算法经验",
+            "evidence": "具有 2 年以上推荐或广告算法经验"
+          }
+        ],
+        "preferredRequirements": [
+          {
+            "text": "发表过相关顶会论文者优先",
+            "evidence": "发表过相关顶会论文者优先"
+          }
+        ],
+        "skills": [
+          "Python",
+          "PyTorch",
+          "推荐系统",
+          "召回模型",
+          "排序模型"
+        ],
+        "experienceRequirements": [
+          {
+            "text": "具有 2 年以上推荐或广告算法经验",
+            "evidence": "具有 2 年以上推荐或广告算法经验"
+          }
+        ],
+        "educationRequirements": [
+          {
+            "text": "硕士及以上学历，计算机相关专业",
+            "evidence": "要求硕士及以上学历，计算机相关专业"
+          }
+        ],
+        "domainKeywords": [
+          "推荐系统",
+          "召回",
+          "排序",
+          "离线评估",
+          "在线实验",
+          "广告算法"
+        ],
+        "interviewFocus": [
+          {
+            "text": "推荐系统召回与排序模型研发能力",
+            "evidence": "负责推荐系统召回与排序模型研发"
+          },
+          {
+            "text": "Python 和 PyTorch 的实际应用",
+            "evidence": "熟练使用 Python 和 PyTorch"
+          }
+        ]
+      },
+      "latencyMs": 18057
+    },
+    {
+      "id": "jd-008",
+      "schemaValid": true,
+      "responsibilitiesOmissions": [],
+      "responsibilitiesFalseExtractions": [],
+      "mustHaveRequirementsOmissions": [
+        "具备 b2b 销售经验和商务谈判能力"
+      ],
+      "mustHaveRequirementsFalseExtractions": [
+        "具备 b2b 销售经验",
+        "具备商务谈判能力"
+      ],
+      "preferredRequirementsOmissions": [
+        "了解云计算产品者优先"
+      ],
+      "preferredRequirementsFalseExtractions": [
+        "了解云计算产品"
+      ],
+      "skillsOmissions": [
+        "b2b销售经验"
+      ],
+      "skillsFalseExtractions": [
+        "b2b销售",
+        "云计算"
+      ],
+      "mustHaveMisclassifiedAsPreferred": [],
+      "preferredMisclassifiedAsMustHave": [],
+      "result": {
+        "summary": "该岗位为某云服务公司的企业客户经理，主要负责开发和维护企业客户，推进方案、报价和合同流程，以完成季度销售目标。要求具备B2B销售经验、商务谈判能力并能接受省内短期出差，了解云计算产品者优先。",
+        "responsibilities": [
+          {
+            "text": "开发和维护企业客户",
+            "evidence": "开发和维护企业客户"
+          },
+          {
+            "text": "理解客户业务并推进方案、报价和合同流程",
+            "evidence": "理解客户业务并推进方案、报价和合同流程"
+          },
+          {
+            "text": "完成季度销售目标",
+            "evidence": "完成季度销售目标"
+          }
+        ],
+        "mustHaveRequirements": [
+          {
+            "text": "具备 B2B 销售经验",
+            "evidence": "要求具备 B2B 销售经验"
+          },
+          {
+            "text": "具备商务谈判能力",
+            "evidence": "商务谈判能力"
+          },
+          {
+            "text": "能够接受省内短期出差",
+            "evidence": "能够接受省内短期出差"
+          }
+        ],
+        "preferredRequirements": [
+          {
+            "text": "了解云计算产品",
+            "evidence": "了解云计算产品者优先"
+          }
+        ],
+        "skills": [
+          "B2B销售",
+          "商务谈判",
+          "云计算"
+        ],
+        "experienceRequirements": [
+          {
+            "text": "具备 B2B 销售经验",
+            "evidence": "要求具备 B2B 销售经验"
+          }
+        ],
+        "educationRequirements": [],
+        "domainKeywords": [
+          "云计算",
+          "B2B销售",
+          "客户关系管理"
+        ],
+        "interviewFocus": [
+          {
+            "text": "B2B销售经验与商务谈判能力",
+            "evidence": "要求具备 B2B 销售经验和商务谈判能力"
+          },
+          {
+            "text": "对云计算产品的了解程度",
+            "evidence": "了解云计算产品者优先"
+          }
+        ]
+      },
+      "latencyMs": 13699
+    },
+    {
+      "id": "jd-009",
+      "schemaValid": true,
+      "responsibilitiesOmissions": [],
+      "responsibilitiesFalseExtractions": [],
+      "mustHaveRequirementsOmissions": [
+        "具备数据敏感度和跨团队沟通能力"
+      ],
+      "mustHaveRequirementsFalseExtractions": [
+        "具备数据敏感度",
+        "具备跨团队沟通能力"
+      ],
+      "preferredRequirementsOmissions": [
+        "有 sap 使用经验优先"
+      ],
+      "preferredRequirementsFalseExtractions": [
+        "有 sap 使用经验"
+      ],
+      "skillsOmissions": [
+        "有制定供需计划的技能",
+        "有库存管理能力"
+      ],
+      "skillsFalseExtractions": [
+        "sap"
+      ],
+      "mustHaveMisclassifiedAsPreferred": [],
+      "preferredMisclassifiedAsMustHave": [],
+      "result": {
+        "summary": "负责根据销售预测制定滚动供需计划，跟踪库存和交付风险，并协调采购、生产与仓储解决异常的供应链计划专员。",
+        "responsibilities": [
+          {
+            "text": "根据销售预测制定滚动供需计划",
+            "evidence": "根据销售预测制定滚动供需计划"
+          },
+          {
+            "text": "跟踪库存和交付风险",
+            "evidence": "跟踪库存和交付风险"
+          },
+          {
+            "text": "协调采购、生产与仓储解决异常",
+            "evidence": "协调采购、生产与仓储解决异常"
+          }
+        ],
+        "mustHaveRequirements": [
+          {
+            "text": "本科及以上学历",
+            "evidence": "要求本科及以上学历"
+          },
+          {
+            "text": "熟练使用 Excel",
+            "evidence": "熟练使用 Excel"
+          },
+          {
+            "text": "具备数据敏感度",
+            "evidence": "具备数据敏感度"
+          },
+          {
+            "text": "具备跨团队沟通能力",
+            "evidence": "跨团队沟通能力"
+          }
+        ],
+        "preferredRequirements": [
+          {
+            "text": "有 SAP 使用经验",
+            "evidence": "有 SAP 使用经验优先"
+          }
+        ],
+        "skills": [
+          "Excel",
+          "SAP"
+        ],
+        "experienceRequirements": [],
+        "educationRequirements": [
+          {
+            "text": "本科及以上学历",
+            "evidence": "要求本科及以上学历"
+          }
+        ],
+        "domainKeywords": [
+          "供应链计划",
+          "库存管理"
+        ],
+        "interviewFocus": []
+      },
+      "latencyMs": 15119
+    },
+    {
+      "id": "jd-010",
+      "schemaValid": true,
+      "responsibilitiesOmissions": [],
+      "responsibilitiesFalseExtractions": [],
+      "mustHaveRequirementsOmissions": [
+        "5 年以上人力资源工作经验",
+        "至少 2 年 hrbp 经验"
+      ],
+      "mustHaveRequirementsFalseExtractions": [
+        "5年以上人力资源工作经验",
+        "至少2年hrbp经验"
+      ],
+      "preferredRequirementsOmissions": [
+        "有人力资源管理师证书优先"
+      ],
+      "preferredRequirementsFalseExtractions": [
+        "有人力资源管理师证书"
+      ],
+      "skillsOmissions": [
+        "熟悉劳动法规"
+      ],
+      "skillsFalseExtractions": [
+        "劳动法规",
+        "员工关系",
+        "招聘",
+        "绩效沟通"
+      ],
+      "mustHaveMisclassifiedAsPreferred": [],
+      "preferredMisclassifiedAsMustHave": [],
+      "result": {
+        "summary": "该岗位为某制造企业的HRBP，主要负责支持研发团队的组织诊断、人才盘点、绩效沟通，并推动招聘、培养和员工关系落地。要求5年以上人力资源工作经验及至少2年HRBP经验。",
+        "responsibilities": [
+          {
+            "text": "支持研发团队组织诊断、人才盘点和绩效沟通",
+            "evidence": "支持研发团队组织诊断、人才盘点和绩效沟通"
+          },
+          {
+            "text": "推动招聘、培养和员工关系事项落地",
+            "evidence": "推动招聘、培养和员工关系事项落地"
+          }
+        ],
+        "mustHaveRequirements": [
+          {
+            "text": "5年以上人力资源工作经验",
+            "evidence": "5 年以上人力资源工作经验"
+          },
+          {
+            "text": "至少2年HRBP经验",
+            "evidence": "至少 2 年 HRBP 经验"
+          },
+          {
+            "text": "熟悉劳动法规",
+            "evidence": "熟悉劳动法规"
+          },
+          {
+            "text": "能处理复杂沟通",
+            "evidence": "能处理复杂沟通"
+          }
+        ],
+        "preferredRequirements": [
+          {
+            "text": "有人力资源管理师证书",
+            "evidence": "有人力资源管理师证书优先"
+          }
+        ],
+        "skills": [
+          "组织诊断",
+          "人才盘点",
+          "绩效沟通",
+          "招聘",
+          "员工关系",
+          "劳动法规"
+        ],
+        "experienceRequirements": [
+          {
+            "text": "5年以上人力资源工作经验",
+            "evidence": "5 年以上人力资源工作经验"
+          },
+          {
+            "text": "至少2年HRBP经验",
+            "evidence": "至少 2 年 HRBP 经验"
+          }
+        ],
+        "educationRequirements": [],
+        "domainKeywords": [
+          "HRBP",
+          "人力资源",
+          "组织诊断",
+          "人才盘点",
+          "绩效沟通"
+        ],
+        "interviewFocus": [
+          {
+            "text": "组织诊断、人才盘点和绩效沟通能力",
+            "evidence": "支持研发团队组织诊断、人才盘点和绩效沟通"
+          },
+          {
+            "text": "复杂沟通处理能力",
+            "evidence": "能处理复杂沟通"
+          }
+        ]
+      },
+      "latencyMs": 17657
+    },
+    {
+      "id": "jd-011",
+      "schemaValid": true,
+      "responsibilitiesOmissions": [
+        "维护 siem 检测规则并参与攻防演练"
+      ],
+      "responsibilitiesFalseExtractions": [
+        "参与攻防演练",
+        "维护 siem 检测规则"
+      ],
+      "mustHaveRequirementsOmissions": [],
+      "mustHaveRequirementsFalseExtractions": [],
+      "preferredRequirementsOmissions": [
+        "持有 cissp 或同类认证优先"
+      ],
+      "preferredRequirementsFalseExtractions": [
+        "持有 cissp 或同类认证"
+      ],
+      "skillsOmissions": [
+        "web 攻击"
+      ],
+      "skillsFalseExtractions": [
+        "cissp",
+        "web攻击",
+        "事件响应",
+        "安全告警研判",
+        "攻防演练"
+      ],
+      "mustHaveMisclassifiedAsPreferred": [],
+      "preferredMisclassifiedAsMustHave": [],
+      "result": {
+        "summary": "负责安全告警研判、事件响应、SIEM规则维护及攻防演练，需3年以上安全运营经验，熟悉Web攻击、Linux及Python，持有CISSP优先。",
+        "responsibilities": [
+          {
+            "text": "负责安全告警研判、事件响应和复盘",
+            "evidence": "负责安全告警研判、事件响应和复盘"
+          },
+          {
+            "text": "维护 SIEM 检测规则",
+            "evidence": "维护 SIEM 检测规则"
+          },
+          {
+            "text": "参与攻防演练",
+            "evidence": "参与攻防演练"
+          }
+        ],
+        "mustHaveRequirements": [
+          {
+            "text": "熟悉常见 Web 攻击和 Linux",
+            "evidence": "要求熟悉常见 Web 攻击和 Linux"
+          },
+          {
+            "text": "能够编写 Python 脚本",
+            "evidence": "能够编写 Python 脚本"
+          },
+          {
+            "text": "具备 3 年以上安全运营经验",
+            "evidence": "具备 3 年以上安全运营经验"
+          }
+        ],
+        "preferredRequirements": [
+          {
+            "text": "持有 CISSP 或同类认证",
+            "evidence": "持有 CISSP 或同类认证优先"
+          }
+        ],
+        "skills": [
+          "安全告警研判",
+          "事件响应",
+          "SIEM",
+          "攻防演练",
+          "Web攻击",
+          "Linux",
+          "Python",
+          "CISSP"
+        ],
+        "experienceRequirements": [
+          {
+            "text": "3 年以上安全运营经验",
+            "evidence": "具备 3 年以上安全运营经验"
+          }
+        ],
+        "educationRequirements": [],
+        "domainKeywords": [
+          "安全运营",
+          "网络安全",
+          "金融科技"
+        ],
+        "interviewFocus": [
+          {
+            "text": "Web 攻击防御与 Linux 基础",
+            "evidence": "要求熟悉常见 Web 攻击和 Linux"
+          },
+          {
+            "text": "Python 脚本编写与自动化",
+            "evidence": "能够编写 Python 脚本"
+          },
+          {
+            "text": "安全事件响应与告警研判",
+            "evidence": "负责安全告警研判、事件响应和复盘"
+          }
+        ]
+      },
+      "latencyMs": 13417
+    },
+    {
+      "id": "jd-012",
+      "schemaValid": true,
+      "responsibilitiesOmissions": [],
+      "responsibilitiesFalseExtractions": [],
+      "mustHaveRequirementsOmissions": [],
+      "mustHaveRequirementsFalseExtractions": [],
+      "preferredRequirementsOmissions": [
+        "有大型设计系统经验优先"
+      ],
+      "preferredRequirementsFalseExtractions": [
+        "有大型设计系统经验"
+      ],
+      "skillsOmissions": [],
+      "skillsFalseExtractions": [],
+      "mustHaveMisclassifiedAsPreferred": [],
+      "preferredMisclassifiedAsMustHave": [],
+      "result": {
+        "summary": "负责管理后台和组件库开发，提升首屏性能与可访问性，参与前端工程规范建设。",
+        "responsibilities": [
+          {
+            "text": "负责管理后台和组件库开发",
+            "evidence": "负责管理后台和组件库开发"
+          },
+          {
+            "text": "提升首屏性能与可访问性",
+            "evidence": "提升首屏性能与可访问性"
+          },
+          {
+            "text": "参与前端工程规范建设",
+            "evidence": "参与前端工程规范建设"
+          }
+        ],
+        "mustHaveRequirements": [
+          {
+            "text": "精通 TypeScript、React 和现代 CSS",
+            "evidence": "要求精通 TypeScript、React 和现代 CSS"
+          },
+          {
+            "text": "理解浏览器渲染机制",
+            "evidence": "理解浏览器渲染机制"
+          },
+          {
+            "text": "具备 3 年以上前端经验",
+            "evidence": "具备 3 年以上前端经验"
+          }
+        ],
+        "preferredRequirements": [
+          {
+            "text": "有大型设计系统经验",
+            "evidence": "有大型设计系统经验优先"
+          }
+        ],
+        "skills": [
+          "TypeScript",
+          "React",
+          "CSS"
+        ],
+        "experienceRequirements": [
+          {
+            "text": "具备 3 年以上前端经验",
+            "evidence": "具备 3 年以上前端经验"
+          }
+        ],
+        "educationRequirements": [],
+        "domainKeywords": [
+          "前端开发",
+          "组件库",
+          "设计系统"
+        ],
+        "interviewFocus": [
+          {
+            "text": "TypeScript、React 和现代 CSS 的掌握",
+            "evidence": "要求精通 TypeScript、React 和现代 CSS"
+          },
+          {
+            "text": "浏览器渲染机制的理解",
+            "evidence": "理解浏览器渲染机制"
+          }
+        ]
+      },
+      "latencyMs": 13054
+    },
+    {
+      "id": "jd-013",
+      "schemaValid": true,
+      "responsibilitiesOmissions": [],
+      "responsibilitiesFalseExtractions": [],
+      "mustHaveRequirementsOmissions": [],
+      "mustHaveRequirementsFalseExtractions": [],
+      "preferredRequirementsOmissions": [
+        "有性能测试经验优先"
+      ],
+      "preferredRequirementsFalseExtractions": [
+        "有性能测试经验"
+      ],
+      "skillsOmissions": [],
+      "skillsFalseExtractions": [
+        "性能测试"
+      ],
+      "mustHaveMisclassifiedAsPreferred": [],
+      "preferredMisclassifiedAsMustHave": [],
+      "result": {
+        "summary": "该岗位为重庆的软件测试工程师，主要负责参与需求评审、设计接口与端到端测试用例、维护自动化回归并跟踪缺陷闭环。要求熟悉 HTTP、SQL 和至少一种自动化测试框架，能够使用 Python 编写测试工具，有性能测试经验者优先。",
+        "responsibilities": [
+          {
+            "text": "参与需求评审",
+            "evidence": "参与需求评审"
+          },
+          {
+            "text": "设计接口与端到端测试用例",
+            "evidence": "设计接口与端到端测试用例"
+          },
+          {
+            "text": "维护自动化回归并跟踪缺陷闭环",
+            "evidence": "维护自动化回归并跟踪缺陷闭环"
+          }
+        ],
+        "mustHaveRequirements": [
+          {
+            "text": "熟悉 HTTP、SQL 和至少一种自动化测试框架",
+            "evidence": "要求熟悉 HTTP、SQL 和至少一种自动化测试框架"
+          },
+          {
+            "text": "能够使用 Python 编写测试工具",
+            "evidence": "能够使用 Python 编写测试工具"
+          }
+        ],
+        "preferredRequirements": [
+          {
+            "text": "有性能测试经验",
+            "evidence": "有性能测试经验优先"
+          }
+        ],
+        "skills": [
+          "HTTP",
+          "SQL",
+          "自动化测试",
+          "Python",
+          "性能测试"
+        ],
+        "experienceRequirements": [
+          {
+            "text": "有性能测试经验",
+            "evidence": "有性能测试经验优先"
+          }
+        ],
+        "educationRequirements": [],
+        "domainKeywords": [
+          "软件测试",
+          "自动化测试",
+          "接口测试",
+          "端到端测试"
+        ],
+        "interviewFocus": [
+          {
+            "text": "HTTP、SQL 和自动化测试框架的掌握情况",
+            "evidence": "要求熟悉 HTTP、SQL 和至少一种自动化测试框架"
+          },
+          {
+            "text": "使用 Python 编写测试工具的能力",
+            "evidence": "能够使用 Python 编写测试工具"
+          }
+        ]
+      },
+      "latencyMs": 17673
+    },
+    {
+      "id": "jd-014",
+      "schemaValid": true,
+      "responsibilitiesOmissions": [],
+      "responsibilitiesFalseExtractions": [],
+      "mustHaveRequirementsOmissions": [
+        "临床医学或药学硕士"
+      ],
+      "mustHaveRequirementsFalseExtractions": [],
+      "preferredRequirementsOmissions": [
+        "有相关治疗领域研究经历优先"
+      ],
+      "preferredRequirementsFalseExtractions": [
+        "有相关治疗领域研究经历"
+      ],
+      "skillsOmissions": [
+        "会读医学文献",
+        "英文文献检索"
+      ],
+      "skillsFalseExtractions": [
+        "学术材料审核",
+        "文献检索",
+        "文献阅读"
+      ],
+      "mustHaveMisclassifiedAsPreferred": [],
+      "preferredMisclassifiedAsMustHave": [],
+      "result": {
+        "summary": "负责整理产品相关医学文献，支持学术材料审核和专家会议，并回答内部医学咨询。要求临床医学或药学硕士学历，具备英文文献检索和阅读能力。",
+        "responsibilities": [
+          {
+            "text": "整理产品相关医学文献",
+            "evidence": "整理产品相关医学文献"
+          },
+          {
+            "text": "支持学术材料审核和专家会议",
+            "evidence": "支持学术材料审核和专家会议"
+          },
+          {
+            "text": "回答内部医学咨询",
+            "evidence": "回答内部医学咨询"
+          }
+        ],
+        "mustHaveRequirements": [
+          {
+            "text": "具备英文文献检索和阅读能力",
+            "evidence": "具备英文文献检索和阅读能力"
+          },
+          {
+            "text": "遵守合规要求",
+            "evidence": "遵守合规要求"
+          }
+        ],
+        "preferredRequirements": [
+          {
+            "text": "有相关治疗领域研究经历",
+            "evidence": "有相关治疗领域研究经历优先"
+          }
+        ],
+        "skills": [
+          "文献检索",
+          "文献阅读",
+          "学术材料审核"
+        ],
+        "experienceRequirements": [
+          {
+            "text": "有相关治疗领域研究经历优先",
+            "evidence": "有相关治疗领域研究经历优先"
+          }
+        ],
+        "educationRequirements": [
+          {
+            "text": "临床医学或药学硕士",
+            "evidence": "要求临床医学或药学硕士"
+          }
+        ],
+        "domainKeywords": [
+          "医学事务",
+          "临床医学",
+          "药学"
+        ],
+        "interviewFocus": []
+      },
+      "latencyMs": 17075
+    },
+    {
+      "id": "jd-015",
+      "schemaValid": true,
+      "responsibilitiesOmissions": [],
+      "responsibilitiesFalseExtractions": [],
+      "mustHaveRequirementsOmissions": [
+        "具备基础会计知识和严谨的数据核对习惯"
+      ],
+      "mustHaveRequirementsFalseExtractions": [
+        "具备严谨的数据核对习惯",
+        "具备基础会计知识"
+      ],
+      "preferredRequirementsOmissions": [],
+      "preferredRequirementsFalseExtractions": [],
+      "skillsOmissions": [
+        "会计",
+        "预算分析"
+      ],
+      "skillsFalseExtractions": [
+        "会计知识",
+        "数据核对",
+        "经营分析",
+        "预算管理"
+      ],
+      "mustHaveMisclassifiedAsPreferred": [],
+      "preferredMisclassifiedAsMustHave": [],
+      "result": {
+        "summary": "负责编制月度经营分析、跟踪预算执行并解释差异，以及支持业务测算。要求财务或经济相关专业本科，熟练使用 Excel，具备基础会计知识和严谨的数据核对习惯。通过 CPA 部分科目者优先。",
+        "responsibilities": [
+          {
+            "text": "编制月度经营分析",
+            "evidence": "编制月度经营分析"
+          },
+          {
+            "text": "跟踪预算执行并解释差异",
+            "evidence": "跟踪预算执行并解释差异"
+          },
+          {
+            "text": "支持业务测算",
+            "evidence": "支持业务测算"
+          }
+        ],
+        "mustHaveRequirements": [
+          {
+            "text": "财务或经济相关专业本科",
+            "evidence": "要求财务或经济相关专业本科"
+          },
+          {
+            "text": "熟练使用 Excel",
+            "evidence": "熟练使用 Excel"
+          },
+          {
+            "text": "具备基础会计知识",
+            "evidence": "具备基础会计知识"
+          },
+          {
+            "text": "具备严谨的数据核对习惯",
+            "evidence": "严谨的数据核对习惯"
+          }
+        ],
+        "preferredRequirements": [
+          {
+            "text": "通过 CPA 部分科目者优先",
+            "evidence": "通过 CPA 部分科目者优先"
+          }
+        ],
+        "skills": [
+          "Excel",
+          "会计知识",
+          "数据核对",
+          "经营分析",
+          "预算管理"
+        ],
+        "experienceRequirements": [],
+        "educationRequirements": [
+          {
+            "text": "财务或经济相关专业本科",
+            "evidence": "要求财务或经济相关专业本科"
+          }
+        ],
+        "domainKeywords": [
+          "财务分析",
+          "预算管理",
+          "物流"
+        ],
+        "interviewFocus": []
+      },
+      "latencyMs": 13880
+    },
+    {
+      "id": "jd-016",
+      "schemaValid": true,
+      "responsibilitiesOmissions": [],
+      "responsibilitiesFalseExtractions": [],
+      "mustHaveRequirementsOmissions": [
+        "具备良好书面表达",
+        "法学本科及以上"
+      ],
+      "mustHaveRequirementsFalseExtractions": [
+        "具备良好书面表达能力",
+        "法学本科及以上学历"
+      ],
+      "preferredRequirementsOmissions": [
+        "有互联网平台法务经验优先"
+      ],
+      "preferredRequirementsFalseExtractions": [
+        "有互联网平台法务经验"
+      ],
+      "skillsOmissions": [
+        "审核业务合同和营销规则",
+        "法律咨询服务"
+      ],
+      "skillsFalseExtractions": [
+        "书面表达",
+        "争议解决",
+        "合同审核",
+        "法律咨询"
+      ],
+      "mustHaveMisclassifiedAsPreferred": [],
+      "preferredMisclassifiedAsMustHave": [],
+      "result": {
+        "summary": "负责审核业务合同与营销规则、提供日常法律咨询、跟进争议解决和制度更新的法务专员。",
+        "responsibilities": [
+          {
+            "text": "审核业务合同与营销规则",
+            "evidence": "审核业务合同与营销规则"
+          },
+          {
+            "text": "提供日常法律咨询",
+            "evidence": "提供日常法律咨询"
+          },
+          {
+            "text": "跟进争议解决和制度更新",
+            "evidence": "跟进争议解决和制度更新"
+          }
+        ],
+        "mustHaveRequirements": [
+          {
+            "text": "法学本科及以上学历",
+            "evidence": "要求法学本科及以上"
+          },
+          {
+            "text": "通过法律职业资格考试",
+            "evidence": "通过法律职业资格考试"
+          },
+          {
+            "text": "具备良好书面表达能力",
+            "evidence": "具备良好书面表达"
+          }
+        ],
+        "preferredRequirements": [
+          {
+            "text": "有互联网平台法务经验",
+            "evidence": "有互联网平台法务经验优先"
+          }
+        ],
+        "skills": [
+          "合同审核",
+          "法律咨询",
+          "争议解决",
+          "书面表达"
+        ],
+        "experienceRequirements": [
+          {
+            "text": "有互联网平台法务经验（优先）",
+            "evidence": "有互联网平台法务经验优先"
+          }
+        ],
+        "educationRequirements": [
+          {
+            "text": "法学本科及以上",
+            "evidence": "要求法学本科及以上"
+          }
+        ],
+        "domainKeywords": [
+          "法务",
+          "电商",
+          "互联网平台"
+        ],
+        "interviewFocus": []
+      },
+      "latencyMs": 14759
+    },
+    {
+      "id": "jd-017",
+      "schemaValid": true,
+      "responsibilitiesOmissions": [],
+      "responsibilitiesFalseExtractions": [],
+      "mustHaveRequirementsOmissions": [],
+      "mustHaveRequirementsFalseExtractions": [],
+      "preferredRequirementsOmissions": [
+        "会使用基础图片编辑工具加分"
+      ],
+      "preferredRequirementsFalseExtractions": [
+        "会使用基础图片编辑工具"
+      ],
+      "skillsOmissions": [
+        "内容数据"
+      ],
+      "skillsFalseExtractions": [
+        "发布排期",
+        "图片编辑",
+        "数据整理",
+        "选题策划"
+      ],
+      "mustHaveMisclassifiedAsPreferred": [],
+      "preferredMisclassifiedAsMustHave": [],
+      "result": {
+        "summary": "协助选题策划、稿件编辑和发布排期，整理内容数据并形成周报。",
+        "responsibilities": [
+          {
+            "text": "协助选题策划、稿件编辑和发布排期",
+            "evidence": "协助选题策划、稿件编辑和发布排期"
+          },
+          {
+            "text": "整理内容数据并形成周报",
+            "evidence": "整理内容数据并形成周报"
+          }
+        ],
+        "mustHaveRequirements": [
+          {
+            "text": "文字表达准确",
+            "evidence": "要求文字表达准确"
+          },
+          {
+            "text": "对科技话题敏感",
+            "evidence": "对科技话题敏感"
+          },
+          {
+            "text": "每周可实习 3 天以上",
+            "evidence": "每周可实习 3 天以上"
+          }
+        ],
+        "preferredRequirements": [
+          {
+            "text": "会使用基础图片编辑工具",
+            "evidence": "会使用基础图片编辑工具加分"
+          }
+        ],
+        "skills": [
+          "选题策划",
+          "稿件编辑",
+          "发布排期",
+          "数据整理",
+          "图片编辑"
+        ],
+        "experienceRequirements": [],
+        "educationRequirements": [
+          {
+            "text": "不限制专业和学历",
+            "evidence": "不限制专业和学历"
+          }
+        ],
+        "domainKeywords": [
+          "内容运营",
+          "科技"
+        ],
+        "interviewFocus": []
+      },
+      "latencyMs": 14411
+    },
+    {
+      "id": "jd-018",
+      "schemaValid": true,
+      "responsibilitiesOmissions": [],
+      "responsibilitiesFalseExtractions": [],
+      "mustHaveRequirementsOmissions": [],
+      "mustHaveRequirementsFalseExtractions": [],
+      "preferredRequirementsOmissions": [
+        "熟悉模型量化者优先"
+      ],
+      "preferredRequirementsFalseExtractions": [
+        "熟悉模型量化"
+      ],
+      "skillsOmissions": [],
+      "skillsFalseExtractions": [
+        "信息抽取",
+        "文本分类",
+        "模型量化"
+      ],
+      "mustHaveMisclassifiedAsPreferred": [],
+      "preferredMisclassifiedAsMustHave": [],
+      "result": {
+        "summary": "负责文本分类和信息抽取模型训练、评估与部署，优化数据闭环。",
+        "responsibilities": [
+          {
+            "text": "负责文本分类和信息抽取模型训练、评估与部署",
+            "evidence": "负责文本分类和信息抽取模型训练、评估与部署"
+          },
+          {
+            "text": "优化数据闭环",
+            "evidence": "优化数据闭环"
+          }
+        ],
+        "mustHaveRequirements": [
+          {
+            "text": "熟悉 Transformer 和 PyTorch",
+            "evidence": "要求熟悉 Transformer 和 PyTorch"
+          },
+          {
+            "text": "能够使用 Python 完成实验",
+            "evidence": "能够使用 Python 完成实验"
+          },
+          {
+            "text": "具备自然语言处理项目经验",
+            "evidence": "具备自然语言处理项目经验"
+          }
+        ],
+        "preferredRequirements": [
+          {
+            "text": "熟悉模型量化",
+            "evidence": "熟悉模型量化者优先"
+          }
+        ],
+        "skills": [
+          "Transformer",
+          "PyTorch",
+          "Python",
+          "自然语言处理",
+          "文本分类",
+          "信息抽取",
+          "模型量化"
+        ],
+        "experienceRequirements": [
+          {
+            "text": "未限定工作年限",
+            "evidence": "本岗位未限定学历和工作年限"
+          },
+          {
+            "text": "具备自然语言处理项目经验",
+            "evidence": "具备自然语言处理项目经验"
+          }
+        ],
+        "educationRequirements": [
+          {
+            "text": "未限定学历",
+            "evidence": "本岗位未限定学历和工作年限"
+          }
+        ],
+        "domainKeywords": [
+          "NLP",
+          "自然语言处理",
+          "文本分类",
+          "信息抽取",
+          "模型量化"
+        ],
+        "interviewFocus": []
+      },
+      "latencyMs": 14190
+    },
+    {
+      "id": "jd-019",
+      "schemaValid": true,
+      "responsibilitiesOmissions": [
+        "协助收集用户反馈、整理需求文档并跟进版本验收"
+      ],
+      "responsibilitiesFalseExtractions": [
+        "协助收集用户反馈",
+        "整理需求文档",
+        "跟进版本验收"
+      ],
+      "mustHaveRequirementsOmissions": [],
+      "mustHaveRequirementsFalseExtractions": [],
+      "preferredRequirementsOmissions": [],
+      "preferredRequirementsFalseExtractions": [],
+      "skillsOmissions": [],
+      "skillsFalseExtractions": [
+        "用户反馈"
+      ],
+      "mustHaveMisclassifiedAsPreferred": [],
+      "preferredMisclassifiedAsMustHave": [],
+      "result": {
+        "summary": "协助收集用户反馈、整理需求文档并跟进版本验收的产品助理岗位。",
+        "responsibilities": [
+          {
+            "text": "协助收集用户反馈",
+            "evidence": "协助收集用户反馈"
+          },
+          {
+            "text": "整理需求文档",
+            "evidence": "整理需求文档"
+          },
+          {
+            "text": "跟进版本验收",
+            "evidence": "跟进版本验收"
+          }
+        ],
+        "mustHaveRequirements": [
+          {
+            "text": "逻辑清晰",
+            "evidence": "要求逻辑清晰"
+          },
+          {
+            "text": "能够使用原型工具",
+            "evidence": "能够使用原型工具"
+          },
+          {
+            "text": "与研发顺畅沟通",
+            "evidence": "与研发顺畅沟通"
+          }
+        ],
+        "preferredRequirements": [],
+        "skills": [
+          "原型工具",
+          "需求文档",
+          "用户反馈"
+        ],
+        "experienceRequirements": [],
+        "educationRequirements": [],
+        "domainKeywords": [
+          "产品助理"
+        ],
+        "interviewFocus": []
+      },
+      "latencyMs": 10969
+    },
+    {
+      "id": "jd-020",
+      "schemaValid": true,
+      "responsibilitiesOmissions": [],
+      "responsibilitiesFalseExtractions": [],
+      "mustHaveRequirementsOmissions": [
+        "必须具备 4 年以上软件项目管理经验"
+      ],
+      "mustHaveRequirementsFalseExtractions": [
+        "具备 4 年以上软件项目管理经验"
+      ],
+      "preferredRequirementsOmissions": [
+        "持证者优先",
+        "有政企项目经历更佳"
+      ],
+      "preferredRequirementsFalseExtractions": [
+        "持有 pmp 证书",
+        "有政企项目经历"
+      ],
+      "skillsOmissions": [
+        "项目管理"
+      ],
+      "skillsFalseExtractions": [
+        "pmp",
+        "交付管理",
+        "范围管理",
+        "软件项目管理",
+        "项目计划"
+      ],
+      "mustHaveMisclassifiedAsPreferred": [],
+      "preferredMisclassifiedAsMustHave": [],
+      "result": {
+        "summary": "负责项目计划、范围、风险和交付管理，组织客户及内部团队例会。要求4年以上软件项目管理经验，能同时推进多项目，PMP持证及政企项目经历者优先。",
+        "responsibilities": [
+          {
+            "text": "负责项目计划、范围、风险和交付管理",
+            "evidence": "负责项目计划、范围、风险和交付管理"
+          },
+          {
+            "text": "组织客户及内部团队例会",
+            "evidence": "组织客户及内部团队例会"
+          }
+        ],
+        "mustHaveRequirements": [
+          {
+            "text": "具备 4 年以上软件项目管理经验",
+            "evidence": "必须具备 4 年以上软件项目管理经验"
+          },
+          {
+            "text": "能够同时推进多个项目",
+            "evidence": "能够同时推进多个项目"
+          }
+        ],
+        "preferredRequirements": [
+          {
+            "text": "持有 PMP 证书",
+            "evidence": "PMP 不是硬性要求，持证者优先"
+          },
+          {
+            "text": "有政企项目经历",
+            "evidence": "有政企项目经历更佳"
+          }
+        ],
+        "skills": [
+          "项目计划",
+          "范围管理",
+          "风险管理",
+          "交付管理",
+          "软件项目管理",
+          "PMP"
+        ],
+        "experienceRequirements": [
+          {
+            "text": "4 年以上软件项目管理经验",
+            "evidence": "必须具备 4 年以上软件项目管理经验"
+          }
+        ],
+        "educationRequirements": [],
+        "domainKeywords": [
+          "软件项目",
+          "政企项目"
+        ],
+        "interviewFocus": []
+      },
+      "latencyMs": 11611
+    }
+  ]
+}

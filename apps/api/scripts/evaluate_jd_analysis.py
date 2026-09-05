@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -47,6 +48,7 @@ def main() -> int:
     evidence_grounded = 0
     for sample in samples:
         entry: dict[str, Any] = {"id": sample["id"], "schemaValid": False}
+        started_at = time.perf_counter()
         try:
             analysis_input = JDAnalysisInput(
                 title=sample["title"],
@@ -69,11 +71,22 @@ def main() -> int:
             valid += 1
         except (DomainError, KeyError, TypeError, json.JSONDecodeError):
             entry["error"] = "INVALID_OR_UNAVAILABLE"
+        entry["latencyMs"] = round((time.perf_counter() - started_at) * 1000)
+        print(
+            f"{entry['id']}: "
+            f"{'PASS' if entry['schemaValid'] else 'FAIL'} "
+            f"({entry['latencyMs']} ms)",
+            flush=True,
+        )
         comparisons.append(entry)
 
     output = {
         "datasetVersion": dataset["datasetVersion"],
         "promptVersion": "v1",
+        "schemaVersion": 1,
+        "model": settings.model,
+        "temperature": 0,
+        "timeoutSeconds": settings.timeout_seconds,
         "sampleCount": len(samples),
         "metrics": {
             "schemaSuccess": {"valid": valid, "total": len(samples)},
