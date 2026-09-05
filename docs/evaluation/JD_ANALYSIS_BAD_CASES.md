@@ -184,4 +184,24 @@ Skills false extractions 从 53 降至 6，说明过度派生明显收敛；同�
 | Prompt injection | PASS，`jd-019` 未执行或复述恶意指令 |
 | 同一数组重复项 | 未观察到 |
 
+## 真实岗位 Web 人工验收
+
+2026-09-05，项目负责人在 Web 中审核了一个真实 BOSS Job 与一个真实牛客 Job 的结构化结果：
+
+- BOSS：内容正确；Schema Version 1、10/10 evidence grounding、重复点击禁用、刷新持久化与
+  `isStale=false` 均通过。
+- 牛客：除一处 `and` 错误外内容正确；Schema Version 1、13/13 evidence grounding、重复点击
+  禁用、刷新持久化与 `isStale=false` 均通过。
+
+### BC-R01：真实牛客职责出现“和”→“and”
+
+- 原文与 evidence：`协同技术、设计、测试和运营`。
+- 输出 `text`：`协同技术、设计、测试 and 运营`。
+- 原因判断：Provider 对连续原文子句做了无必要的语言替换；strict schema 与 evidence 子串校验
+  只约束 `evidence`，因此不会拒绝语义近似但文本不忠实的 `text`。
+- 归类：与 V2 `jd-005` 的 BC-04 同类，是中英混排/文本忠实度问题，不是 evidence
+  hallucination。项目负责人确认其余牛客内容正确。
+- 处理：保留为真实运行观察，不修改 Gold、Prompt V1/V2、Schema、评分算法或冻结 V2 指标；
+  本轮不创建或运行 Prompt V3。
+
 V2 已完成唯一一轮真实评测。即使仍有错误，本轮也不创建或运行 Prompt V3。

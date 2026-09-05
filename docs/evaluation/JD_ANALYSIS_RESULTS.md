@@ -107,7 +107,23 @@ false extraction；这些差异仍全部保留，没有人工修正。
 
 V2 全部请求均在 60 秒内完成。延迟明显上升，但没有据此更换模型、timeout 或评测结果。
 
+## Real Job Web Acceptance
+
+2026-09-05 在独立 loopback 开发端口完成一个真实 BOSS Job 与一个真实牛客 Job 的 Web
+人工忠实度验收。两次分析均只发送一次请求；API Key 未读取、输出或写入评测记录。
+
+| 平台 | Provider configured | 实际耗时 | Schema | Evidence | UI / 持久化 | 项目负责人结论 |
+| --- | --- | ---: | --- | --- | --- | --- |
+| BOSS | YES | 17,789 ms | PASS，Version 1 | PASS，10/10 | 重复点击禁用；刷新后保留；`isStale=false` | 内容正确 |
+| 牛客 | YES | 23,229 ms | PASS，Version 1 | PASS，13/13 | 重复点击禁用；刷新后保留；`isStale=false` | 内容正确，仅一处 `and` 错误 |
+
+牛客结果的第二条职责把原文“协同技术、设计、测试和运营”写成“协同技术、设计、测试 and
+运营”；对应 evidence 仍为正确原文。这是 `text` 忠实度/中英混排 Bad Case，与 BC-04 在
+`jd-005` 观察到的“和”→“and”同类。它不属于 Schema 或 Evidence failure，也不回写冻结的
+20 条 V2 指标。项目负责人确认其余内容正确；本轮只记录事实，不创建 Prompt V3。
+
 ## Verdict
 
-Prompt V2 全量评测与 V1 对比已完成。Phase 6B 仍需项目负责人对一个真实 BOSS Job 和一个真实
-Nowcoder Job 进行 Web AI 内容质量确认；在此之前不得宣称 Phase 6 完整 PASS，也不得进入 Phase 7。
+Prompt V2 全量评测、V1 对比及真实 BOSS/牛客 Web AI 内容质量确认均已完成。Phase 6 于
+2026-09-05 达到既定成功标准并标记 PASS。牛客 `and` 问题作为非阻塞真实 Bad Case 保留；
+不得据此自动创建 Prompt V3。Phase 7 尚未获批且未进入。
