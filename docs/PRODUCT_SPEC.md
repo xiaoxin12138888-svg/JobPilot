@@ -1,8 +1,8 @@
 # JobPilot 产品规格
 
-> 状态：Phase 3、Phase 4 与 Phase 5 已通过，BOSS 与牛客均为 `SUPPORTED — V1`。
-> Phase 6 — JD Structured AI Analysis 已于 2026-09-05 完成真实 V1/V2 评测与 BOSS/牛客 Web
-> 人工验收并标记 PASS；Phase 7 尚未获批或进入。
+> 状态：Phase 3 至 Phase 6 已通过，BOSS 与牛客均为 `SUPPORTED — V1`。Phase 7 — Resume
+> Version & Evidence Map 已获批并完成本地实现/自动化；真实简历外发、BOSS/牛客结果质量与重启
+> 持久化仍等待项目负责人在 UI 中确认和验收。Phase 8 未获批。
 
 ## 1. 产品定位
 
@@ -39,6 +39,17 @@ Phase 6 在保存后增加一条可选流程：
 
 不点击、未配置或分析失败时，原 Job/Application/采集与 JD 查看流程不受影响。
 
+Phase 7 在结构化 JD 后增加可解释证据链：
+
+```text
+创建纯文本 Resume Version -> 选择一个已有有效 JD Analysis 的 Job
+-> 选择一个 Resume Version -> 当次确认外部 AI 数据发送
+-> Requirement -> Resume 原文证据 -> DIRECT / PARTIAL / GAP
+-> 用户在 Application 中另行记录本次实际使用的 Resume Version
+```
+
+Evidence Map 选择不会自动改写 Application，Application 的简历选择也不会自动触发 AI。
+
 ## 3. Job
 
 Job 是用户主动保存的岗位快照，包含职位、公司、地点、薪资文本、来源、原平台 URL、
@@ -71,7 +82,8 @@ Application 表示一个 Job 的真实求职进度。一个 Job 最多一个 App
 | `closed` | 岗位关闭 |
 
 状态使用小型显式流转表，并允许少量相邻状态更正。每次进入 `applied` 都要求
-`confirmApplied: true`；首次进入时记录 `applied_at`。
+`confirmApplied: true`；首次进入时记录 `applied_at`。`resumeVersionId` 默认为 null，只有用户在
+已有 Application 上明确选择并保存时才设置，也可明确清空或更换。
 
 ## 5. 原平台行为
 
@@ -85,13 +97,16 @@ Application 表示一个 Job 的真实求职进度。一个 Job 最多一个 App
 
 ## 6. Web
 
-Phase 3 Web 包含：
+当前 Web 包含：
 
 - 本地 API checking/unavailable/retry 状态；
 - 岗位库 loading/error/empty/list 状态；
 - 手动岗位表单与前后端校验；
 - 岗位详情、编辑和明确确认删除；
 - Application 建立、显式已投递确认和状态更新；
+- 纯文本 Resume Version 新建、查看、编辑/重命名、复制和受引用保护的删除；
+- Application 实际使用 Resume Version 的显式选择、保存和清空；
+- Job Detail 的 JD Analysis 与 Evidence Map 前置、确认、loading、success、stale、error/retry；
 - 320/768/1024/1440 响应式布局与键盘可访问控件。
 
 不建设复杂 Dashboard 或拖拽看板。
@@ -108,7 +123,31 @@ Phase 3 Web 包含：
 Web 必须覆盖未配置、未分析、分析中、成功、失败和 stale。Evidence 可轻量展开；原始 JD 始终
 可见。Provider 未配置、超时、限流、不可达或 malformed 只影响本区块。
 
-## 8. 本地与 no-proxy 边界
+## 8. Resume Version
+
+Resume Version 是保存在本机 SQLite 的独立纯文本版本，字段只有名称、正文和本地时间；不读取
+PDF/DOCX/图片，不提供 OCR、富文本、模板、版本树、自动生成或整份改写。用户可新建、查看、
+编辑/重命名和复制。若任何 Application 正在引用该版本，删除返回稳定
+`RESUME_VERSION_IN_USE`；未引用版本可删除并级联对应 Evidence Map。
+
+简历正文按不可信纯文本处理，不写日志、Extension、telemetry、Git、文档或真实测试 fixture。
+
+## 9. Evidence Map
+
+生成前要求 Job、当前非 stale JD Analysis、用户所选 Resume Version、已配置 Provider，以及
+本次操作的明确外发确认。发送数据只含必要岗位上下文、当前 must-have/preferred requirements
+和所选简历正文；不发送原始页面 HTML、完整 JD、notes、Application、其他 Job/Resume 或文件。
+
+每条 mapping 保留原 requirement 类型/文本，并只使用 `DIRECT`、`PARTIAL`、`GAP`：DIRECT 是
+简历中存在可直接支持要求的原文，PARTIAL 是存在相关但不完整的原文，GAP 只表示当前所选简历
+未找到证据。quote 经空白规范化后必须是简历正文子串；无有效 quote 的 DIRECT/PARTIAL 确定性
+降级为 GAP。must-have 与 preferred 分开展示；总览只做确定性计数，不产生匹配率、ATS/Offer
+分数或推荐。
+
+每个 Job + Resume Version 只保留一个当前结果。JD Analysis 或 Resume content 变化后旧结果保留
+但标为 stale；重新生成失败保留最后一个有效结果及 stale 状态，不暴露 Provider 原始错误。
+
+## 10. 本地与 no-proxy 边界
 
 - Web、Extension 与 API 只通过精确 loopback 通信；
 - installed runtime 不依赖账号、云服务、CDN、远程字体/脚本、telemetry、update 或境外 AI；
@@ -121,17 +160,18 @@ Web 必须覆盖未配置、未分析、分析中、成功、失败和 stale。E
 - 测试只使用显式临时数据库，不读取、替换或删除 `runtime-data/jobpilot.db`。
 - 外部 LLM 只属于显式启用的可选增强，Key 仅存在 FastAPI 进程环境；Web/Extension 不持有 Key，
   本地核心不依赖 Provider，也不修改系统或浏览器代理。
+- 简历默认只在本机 SQLite；任何 Evidence Map 外发都要求用户在当次 Web 操作中确认。
 
-## 9. Phase 6 非目标
+## 11. Phase 7 非目标
 
-智联、实习僧、猎聘、国聘 Adapter、通用 AI/Adapter framework、ResumeVersion、Evidence Map、
-JD×Resume matching、匹配/推荐/Offer 分数、RAG、embedding、vector DB、upload、Agent/LangChain、
-模拟面试、自动投递、云同步、账号、认证和多用户均不属于 Phase 6。
+PDF/DOCX/图片/OCR、文件上传、简历生成/整份改写、ATS/匹配/Offer 分数、推荐、RAG、embedding、
+vector DB、Agent/LangChain、模拟面试、自动投递、新招聘平台、云同步、账号、认证和多用户均不
+属于 Phase 7。
 
-## 10. 成功标准
+## 12. 成功标准
 
-Phase 6 必须通过自动 schema/provider/persistence/stale/API/UI/security 测试，并在同一套至少 20
-条、经人工审核的脱敏 gold 数据上真实运行 Prompt V1、记录 Bad Cases、据此修改 V2 并复跑。
-还需对一个真实 BOSS Job 和一个真实牛客 Job 完成人工忠实度验收，同时完整回归采集、
-Job/Application、SQLite restart 与 no-proxy core。没有 Provider 或人工 gold 审核时必须报告
-BLOCKED，不得伪造指标。
+Phase 7 必须通过 Resume/Application/Evidence schema、grounding、stale、persistence、API/UI、
+privacy/security 自动测试及全部既有回归。项目负责人还需在 UI 粘贴一份脱敏真实简历，对一个
+已有有效分析的 BOSS Job 和一个牛客 Job 分别确认外发并人工判断 requirement 数量、quote
+grounding、coverage/reason 质量和无数字分数；随后验证 Application 关联与 API/Web 重启持久化。
+缺少用户确认或人工判断时必须报告 BLOCKED，不得代替负责人宣称 PASS。

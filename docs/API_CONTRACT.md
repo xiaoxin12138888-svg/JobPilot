@@ -1,14 +1,15 @@
 # JobPilot API Contract
 
-> 状态：`GET /health`、Job/Application、BOSS/牛客 capture 与 Job Analysis contract 已冻结。
-> JSON 字段使用 camelCase。
+> 状态：`GET /health`、Job/Application、BOSS/牛客 capture、Job Analysis、Resume Version 与
+> Evidence Map contract 已由 ADR-014 冻结。JSON 字段使用 camelCase。
 
 ## 1. Runtime boundary
 
 默认 API origin 为 `http://127.0.0.1:8000`，只支持 loopback。没有账号、cookie、token、
 session 或用户 endpoint。客户端请求使用 `credentials: omit`、`cache: no-store`、
-`redirect: error`。核心请求 timeout 为 5000 ms；显式分析请求保留独立的 35000 ms 客户端
-timeout，后端 LLM Provider request timeout 集中配置为 60 秒。
+`redirect: error`。核心请求 timeout 为 5000 ms；显式 JD 分析请求使用 35000 ms 客户端 timeout，
+Evidence Map 生成使用 65000 ms 客户端 timeout，后端 LLM Provider request timeout 集中配置为
+60 秒。
 
 写入还要求 loopback Host、安全的 Origin/Fetch Metadata 与 `application/json`。
 CORS 只列精确 Web origin 和 `GET, POST, PATCH, DELETE`，不允许 credentials。
@@ -79,7 +80,8 @@ item 是 Job response，并增加 `applicationStatus`（可为 null）。
 
 ### `DELETE /api/v1/jobs/{jobId}`
 
-成功为 204；真实删除 Job 并由数据库级联 Application 与 JD analysis。Web 必须在调用前明确确认。
+成功为 204；真实删除 Job 并由数据库级联 Application、JD analysis 与 Evidence Map。Web 必须在
+调用前明确确认。
 
 Job response 字段为：`id`、`title`、`company`、`location`、`salaryText`、
 `source`、`sourceUrl`、`description`、`notes`、`createdAt`、`updatedAt`。
@@ -107,9 +109,20 @@ Application。列表 item 除 Application 字段外增加 `jobTitle` 与 `compan
 {"status":"applied","confirmApplied":true}
 ```
 
-状态必须符合领域流转表。任何进入 `applied` 的请求都要求 `confirmApplied: true`。
+也可只显式设置或清空本次实际使用的简历版本：
 
-Application response 字段为：`id`、`jobId`、`status`、`appliedAt`、
+```json
+{"resumeVersionId":"resume-id"}
+```
+
+```json
+{"resumeVersionId":null}
+```
+
+状态必须符合领域流转表。任何进入 `applied` 的请求都要求 `confirmApplied: true`。不存在的
+Resume Version 拒绝；省略 `resumeVersionId` 表示不修改该关联，不得自动推断。
+
+Application response 字段为：`id`、`jobId`、`status`、`resumeVersionId`、`appliedAt`、
 `createdAt`、`updatedAt`。
 
 ## 5. Job analysis endpoints
@@ -135,7 +148,71 @@ Application response 字段为：`id`、`jobId`、`status`、`appliedAt`、
 `domainKeywords`、`interviewFocus`。除 summary/skills/keywords 外的数组 item 为
 `{"text":"...","evidence":"..."|null}`。缺失信息用空字符串/数组，不返回 Markdown。
 
-## 6. Errors
+## 6. Resume Version endpoints
+
+### `GET /api/v1/resume-versions`
+
+支持 `limit`（默认 50，1–100）与非负 `offset`，按 `updatedAt` 倒序返回标准分页结构。
+每项字段为 `id`、`name`、`content`、`applicationCount`、`createdAt`、`updatedAt`。
+
+### `POST /api/v1/resume-versions`
+
+```json
+{"name":"AI 产品经理版","content":"虚构或用户主动粘贴的纯文本简历正文"}
+```
+
+名称和正文必填；成功为 201。正文只按不可信纯文本保存。
+
+### `GET /api/v1/resume-versions/{resumeVersionId}`
+
+返回一个 Resume Version 或 404。
+
+### `PATCH /api/v1/resume-versions/{resumeVersionId}`
+
+接受 `name` 和/或 `content` 的非空 patch；返回更新结果。正文变化不会删除旧 Evidence Map，
+读取时会显示 stale。
+
+### `POST /api/v1/resume-versions/{resumeVersionId}/duplicate`
+
+```json
+{"name":"AI 产品经理版 副本"}
+```
+
+复制原正文并使用用户提供的新名称；成功为 201。
+
+### `DELETE /api/v1/resume-versions/{resumeVersionId}`
+
+未被 Application 引用时成功为 204，并级联该版本的 Evidence Map；被引用时返回
+`409 RESUME_VERSION_IN_USE`，不删除历史关联。
+
+## 7. Evidence Map endpoints
+
+### `GET /api/v1/jobs/{jobId}/evidence-map?resumeVersionId={resumeVersionId}`
+
+存在的 Job 与 Resume Version 返回 200，读取不会调用 Provider：
+
+```json
+{"isConfigured":true,"evidenceMap":null}
+```
+
+已有记录包含 `id`、`jobId`、`resumeVersionId`、`schemaVersion: 1`、`result`、`isStale`、
+`createdAt`、`updatedAt`。当前 JD Analysis 或 Resume content 指纹变化时 `isStale: true`。
+
+### `POST /api/v1/jobs/{jobId}/evidence-map`
+
+```json
+{"resumeVersionId":"resume-id","confirmExternalAi":true}
+```
+
+`confirmExternalAi` 只接受字面值 `true`，证明 Web 已完成本次外发告知。Job/Resume 缺失为 404；
+JD Analysis 缺失、stale 或其他前置条件非法为 422；Provider 未配置/不可用为 503；Provider
+响应非法为 502。失败不覆盖最后一个有效记录。
+
+`result` 只有 `mappings`；每项只有 `requirementType: MUST_HAVE|PREFERRED`、原始
+`requirementText`、`coverage: DIRECT|PARTIAL|GAP`、`resumeEvidence: [{quote}]` 与 `reason`。
+不返回分数、匹配率、推荐或 Offer 概率。
+
+## 8. Errors
 
 所有公开错误保持：
 
@@ -155,9 +232,9 @@ Job，便于 Extension 打开本机详情；其他错误保持原有三字段 en
 
 主要状态：
 
-- 404：Job/Application 不存在；
-- 409：重复 normalized URL 或一个 Job 已有 Application；
-- 422：request/domain validation 或非法状态流转；
+- 404：Job/Application/Resume Version 不存在；
+- 409：重复 normalized URL、一个 Job 已有 Application，或 Resume Version 正被 Application 引用；
+- 422：request/domain validation、非法状态流转或 Evidence Map 前置条件失败；
 - 502：`AI_INVALID_RESPONSE`，Provider envelope/content/schema 无法验证；
 - 503：SQLite 暂时 locked/busy，或 `AI_NOT_CONFIGURED` / `AI_PROVIDER_UNAVAILABLE`；
 - 403/415：localhost 写安全边界；

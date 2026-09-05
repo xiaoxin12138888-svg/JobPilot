@@ -6,15 +6,15 @@ JobPilot 不替代招聘网站，不建设职位数据库，也不代表用户�
 
 ## 当前状态
 
-项目已通过 **Phase 3 — Job & Application Domain Foundation**、**Phase 4 — BOSS Direct Job Capture**、**Phase 5 — Nowcoder Adapter & Shared Capture Contract** 与 **Phase 6 — JD Structured AI Analysis**。当前分支 `phase/6-jd-ai-analysis` 已完成可选 JD 结构化分析核心、真实 Provider V1/V2 评测及真实 BOSS/牛客岗位 Web 人工验收。核心能力包括：
+项目已通过 **Phase 3 — Job & Application Domain Foundation**、**Phase 4 — BOSS Direct Job Capture**、**Phase 5 — Nowcoder Adapter & Shared Capture Contract** 与 **Phase 6 — JD Structured AI Analysis**。当前分支 `phase/7-resume-evidence-map` 正在完成 **Phase 7 — Resume Version & Evidence Map**；本地实现与自动化已完成，真实简历外发、BOSS/牛客 Evidence Map 和重启持久化仍需项目负责人在 UI 中明确确认并人工验收。核心能力包括：
 
-- React Web：本机 API 状态、岗位库、手动录入、岗位详情/编辑/删除和投递状态管理；
+- React Web：本机 API 状态、岗位库、纯文本简历版本、岗位详情/编辑/删除、投递状态/使用简历记录，以及可选 JD Analysis/Evidence Map；
 - Chrome Extension：使用 `activeTab` + `scripting` 的用户主动采集 Popup，无后台进程；唯一 host permission 是 `http://127.0.0.1:8000/*`；
-- FastAPI：公开 `GET /health`、Job/Application 与每个 Job 的可选分析 API，默认绑定 `127.0.0.1`；
-- SQLite、SQLAlchemy 与 Alembic：launcher 启动前自动升级 `runtime-data/jobpilot.db`，业务表为 `jobs`、`applications` 与 `jd_analysis_records`；
+- FastAPI：公开 `GET /health`、Job/Application/Resume Version 与每个 Job 的可选分析/Evidence Map API，默认绑定 `127.0.0.1`；
+- SQLite、SQLAlchemy 与 Alembic：launcher 启动前自动升级 `runtime-data/jobpilot.db`，业务表为 `jobs`、`applications`、`jd_analysis_records`、`resume_versions` 与 `evidence_map_records`；
 - `packages/shared-types` 与 `packages/api-client`：提供 camelCase 业务契约、credential-free 请求和不可信响应校验。
 
-Phase 4 已交付 BOSS 直聘当前岗位页采集；Phase 5 在同一确认编辑与本地保存链路上新增牛客岗位详情页。两个 Adapter 都只读取用户当前打开页面的必要可见文本。Phase 6 不改 Extension，只允许 Web 在用户点击后把单个已保存 Job 的最小 JD 字段经 FastAPI 发送给显式配置的 Provider；不开 AI 时所有核心功能照常工作。
+Phase 4 已交付 BOSS 直聘当前岗位页采集；Phase 5 在同一确认编辑与本地保存链路上新增牛客岗位详情页。两个 Adapter 都只读取用户当前打开页面的必要可见文本。Phase 6 不改 Extension，只允许 Web 在用户点击后把单个已保存 Job 的最小 JD 字段经 FastAPI 发送给显式配置的 Provider。Phase 7 增加本地纯文本 Resume Version、Application 显式使用版本和逐条要求的 Evidence Map；只有用户在当次操作中确认后，所选简历正文才会与当前非 stale JD requirements 一起发往同一个可选 Provider。不开 AI 时本地核心照常工作。
 
 ## 本地优先意味着什么
 
@@ -47,12 +47,13 @@ Extension 必须满足：
 
 ```text
 React Web ---------\
-                    > exact loopback HTTP -> FastAPI -> health + Job/Application/analysis
+                    > exact loopback HTTP -> FastAPI -> Job/Application/Resume/analysis/evidence
 Chrome Extension --/                            |
                                                  v
                                       runtime-data/jobpilot.db (SQLite)
 
-React Web -- explicit analysis click --> FastAPI -- optional --> configured LLM provider
+React Web -- explicit analysis click ------------\
+React Web -- explicit Resume disclosure/confirm --> FastAPI -- optional --> configured LLM provider
 
 BOSS/Nowcoder current rendered DOM -- user click/read-only --> Chrome Extension
 Web original-platform link -> user's browser -> recruitment website
@@ -79,7 +80,7 @@ uv sync --project apps/api --locked
 
 默认首次运行不需要 `.env`、PostgreSQL、Docker、数据库账号、Extension ID、VPN 或代理。可选 `.env` 只供 Vite 读取 `VITE_*` 本机开发覆盖并已被 Git 忽略；API override 必须设置为启动进程的环境变量。不得提交 `.env` 或其他 secret。
 
-JD 分析是可选增强。要启用它，只在启动 FastAPI 的本地进程环境中设置
+JD 分析与 Evidence Map 是可选增强。要启用它们，只在启动 FastAPI 的本地进程环境中设置
 `JOBPILOT_LLM_BASE_URL`、`JOBPILOT_LLM_API_KEY`、`JOBPILOT_LLM_MODEL`；三项不完整或非法时
 Web 显示“AI 服务未配置”，API 与本地核心仍正常启动。真实 Key 不得写入 `.env.example`、Git、
 Web 或 Extension。
@@ -125,7 +126,7 @@ Web origin。
 - `JOBPILOT_CORS_ORIGINS`：逗号分隔的精确 loopback Web origins；
 - `JOBPILOT_LLM_BASE_URL`：可选 OpenAI-compatible `/v1` base URL；
 - `JOBPILOT_LLM_API_KEY`：只存在于 API 进程环境的可选 secret；
-- `JOBPILOT_LLM_MODEL`：可选模型名；三项必须同时有效才启用分析。
+- `JOBPILOT_LLM_MODEL`：可选模型名；三项必须同时有效才启用 JD 分析与 Evidence Map。
 
 数据库固定为本地 SQLite 文件，不读取 database URL。默认路径是 `runtime-data/jobpilot.db`；整个目录被 Git 忽略，并且测试、clean、build 和格式化流程都不得删除、替换或写入真实数据库。测试与 Alembic 验证必须显式使用临时 SQLite 路径。
 
@@ -156,7 +157,9 @@ pnpm run api:import:check
 - [路线图](docs/ROADMAP.md)
 - [招聘页面采集 Adapter](docs/technical/JOB_CAPTURE_ADAPTER.md)
 - [JD 结构化 AI 分析](docs/technical/JD_AI_ANALYSIS.md)
+- [简历版本](docs/technical/RESUME_VERSION.md)
+- [简历证据映射](docs/technical/EVIDENCE_MAP.md)
 - [JD 分析评测状态](docs/evaluation/JD_ANALYSIS_RESULTS.md)
 - [架构决策记录](docs/DECISIONS/README.md)
 
-本地产品边界由 [ADR-008](docs/DECISIONS/ADR-008-local-first-single-user-no-authentication.md) 固定，SQLite 存储由 [ADR-009](docs/DECISIONS/ADR-009-local-sqlite-storage.md) 固定，BOSS/牛客共享采集合同由 [ADR-012](docs/DECISIONS/ADR-012-nowcoder-shared-capture-contract.md) 固定，可选 JD 分析由 [ADR-013](docs/DECISIONS/ADR-013-jd-structured-ai-analysis.md) 固定。被移除的历史认证实现和 ADR 可从 annotated tag `pre-local-first-cleanup` 恢复；它们不是当前产品文档。
+本地产品边界由 [ADR-008](docs/DECISIONS/ADR-008-local-first-single-user-no-authentication.md) 固定，SQLite 存储由 [ADR-009](docs/DECISIONS/ADR-009-local-sqlite-storage.md) 固定，BOSS/牛客共享采集合同由 [ADR-012](docs/DECISIONS/ADR-012-nowcoder-shared-capture-contract.md) 固定，可选 JD 分析由 [ADR-013](docs/DECISIONS/ADR-013-jd-structured-ai-analysis.md) 固定，Resume Version 与 grounded Evidence Map 由 [ADR-014](docs/DECISIONS/ADR-014-resume-version-evidence-map.md) 固定。被移除的历史认证实现和 ADR 可从 annotated tag `pre-local-first-cleanup` 恢复；它们不是当前产品文档。

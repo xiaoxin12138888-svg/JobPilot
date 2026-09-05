@@ -10,18 +10,18 @@
 
 ## Backend and client
 
-- [ ] RED/GREEN Resume create/list/get/update/duplicate/delete with validation and guarded deletion.
-- [ ] RED/GREEN migration and restart-safe persistence for Resume and Application association.
-- [ ] RED/GREEN strict Evidence Map schema, requirement grounding, quote grounding and downgrade.
-- [ ] RED/GREEN Evidence Map persistence, stale detection, endpoints and failure preservation.
-- [ ] Extend shared types/api-client with strict runtime validation and no credentials.
+- [x] RED/GREEN Resume create/list/get/update/duplicate/delete with validation and guarded deletion.
+- [x] RED/GREEN migration and restart-safe persistence for Resume and Application association.
+- [x] RED/GREEN strict Evidence Map schema, requirement grounding, quote grounding and downgrade.
+- [x] RED/GREEN Evidence Map persistence, stale detection, endpoints and failure preservation.
+- [x] Extend shared types/api-client with strict runtime validation and no credentials.
 
 ## Web
 
-- [ ] Add accessible Resume empty/create/view/edit/duplicate/delete/delete-blocked states.
-- [ ] Add explicit Application Resume selector/save/clear without automatic selection or creation.
-- [ ] Add Evidence Map prerequisite/loading/success/stale/error/retry and consent states.
-- [ ] Keep plain-text rendering, original JD visibility and deterministic non-score totals.
+- [x] Add accessible Resume empty/create/view/edit/duplicate/delete/delete-blocked states.
+- [x] Add explicit Application Resume selector/save/clear without automatic selection or creation.
+- [x] Add Evidence Map prerequisite/loading/success/stale/error/retry and consent states.
+- [x] Keep plain-text rendering, original JD visibility and deterministic non-score totals.
 
 ## Validation and acceptance
 
@@ -64,7 +64,7 @@
 - [x] Add at least 20 de-identified realistic samples with human-reviewed gold labels.
 - [x] Record actual V1 metrics and real bad cases on the fixed dataset when Provider is available.
 - [x] Make V2 changes only from V1 bad cases and rerun the identical dataset.
-- [ ] Run real BOSS and Nowcoder Job analysis acceptance when Provider is available.
+- [x] Run real BOSS and Nowcoder Job analysis acceptance when Provider is available.
 - [x] Run locked installs, all tests/lint/format/typecheck/build and migration cycles.
 - [x] Regress BOSS, Nowcoder, Job/Application, SQLite restart and no-proxy local-first core.
 - [x] Run secret/prompt-injection/raw-response/runtime dependency/telemetry security checks.

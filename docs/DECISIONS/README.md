@@ -39,5 +39,6 @@ ADR-008 完全取代了旧远程身份方向。ADR-006、ADR-007 及其实现/�
 - [ADR-011：BOSS 直聘当前岗位页主动采集](ADR-011-boss-direct-job-capture.md) — Accepted
 - [ADR-012：牛客当前岗位采集与共享采集合同](ADR-012-nowcoder-shared-capture-contract.md) — Accepted
 - [ADR-013：可选的 JD 结构化 AI 分析](ADR-013-jd-structured-ai-analysis.md) — Accepted
+- [ADR-014：简历版本与可追溯证据映射](ADR-014-resume-version-evidence-map.md) — Accepted
 
 当前 runtime storage 只能按 ADR-009 理解为 SQLite。ADR-002 标题和正文中的 PostgreSQL 是被保留的历史决策记录，不是兼容模式、安装要求或未来默认承诺。

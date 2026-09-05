@@ -1,7 +1,8 @@
 # JobPilot Roadmap
 
-> 当前阶段：Phase 6 — JD Structured AI Analysis 已于 2026-09-05 完成并通过；Phase 7 尚未
-> 获批或进入。BOSS 与牛客保持 `SUPPORTED — V1`。
+> 当前阶段：Phase 6 已于 2026-09-05 完成并通过。Phase 7 — Resume Version & Evidence Map
+> 已获批并完成本地实现/自动化，等待项目负责人完成真实 BOSS/牛客 Evidence、Application 关联
+> 与重启持久化验收。BOSS 与牛客保持 `SUPPORTED — V1`；Phase 8 未获批。
 
 ## 1. Global gates
 
@@ -68,19 +69,32 @@ evidence grounding、单条 SQLite 持久化、stale/reanalysis 与 Job Detail �
 对比，以及真实 BOSS/牛客 Web AI 人工验收均已完成。牛客结果保留一条非阻塞的 `and` 中英
 混排 Bad Case；未修改冻结指标，也未创建 Prompt V3。Phase 6 标记为 PASS。
 
-## 7. Later phases
+## 7. Phase 7 — Resume Version & Evidence Map
 
-如果 Phase 6 PASS，下一候选是 Phase 7 — Resume Version & Evidence Map；仍需负责人明确批准。
-JD×Resume matching、RAG、模拟面试、其余招聘平台、复盘与发布加固均需更晚单独评审。远程能力
-必须显式启用、可替换、可降级，不能成为本地 Job/Application 核心依赖。
+状态：Active（本地实现与自动化完成；真实人工验收待完成）。
 
-## 8. P0 no-proxy gate
+只交付本地纯文本 Resume Version、Application 显式记录本次实际使用版本，以及当前 JD
+requirements 到所选 Resume 原文的 Evidence Map。Coverage 固定为 DIRECT/PARTIAL/GAP，quote
+必须 grounded，总览只计数。真实简历仅在用户当次 UI 确认后发送到 Phase 6 的同一可选 Provider；
+失败不影响本地 CRUD、Application、已存分析或最后一个有效 Evidence。
+
+不做文件解析/OCR、简历生成/整份改写、分数/推荐、RAG/embedding/vector DB、Agent、模拟面试、
+自动投递或新招聘平台。只有真实 BOSS/牛客 Evidence 质量、Application 关联与重启持久化均由
+项目负责人确认后，Phase 7 才能标记 PASS。
+
+## 8. Later phases
+
+Phase 7 PASS 后的候选是 Phase 8 — Interview Preparation & Personal Knowledge Base；必须由负责人
+另行明确批准。模拟面试、其余招聘平台、复盘与发布加固也需更晚单独评审。远程能力必须显式
+启用、可替换、可降级，不能成为本地 Job/Application/Resume 核心依赖。
+
+## 9. P0 no-proxy gate
 
 installed runtime 不访问远程身份、公共 CDN、远程字体/脚本、GitHub runtime/raw、telemetry、
 update 或强制境外 AI。未来每个 Adapter 必须分别记录招聘页、Extension、识别、解析、
 确认保存和岗位库的真实关闭代理结果；任一核心步骤依赖代理就不能标为支持。
 
-## 9. Stop boundary
+## 10. Stop boundary
 
-不得在真实评测/验收 blocker 存在时宣称 Phase 6 PASS。不得自动开始 Phase 7，也不得实现智联、
-实习僧、猎聘、国聘等其他平台。
+不得在真实 Evidence/Application/restart 验收 blocker 存在时宣称 Phase 7 PASS。不得自动开始
+Phase 8，也不得实现智联、实习僧、猎聘、国聘等其他平台。

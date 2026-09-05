@@ -10,7 +10,8 @@
 2. **No account**：当前不创建账号、登录、session、token、User 或多用户 ownership。
 3. **Loopback only**：API 与客户端只接受 loopback；不提供公网/LAN fallback。
 4. **One fact source**：未来持久业务状态由本机 API/domain 与 SQLite 定义。
-5. **User trigger and confirmation**：招聘页面读取必须由用户主动触发并在保存前确认。
+5. **User trigger and confirmation**：招聘页面读取必须由用户主动触发并在保存前确认；真实简历
+   发往可选 Provider 前必须在当次 Web 操作中明确告知并确认。
 6. **No remote core dependency**：已安装核心不依赖境外服务、CDN、远程代码、telemetry 或 update API。
 7. **Simple architecture first**：只实现当前已批准、已有消费者的最小边界。
 
@@ -21,6 +22,7 @@
 - 负责路由、表单、展示、可访问性和本地服务状态；
 - 通过 api-client 调用本机 API；
 - 不承载 domain 状态机、数据库访问或外部 provider 逻辑。
+- Resume content 只按纯文本渲染，不使用 `dangerouslySetInnerHTML`；Evidence 总览只做确定性计数。
 
 ### Extension
 
@@ -47,8 +49,8 @@
 
 ## 4. Data and security
 
-- 当前 metadata 只含 `jobs` 与 `applications`；Phase 4/5 只扩展 Job source CHECK，所有表不含
-  `user_id` 或身份字段；
+- 当前业务数据只含 `jobs`、`applications`、`jd_analysis_records`、`resume_versions` 与
+  `evidence_map_records`；所有表不含 `user_id` 或身份字段；
 - 数据库只使用本地 SQLite file URL；默认 `runtime-data/jobpilot.db` 属于用户数据，自动化不得触碰；
 - SQLite connections 启用 foreign keys 与有界 busy timeout；当前保留 rollback journal，WAL 必须由实测需要驱动；
 - 操作系统账户与文件权限保护本地静态数据；
@@ -56,6 +58,10 @@
 - Extension Origin 不加入 Web CORS allowlist；扩展写入身份由固定 ID 的精确 Origin gate 约束；
 - DOM、粘贴文本、URL、文件和所有外部响应均为不可信输入；
 - 日志不得记录简历正文、完整 JD、文件内容、本机 secret 或未脱敏外部 payload。
+- Resume content 默认只写本地 SQLite；Evidence Map 只发送用户当次选择的一个版本和当前非
+  stale JD requirements，不发送原始 HTML、完整 JD、notes、Application、其他 Job/Resume 或文件。
+- Evidence requirement 必须保持当前 JD Analysis 的类型、文本和顺序；quote 必须能在空白规范化
+  后回溯到所选 Resume，DIRECT/PARTIAL 无有效 quote 时降级 GAP。禁止匹配/ATS/Offer 分数。
 
 ## 5. P0 no-proxy rule
 
