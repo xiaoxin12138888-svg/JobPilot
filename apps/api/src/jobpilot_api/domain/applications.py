@@ -78,6 +78,7 @@ class Application:
     id: str
     job_id: str
     status: ApplicationStatus
+    resume_version_id: str | None
     applied_at: datetime | None
     created_at: datetime
     updated_at: datetime

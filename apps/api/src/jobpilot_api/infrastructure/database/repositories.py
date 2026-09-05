@@ -14,6 +14,7 @@ from jobpilot_api.domain.errors import (
     ApplicationAlreadyExistsError,
     DatabaseBusyError,
     DuplicateJobError,
+    ResumeVersionInUseError,
 )
 from jobpilot_api.domain.jd_analysis import (
     JD_ANALYSIS_SCHEMA_VERSION,
@@ -22,10 +23,12 @@ from jobpilot_api.domain.jd_analysis import (
     analysis_from_stored_json,
 )
 from jobpilot_api.domain.jobs import Job, JobDraft
+from jobpilot_api.domain.resume_versions import ResumeVersion, ResumeVersionDraft
 from jobpilot_api.infrastructure.database.models import (
     ApplicationModel,
     JDAnalysisRecordModel,
     JobModel,
+    ResumeVersionModel,
 )
 
 
@@ -166,6 +169,7 @@ class SqlAlchemyApplicationRepository:
             id=str(uuid4()),
             job_id=job_id,
             status=ApplicationStatus.PLANNED.value,
+            resume_version_id=None,
             applied_at=None,
             created_at=now,
             updated_at=now,
@@ -187,10 +191,13 @@ class SqlAlchemyApplicationRepository:
         except OperationalError as error:
             raise _database_error(error) from error
 
-    def update_status(
+    def update(
         self,
         application_id: str,
-        status: ApplicationStatus,
+        *,
+        status: ApplicationStatus | None,
+        resume_version_id: str | None,
+        update_resume_version: bool,
     ) -> Application | None:
         try:
             with self._sessions.begin() as session:
@@ -198,9 +205,12 @@ class SqlAlchemyApplicationRepository:
                 if model is None:
                     return None
                 now = datetime.now(UTC)
-                model.status = status.value
-                if status == ApplicationStatus.APPLIED and model.applied_at is None:
-                    model.applied_at = now
+                if status is not None:
+                    model.status = status.value
+                    if status == ApplicationStatus.APPLIED and model.applied_at is None:
+                        model.applied_at = now
+                if update_resume_version:
+                    model.resume_version_id = resume_version_id
                 model.updated_at = now
         except OperationalError as error:
             raise _database_error(error) from error
@@ -296,6 +306,111 @@ class SqlAlchemyJDAnalysisRepository:
         return _analysis_record(model)
 
 
+class SqlAlchemyResumeVersionRepository:
+    def __init__(self, sessions: sessionmaker[Session]) -> None:
+        self._sessions = sessions
+
+    def create(self, draft: ResumeVersionDraft) -> ResumeVersion:
+        now = datetime.now(UTC)
+        model = ResumeVersionModel(
+            id=str(uuid4()),
+            name=draft.name,
+            content=draft.content,
+            created_at=now,
+            updated_at=now,
+        )
+        try:
+            with self._sessions.begin() as session:
+                session.add(model)
+        except OperationalError as error:
+            raise _database_error(error) from error
+        return _resume_version(model, application_count=0)
+
+    def get(self, resume_version_id: str) -> ResumeVersion | None:
+        statement = (
+            select(ResumeVersionModel, func.count(ApplicationModel.id))
+            .outerjoin(
+                ApplicationModel,
+                ApplicationModel.resume_version_id == ResumeVersionModel.id,
+            )
+            .where(ResumeVersionModel.id == resume_version_id)
+            .group_by(ResumeVersionModel.id)
+        )
+        try:
+            with self._sessions() as session:
+                row = session.execute(statement).one_or_none()
+                return _resume_version(row[0], application_count=row[1]) if row else None
+        except OperationalError as error:
+            raise _database_error(error) from error
+
+    def update(self, resume_version_id: str, draft: ResumeVersionDraft) -> ResumeVersion | None:
+        try:
+            with self._sessions.begin() as session:
+                model = session.get(ResumeVersionModel, resume_version_id)
+                if model is None:
+                    return None
+                model.name = draft.name
+                model.content = draft.content
+                model.updated_at = datetime.now(UTC)
+                application_count = (
+                    session.scalar(
+                        select(func.count(ApplicationModel.id)).where(
+                            ApplicationModel.resume_version_id == resume_version_id
+                        )
+                    )
+                    or 0
+                )
+        except OperationalError as error:
+            raise _database_error(error) from error
+        return _resume_version(model, application_count=application_count)
+
+    def delete(self, resume_version_id: str) -> bool:
+        try:
+            with self._sessions.begin() as session:
+                model = session.get(ResumeVersionModel, resume_version_id)
+                if model is None:
+                    return False
+                in_use = session.scalar(
+                    select(func.count(ApplicationModel.id)).where(
+                        ApplicationModel.resume_version_id == resume_version_id
+                    )
+                )
+                if in_use:
+                    raise ResumeVersionInUseError("该简历版本已关联投递记录，无法直接删除。")
+                session.delete(model)
+        except IntegrityError as error:
+            raise ResumeVersionInUseError("该简历版本已关联投递记录，无法直接删除。") from error
+        except OperationalError as error:
+            raise _database_error(error) from error
+        return True
+
+    def list(self, *, limit: int, offset: int) -> tuple[list[ResumeVersion], int]:
+        statement = (
+            select(ResumeVersionModel, func.count(ApplicationModel.id))
+            .outerjoin(
+                ApplicationModel,
+                ApplicationModel.resume_version_id == ResumeVersionModel.id,
+            )
+            .group_by(ResumeVersionModel.id)
+            .order_by(ResumeVersionModel.updated_at.desc(), ResumeVersionModel.id)
+            .limit(limit)
+            .offset(offset)
+        )
+        try:
+            with self._sessions() as session:
+                rows = session.execute(statement).all()
+                total = session.scalar(select(func.count()).select_from(ResumeVersionModel)) or 0
+                return (
+                    [
+                        _resume_version(model, application_count=application_count)
+                        for model, application_count in rows
+                    ],
+                    total,
+                )
+        except OperationalError as error:
+            raise _database_error(error) from error
+
+
 def _draft_values(draft: JobDraft) -> dict[str, object]:
     return {
         "title": draft.title,
@@ -332,7 +447,19 @@ def _application(model: ApplicationModel) -> Application:
         id=model.id,
         job_id=model.job_id,
         status=ApplicationStatus(model.status),
+        resume_version_id=model.resume_version_id,
         applied_at=_utc(model.applied_at) if model.applied_at else None,
+        created_at=_utc(model.created_at),
+        updated_at=_utc(model.updated_at),
+    )
+
+
+def _resume_version(model: ResumeVersionModel, *, application_count: int) -> ResumeVersion:
+    return ResumeVersion(
+        id=model.id,
+        name=model.name,
+        content=model.content,
+        application_count=application_count,
         created_at=_utc(model.created_at),
         updated_at=_utc(model.updated_at),
     )

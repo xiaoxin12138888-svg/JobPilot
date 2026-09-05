@@ -34,6 +34,11 @@ class ApplicationAlreadyExistsError(DomainError):
     status_code = 409
 
 
+class ResumeVersionInUseError(DomainError):
+    code = "RESUME_VERSION_IN_USE"
+    status_code = 409
+
+
 class DatabaseBusyError(DomainError):
     code = "DATABASE_BUSY"
     status_code = 503

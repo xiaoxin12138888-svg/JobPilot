@@ -3,13 +3,14 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from jobpilot_api.application.jd_analysis import JDAnalysisState
 from jobpilot_api.application.repositories import ApplicationListEntry, JobListEntry
 from jobpilot_api.domain.applications import Application, ApplicationStatus
 from jobpilot_api.domain.jd_analysis import EvidenceItem, JDAnalysis, JDAnalysisRecord
 from jobpilot_api.domain.jobs import Job
+from jobpilot_api.domain.resume_versions import ResumeVersion
 
 
 def _camel_case(value: str) -> str:
@@ -102,14 +103,25 @@ class ApplicationCreateRequest(ApiModel):
 
 
 class ApplicationUpdateRequest(ApiModel):
-    status: ApplicationStatus
+    status: ApplicationStatus | None = None
     confirm_applied: bool = False
+    resume_version_id: str | None = Field(default=None, max_length=36)
+
+    @model_validator(mode="after")
+    def require_a_change(self) -> ApplicationUpdateRequest:
+        if (
+            "status" not in self.model_fields_set
+            and "resume_version_id" not in self.model_fields_set
+        ):
+            raise ValueError("status or resumeVersionId must be provided")
+        return self
 
 
 class ApplicationResponse(ApiModel):
     id: str
     job_id: str
     status: ApplicationStatus
+    resume_version_id: str | None
     applied_at: datetime | None
     created_at: datetime
     updated_at: datetime
@@ -120,6 +132,7 @@ class ApplicationResponse(ApiModel):
             id=application.id,
             job_id=application.job_id,
             status=application.status,
+            resume_version_id=application.resume_version_id,
             applied_at=application.applied_at,
             created_at=application.created_at,
             updated_at=application.updated_at,
@@ -233,3 +246,50 @@ class JobAnalysisResponse(ApiModel):
                 else None
             ),
         )
+
+
+class ResumeVersionCreateRequest(ApiModel):
+    name: str
+    content: str
+
+
+class ResumeVersionUpdateRequest(ApiModel):
+    name: str | None = None
+    content: str | None = None
+
+    @model_validator(mode="after")
+    def require_a_change(self) -> ResumeVersionUpdateRequest:
+        if not self.model_fields_set:
+            raise ValueError("at least one field must be provided")
+        return self
+
+
+class ResumeVersionDuplicateRequest(ApiModel):
+    name: str
+
+
+class ResumeVersionResponse(ApiModel):
+    id: str
+    name: str
+    content: str
+    application_count: int
+    created_at: datetime
+    updated_at: datetime
+
+    @classmethod
+    def from_domain(cls, resume: ResumeVersion) -> ResumeVersionResponse:
+        return cls(
+            id=resume.id,
+            name=resume.name,
+            content=resume.content,
+            application_count=resume.application_count,
+            created_at=resume.created_at,
+            updated_at=resume.updated_at,
+        )
+
+
+class ResumeVersionListResponse(ApiModel):
+    items: list[ResumeVersionResponse]
+    total: int
+    limit: int
+    offset: int

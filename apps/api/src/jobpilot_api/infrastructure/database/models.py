@@ -33,6 +33,17 @@ class JobModel(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class ResumeVersionModel(Base):
+    __tablename__ = "resume_versions"
+    __table_args__ = (Index("ix_resume_versions_updated_at", "updated_at"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class ApplicationModel(Base):
     __tablename__ = "applications"
     __table_args__ = (
@@ -51,6 +62,10 @@ class ApplicationModel(Base):
         nullable=False,
     )
     status: Mapped[str] = mapped_column(String(32), nullable=False)
+    resume_version_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("resume_versions.id", ondelete="RESTRICT"),
+    )
     applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

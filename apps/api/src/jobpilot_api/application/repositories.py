@@ -6,6 +6,7 @@ from typing import Protocol
 from jobpilot_api.domain.applications import Application, ApplicationStatus
 from jobpilot_api.domain.jd_analysis import JDAnalysis, JDAnalysisRecord
 from jobpilot_api.domain.jobs import Job, JobDraft
+from jobpilot_api.domain.resume_versions import ResumeVersion, ResumeVersionDraft
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,10 +47,13 @@ class ApplicationRepository(Protocol):
 
     def get(self, application_id: str) -> Application | None: ...
 
-    def update_status(
+    def update(
         self,
         application_id: str,
-        status: ApplicationStatus,
+        *,
+        status: ApplicationStatus | None,
+        resume_version_id: str | None,
+        update_resume_version: bool,
     ) -> Application | None: ...
 
     def list(
@@ -71,3 +75,15 @@ class JDAnalysisRepository(Protocol):
         result: JDAnalysis,
         source_fingerprint: str,
     ) -> JDAnalysisRecord: ...
+
+
+class ResumeVersionRepository(Protocol):
+    def create(self, draft: ResumeVersionDraft) -> ResumeVersion: ...
+
+    def get(self, resume_version_id: str) -> ResumeVersion | None: ...
+
+    def update(self, resume_version_id: str, draft: ResumeVersionDraft) -> ResumeVersion | None: ...
+
+    def delete(self, resume_version_id: str) -> bool: ...
+
+    def list(self, *, limit: int, offset: int) -> tuple[list[ResumeVersion], int]: ...
