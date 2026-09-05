@@ -25,13 +25,18 @@
 
 ## Validation and acceptance
 
-- [ ] Run migration cycles and all Python/TypeScript tests, lint, format, typecheck and builds.
-- [ ] Regress BOSS/Nowcoder capture, Job/Application, JD Analysis, SQLite and no-proxy core.
-- [ ] Run privacy, secret, raw-response, injection, XSS, remote-runtime and no-score scans.
-- [ ] Resolve code-review Critical/Required findings and complete simplification review.
+- [x] Run migration cycles and all Python/TypeScript tests, lint, format, typecheck and builds.
+- [x] Regress BOSS/Nowcoder capture, Job/Application, JD Analysis, SQLite and no-proxy core.
+- [x] Run privacy, secret, raw-response, injection, XSS, remote-runtime and no-score scans.
+- [x] Resolve code-review Critical/Required findings and complete simplification review.
 - [ ] Run user-assisted real BOSS + Nowcoder evidence acceptance with explicit external-AI consent.
-- [ ] Verify Application Resume association and Resume/Evidence persistence after API/Web restart.
+- [x] Verify Application Resume association and Resume/Evidence persistence after API/Web restart.
 - [ ] Record only real latency and owner-reviewed PASS/FAIL; synchronize docs and stop before Phase 8.
+
+Isolated browser acceptance uses a temporary SQLite database and local Fake Provider only. It covers
+Resume create/edit/duplicate, Application attach/change/clear, Evidence consent/loading/result/stale/error,
+Provider-unconfigured degradation, API/Web restart persistence, clean console output and responsive layouts
+at 320/768/1024/1440. It does not replace the project owner's real-resume BOSS/Nowcoder content review.
 
 ---
 
