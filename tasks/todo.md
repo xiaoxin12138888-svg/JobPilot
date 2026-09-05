@@ -1,4 +1,41 @@
-# Phase 6 — JD Structured AI Analysis Checklist
+# Phase 7 — Resume Version & Evidence Map Checklist
+
+## Contract and safety
+
+- [x] Receive explicit Phase 7 approval and branch from clean Phase 6 HEAD.
+- [x] Preserve `操作手册.txt`, runtime SQLite data, Phase 6 history and supported Adapters.
+- [x] Freeze ADR-014, schema, lifecycle, consent/input/security boundaries and Phase 8 stop.
+- [x] Keep file parsing/upload, generation/tailoring, scores, recommendation, RAG/Agent, interviews,
+  automatic submission and new recruitment platforms out of scope.
+
+## Backend and client
+
+- [ ] RED/GREEN Resume create/list/get/update/duplicate/delete with validation and guarded deletion.
+- [ ] RED/GREEN migration and restart-safe persistence for Resume and Application association.
+- [ ] RED/GREEN strict Evidence Map schema, requirement grounding, quote grounding and downgrade.
+- [ ] RED/GREEN Evidence Map persistence, stale detection, endpoints and failure preservation.
+- [ ] Extend shared types/api-client with strict runtime validation and no credentials.
+
+## Web
+
+- [ ] Add accessible Resume empty/create/view/edit/duplicate/delete/delete-blocked states.
+- [ ] Add explicit Application Resume selector/save/clear without automatic selection or creation.
+- [ ] Add Evidence Map prerequisite/loading/success/stale/error/retry and consent states.
+- [ ] Keep plain-text rendering, original JD visibility and deterministic non-score totals.
+
+## Validation and acceptance
+
+- [ ] Run migration cycles and all Python/TypeScript tests, lint, format, typecheck and builds.
+- [ ] Regress BOSS/Nowcoder capture, Job/Application, JD Analysis, SQLite and no-proxy core.
+- [ ] Run privacy, secret, raw-response, injection, XSS, remote-runtime and no-score scans.
+- [ ] Resolve code-review Critical/Required findings and complete simplification review.
+- [ ] Run user-assisted real BOSS + Nowcoder evidence acceptance with explicit external-AI consent.
+- [ ] Verify Application Resume association and Resume/Evidence persistence after API/Web restart.
+- [ ] Record only real latency and owner-reviewed PASS/FAIL; synchronize docs and stop before Phase 8.
+
+---
+
+# Historical Phase 6 — JD Structured AI Analysis Checklist
 
 ## Contract and safety
 

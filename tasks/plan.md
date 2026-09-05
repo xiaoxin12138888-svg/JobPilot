@@ -1,4 +1,61 @@
-# Implementation Plan: Phase 6 — JD Structured AI Analysis
+# Implementation Plan: Phase 7 — Resume Version & Evidence Map
+
+> Owner-approved on 2026-09-05. Phase 8 is not authorized.
+
+## Objective
+
+Add local plain-text Resume Versions, record the version explicitly used by an Application, and map
+the current non-stale JD requirements to grounded quotes from one user-selected Resume Version.
+Use DIRECT/PARTIAL/GAP plus deterministic counts instead of a score. Preserve every Phase 6 and
+local-first boundary.
+
+## Frozen contract
+
+- Resume Version V1 is name + untrusted plain-text content with create/read/list/update/duplicate and
+  guarded delete. No file parsing, upload, rich text, generation, full rewrite or version graph.
+- `Application.resumeVersionId` is nullable and changes only through an explicit user save. Job save,
+  Application creation and Evidence Map generation never infer it.
+- A referenced Resume Version returns `RESUME_VERSION_IN_USE`; unused deletion cascades only its
+  Evidence Map records.
+- One current Evidence Map per Job + Resume Version stores schema 1 JSON and exact JD-analysis and
+  Resume-content fingerprints. GET computes stale; failed reanalysis preserves the last valid row.
+- Requirements come only from the current non-stale JD Analysis must-have/preferred arrays. Quotes
+  must occur in normalized Resume content; unsupported evidence is removed and unsupported
+  DIRECT/PARTIAL is downgraded to GAP.
+- Provider input is minimal and treats JD/Resume as untrusted data. It reuses the existing optional
+  Provider configuration, 60-second timeout, redirect rejection, no-proxy transport and sanitized
+  errors. Every outbound Resume request requires a same-action UI disclosure and confirmation.
+- Web adds a minimal Resume page, Evidence Map on Job Detail and an explicit Application selector.
+  It renders plain text only and displays deterministic counts, never matching/ATS/Offer scores.
+
+## Ordered work
+
+1. Freeze ADR-014, plan/checklist, data/API/privacy/grounding rules and the Phase 8 stop boundary.
+2. RED/GREEN Resume domain validation, migration, repository, service and CRUD/duplicate endpoints.
+3. RED/GREEN nullable Application association, guarded Resume deletion and restart persistence.
+4. RED/GREEN Evidence Map strict schema, requirement/quote grounding, prompt separation and stale.
+5. RED/GREEN Evidence Map persistence/endpoints and failure preservation through the existing seam.
+6. Extend shared types/api-client runtime validation; build Resume management, Application selector
+   and Job Detail Evidence Map states with accessible responsive UI.
+7. Run locked installs, all tests/lint/format/typecheck/build, migrations, security/static scans,
+   BOSS/Nowcoder/Job/Application/JD-analysis regressions, review and simplification.
+8. Ask the owner to create/paste one de-identified real Resume in the UI. Only after their explicit
+   confirmation, run real BOSS and Nowcoder Evidence Map acceptance, Application association and
+   restart checks; record real latency and owner PASS/FAIL.
+9. Synchronize canonical docs and stop before Phase 8.
+
+## Stop conditions
+
+- Never read a Resume file from elsewhere on disk or send Resume content without current UI consent.
+- Never weaken loopback/Origin/Fetch-Metadata/JSON-only/no-credentials or Provider security.
+- Never persist/display an ungrounded quote, invented requirement, numeric score or stale result as
+  current.
+- Never claim real acceptance without the owner's UI action and human result review.
+- Do not begin Phase 8 without explicit owner approval.
+
+---
+
+# Historical Implementation Plan: Phase 6 — JD Structured AI Analysis
 
 > Owner-approved on 2026-09-04. Phase 7 is not authorized.
 
