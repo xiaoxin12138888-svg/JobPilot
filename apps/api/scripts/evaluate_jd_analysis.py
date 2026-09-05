@@ -9,7 +9,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from jobpilot_api.application.jd_analysis import JD_ANALYSIS_SYSTEM_PROMPT_V1  # noqa: E402
+from jobpilot_api.application.jd_analysis import JD_ANALYSIS_SYSTEM_PROMPTS  # noqa: E402
 from jobpilot_api.config import ApiSettings  # noqa: E402
 from jobpilot_api.domain.errors import DomainError  # noqa: E402
 from jobpilot_api.domain.jd_analysis import (  # noqa: E402
@@ -23,10 +23,17 @@ from jobpilot_api.infrastructure.ai.openai_compatible import (  # noqa: E402
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run the real Prompt V1 JD analysis evaluation")
+    parser = argparse.ArgumentParser(description="Run a real JD analysis prompt evaluation")
     parser.add_argument("--dataset", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--prompt-version",
+        choices=tuple(JD_ANALYSIS_SYSTEM_PROMPTS),
+        default="v1",
+    )
     args = parser.parse_args()
+    prompt_version = args.prompt_version
+    system_prompt = JD_ANALYSIS_SYSTEM_PROMPTS[prompt_version]
 
     dataset = json.loads(args.dataset.read_text(encoding="utf-8"))
     samples = dataset.get("samples")
@@ -59,7 +66,7 @@ def main() -> int:
             )
             raw_content = provider.analyze(
                 analysis_input,
-                system_instruction=JD_ANALYSIS_SYSTEM_PROMPT_V1,
+                system_instruction=system_prompt,
             )
             provided, grounded = _raw_evidence_counts(raw_content, sample["description"])
             evidence_provided += provided
@@ -82,7 +89,7 @@ def main() -> int:
 
     output = {
         "datasetVersion": dataset["datasetVersion"],
-        "promptVersion": "v1",
+        "promptVersion": prompt_version,
         "schemaVersion": 1,
         "model": settings.model,
         "temperature": 0,

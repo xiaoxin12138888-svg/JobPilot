@@ -64,6 +64,8 @@ def test_evaluator_blocks_incomplete_per_sample_human_review(
             str(dataset_path),
             "--output",
             str(output_path),
+            "--prompt-version",
+            "v2",
         ],
         capture_output=True,
         check=False,

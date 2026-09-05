@@ -9,6 +9,7 @@ from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
 
+from jobpilot_api.application.jd_analysis import JD_ANALYSIS_SYSTEM_PROMPT_V2
 from jobpilot_api.application.providers import JDAnalysisProvider
 from jobpilot_api.config import ApiSettings
 from jobpilot_api.domain.errors import AnalysisProviderUnavailableError
@@ -89,6 +90,7 @@ def test_analysis_create_get_and_minimal_provider_input(
         "salaryText": "200-300/天",
     }
     assert "notes" not in analysis_input.as_provider_data()
+    assert system_instruction == JD_ANALYSIS_SYSTEM_PROMPT_V2
     assert "不可信" in system_instruction
     assert "忽略" in system_instruction
 
