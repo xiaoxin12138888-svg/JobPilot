@@ -64,8 +64,8 @@ BOSS 回归均已通过。
 evidence grounding、单条 SQLite 持久化、stale/reanalysis 与 Job Detail 状态展示。Provider 未配置
 或失败不影响本地核心。Resume、Evidence Map、matching、RAG、Agent 与模拟面试不进入本阶段。
 
-自动实现与 Fake Provider 回归已完成；20 条脱敏候选 gold、真实 Prompt V1/V2、Bad Cases、真实
-BOSS/牛客 AI 人工验收必须完成后才可标记 Phase 6 PASS。
+自动实现、Fake Provider 回归与 20 条脱敏 gold 的人工审核已完成；真实 Prompt V1/V2、Bad
+Cases、真实 BOSS/牛客 AI 人工验收必须完成后才可标记 Phase 6 PASS。
 
 ## 7. Later phases
 

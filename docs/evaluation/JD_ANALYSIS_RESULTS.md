@@ -4,7 +4,7 @@
 
 - Sample count: 20
 - Source style: 10 BOSS-like and 10 Nowcoder-like synthetic, de-identified JDs
-- Gold label method: candidate labels prepared; independent human review pending
+- Gold label method: project-owner item-by-item review completed on 2026-09-05
 - Fixed dataset version: 1
 
 ## Prompt V1
@@ -26,8 +26,7 @@ BLOCKED — V2 may only be driven by reviewed V1 Bad Cases. No V2 prompt or resu
 
 ## Acceptance blockers
 
-1. A human reviewer must approve or correct every candidate gold label.
-2. The project owner must provide a reachable OpenAI-compatible base URL, API key and model through
+1. The project owner must provide a reachable OpenAI-compatible base URL, API key and model through
    the local FastAPI process environment.
-3. V1 must run on the fixed dataset; observed cases must drive V2; the same dataset must then rerun.
-4. One saved real BOSS Job and one saved real Nowcoder Job must be manually reviewed in the Web UI.
+2. V1 must run on the fixed dataset; observed cases must drive V2; the same dataset must then rerun.
+3. One saved real BOSS Job and one saved real Nowcoder Job must be manually reviewed in the Web UI.

@@ -1,9 +1,11 @@
 {
   "datasetVersion": 1,
-  "goldReviewStatus": "pending-human-review",
+  "goldReviewStatus": "human-reviewed",
+  "reviewedSampleCount": 20,
   "samples": [
     {
       "id": "jd-001",
+      "goldReviewStatus": "human-reviewed",
       "sourceStyle": "boss",
       "title": "AI 产品经理实习生",
       "company": "某互联网公司",
@@ -21,6 +23,7 @@
     },
     {
       "id": "jd-002",
+      "goldReviewStatus": "human-reviewed",
       "sourceStyle": "nowcoder",
       "title": "Java 后端开发工程师",
       "company": "某软件服务公司",
@@ -38,6 +41,7 @@
     },
     {
       "id": "jd-003",
+      "goldReviewStatus": "human-reviewed",
       "sourceStyle": "boss",
       "title": "数据分析师",
       "company": "某零售科技公司",
@@ -48,13 +52,14 @@
         "responsibilities": ["负责经营指标体系建设、专题分析和可视化看板维护", "为业务团队提供决策支持"],
         "mustHaveRequirements": ["熟练使用 SQL", "能够用 Python 完成数据清洗", "具备统计学基础和清晰的书面表达能力"],
         "preferredRequirements": ["有零售行业分析经验加分"],
-        "skills": ["SQL", "Python", "数据清洗", "统计学"],
+        "skills": ["SQL", "Python", "数据清洗"],
         "experienceRequirements": [],
         "educationRequirements": []
       }
     },
     {
       "id": "jd-004",
+      "goldReviewStatus": "human-reviewed",
       "sourceStyle": "nowcoder",
       "title": "增长运营",
       "company": "某在线教育公司",
@@ -63,15 +68,16 @@
       "description": "岗位职责：制定用户拉新与召回方案，跟踪渠道转化数据并持续迭代活动；协调内容、设计和研发按期上线。岗位要求：2 年以上互联网用户运营经验，能够独立使用 Excel 进行分析，结果导向。有 A/B 测试经验优先。",
       "gold": {
         "responsibilities": ["制定用户拉新与召回方案", "跟踪渠道转化数据并持续迭代活动", "协调内容、设计和研发按期上线"],
-        "mustHaveRequirements": ["2 年以上互联网用户运营经验", "能够独立使用 Excel 进行分析", "结果导向"],
+        "mustHaveRequirements": ["2 年以上互联网用户运营经验", "能够独立使用 Excel 进行分析结果导向"],
         "preferredRequirements": ["有 A/B 测试经验优先"],
-        "skills": ["Excel", "用户运营"],
+        "skills": ["Excel", "运营经验"],
         "experienceRequirements": ["2 年以上互联网用户运营经验"],
         "educationRequirements": []
       }
     },
     {
       "id": "jd-005",
+      "goldReviewStatus": "human-reviewed",
       "sourceStyle": "boss",
       "title": "UI 设计师",
       "company": "某数字产品公司",
@@ -82,13 +88,14 @@
         "responsibilities": ["负责移动端产品界面、设计规范和交互视觉方案", "与产品和研发协作完成设计验收"],
         "mustHaveRequirements": ["熟练使用 Figma", "具备完整上线项目作品集", "关注可访问性"],
         "preferredRequirements": ["会使用 After Effects 制作动效者优先"],
-        "skills": ["Figma", "交互视觉", "可访问性"],
+        "skills": ["Figma", "可访问性"],
         "experienceRequirements": [],
         "educationRequirements": []
       }
     },
     {
       "id": "jd-006",
+      "goldReviewStatus": "human-reviewed",
       "sourceStyle": "nowcoder",
       "title": "嵌入式软件工程师",
       "company": "某智能硬件公司",
@@ -106,6 +113,7 @@
     },
     {
       "id": "jd-007",
+      "goldReviewStatus": "human-reviewed",
       "sourceStyle": "boss",
       "title": "推荐算法工程师",
       "company": "某内容平台",
@@ -123,6 +131,7 @@
     },
     {
       "id": "jd-008",
+      "goldReviewStatus": "human-reviewed",
       "sourceStyle": "nowcoder",
       "title": "企业客户经理",
       "company": "某云服务公司",
@@ -133,13 +142,14 @@
         "responsibilities": ["开发和维护企业客户", "理解客户业务并推进方案、报价和合同流程", "完成季度销售目标"],
         "mustHaveRequirements": ["具备 B2B 销售经验和商务谈判能力", "能够接受省内短期出差"],
         "preferredRequirements": ["了解云计算产品者优先"],
-        "skills": ["B2B 销售", "商务谈判"],
+        "skills": ["B2B销售经验", "商务谈判"],
         "experienceRequirements": ["具备 B2B 销售经验"],
         "educationRequirements": []
       }
     },
     {
       "id": "jd-009",
+      "goldReviewStatus": "human-reviewed",
       "sourceStyle": "boss",
       "title": "供应链计划专员",
       "company": "某消费品公司",
@@ -150,13 +160,14 @@
         "responsibilities": ["根据销售预测制定滚动供需计划", "跟踪库存和交付风险", "协调采购、生产与仓储解决异常"],
         "mustHaveRequirements": ["本科及以上学历", "熟练使用 Excel", "具备数据敏感度和跨团队沟通能力"],
         "preferredRequirements": ["有 SAP 使用经验优先"],
-        "skills": ["Excel", "供需计划", "库存管理"],
+        "skills": ["Excel", "有制定供需计划的技能", "有库存管理能力"],
         "experienceRequirements": [],
         "educationRequirements": ["本科及以上学历"]
       }
     },
     {
       "id": "jd-010",
+      "goldReviewStatus": "human-reviewed",
       "sourceStyle": "nowcoder",
       "title": "HRBP",
       "company": "某制造企业",
@@ -167,13 +178,14 @@
         "responsibilities": ["支持研发团队组织诊断、人才盘点和绩效沟通", "推动招聘、培养和员工关系事项落地"],
         "mustHaveRequirements": ["5 年以上人力资源工作经验", "至少 2 年 HRBP 经验", "熟悉劳动法规", "能处理复杂沟通"],
         "preferredRequirements": ["有人力资源管理师证书优先"],
-        "skills": ["组织诊断", "人才盘点", "劳动法规"],
+        "skills": ["组织诊断", "人才盘点", "熟悉劳动法规"],
         "experienceRequirements": ["5 年以上人力资源工作经验", "至少 2 年 HRBP 经验"],
         "educationRequirements": []
       }
     },
     {
       "id": "jd-011",
+      "goldReviewStatus": "human-reviewed",
       "sourceStyle": "boss",
       "title": "安全运营工程师",
       "company": "某金融科技公司",
@@ -191,6 +203,7 @@
     },
     {
       "id": "jd-012",
+      "goldReviewStatus": "human-reviewed",
       "sourceStyle": "nowcoder",
       "title": "前端开发工程师",
       "company": "某企业软件公司",
@@ -208,6 +221,7 @@
     },
     {
       "id": "jd-013",
+      "goldReviewStatus": "human-reviewed",
       "sourceStyle": "boss",
       "title": "软件测试工程师",
       "company": "某出行科技公司",
@@ -225,6 +239,7 @@
     },
     {
       "id": "jd-014",
+      "goldReviewStatus": "human-reviewed",
       "sourceStyle": "nowcoder",
       "title": "医学事务专员",
       "company": "某生物技术公司",
@@ -235,13 +250,14 @@
         "responsibilities": ["整理产品相关医学文献", "支持学术材料审核和专家会议", "回答内部医学咨询"],
         "mustHaveRequirements": ["临床医学或药学硕士", "具备英文文献检索和阅读能力", "遵守合规要求"],
         "preferredRequirements": ["有相关治疗领域研究经历优先"],
-        "skills": ["医学文献", "英文文献检索"],
+        "skills": ["会读医学文献", "英文文献检索"],
         "experienceRequirements": [],
         "educationRequirements": ["临床医学或药学硕士"]
       }
     },
     {
       "id": "jd-015",
+      "goldReviewStatus": "human-reviewed",
       "sourceStyle": "boss",
       "title": "财务分析专员",
       "company": "某物流企业",
@@ -259,6 +275,7 @@
     },
     {
       "id": "jd-016",
+      "goldReviewStatus": "human-reviewed",
       "sourceStyle": "nowcoder",
       "title": "法务专员",
       "company": "某电商公司",
@@ -269,13 +286,14 @@
         "responsibilities": ["审核业务合同与营销规则", "提供日常法律咨询", "跟进争议解决和制度更新"],
         "mustHaveRequirements": ["法学本科及以上", "通过法律职业资格考试", "具备良好书面表达"],
         "preferredRequirements": ["有互联网平台法务经验优先"],
-        "skills": ["合同审核", "法律咨询"],
+        "skills": ["审核业务合同和营销规则", "法律咨询服务"],
         "experienceRequirements": [],
         "educationRequirements": ["法学本科及以上"]
       }
     },
     {
       "id": "jd-017",
+      "goldReviewStatus": "human-reviewed",
       "sourceStyle": "boss",
       "title": "内容运营实习生",
       "company": "某文化传媒公司",
@@ -293,6 +311,7 @@
     },
     {
       "id": "jd-018",
+      "goldReviewStatus": "human-reviewed",
       "sourceStyle": "nowcoder",
       "title": "NLP 算法工程师",
       "company": "某人工智能公司",
@@ -310,6 +329,7 @@
     },
     {
       "id": "jd-019",
+      "goldReviewStatus": "human-reviewed",
       "sourceStyle": "boss",
       "title": "产品助理",
       "company": "某工具软件公司",
@@ -327,6 +347,7 @@
     },
     {
       "id": "jd-020",
+      "goldReviewStatus": "human-reviewed",
       "sourceStyle": "nowcoder",
       "title": "项目经理",
       "company": "某信息技术公司",

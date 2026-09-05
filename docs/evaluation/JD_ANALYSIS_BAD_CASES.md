@@ -2,9 +2,9 @@
 
 ## Status
 
-No real Bad Case is recorded yet. Prompt V1 has not been run because this environment has no
-configured Provider, and the candidate gold labels are still pending human review. Inventing cases
-or metrics would make the evaluation misleading.
+No real Bad Case is recorded yet. The gold labels completed human review on 2026-09-05, but Prompt
+V1 has not been run because this environment has no configured Provider. Inventing cases or metrics
+would make the evaluation misleading.
 
 The following required categories are the review taxonomy, not observed findings:
 

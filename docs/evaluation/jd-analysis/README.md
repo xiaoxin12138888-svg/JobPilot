@@ -1,15 +1,16 @@
 # JD Analysis Evaluation Set
 
 `dataset-v1.json` contains 20 synthetic, de-identified JDs written in realistic BOSS/Nowcoder
-styles. It contains no account data, contacts, cookies, URLs or page HTML. Each sample has candidate
-gold labels for responsibilities, must-have, preferred, skills, experience and education.
+styles. It contains no account data, contacts, cookies, URLs or page HTML. Each sample has
+human-reviewed gold labels for responsibilities, must-have, preferred, skills, experience and
+education.
 
-The dataset is currently marked `pending-human-review`. An AI-authored candidate label is not called
-human-reviewed. Before a baseline is valid, the product owner or another human reviewer must inspect
-every label against the JD and change the top-level value to `human-reviewed` in a reviewed commit.
+The project owner completed the item-by-item review on 2026-09-05. The dataset records
+`goldReviewStatus: human-reviewed`, `reviewedSampleCount: 20`, and the same status on every sample;
+the Chinese `GOLD_REVIEW_PACK.md` preserves the original candidate decisions and review history.
+The evaluator requires all three signals and blocks a partial or top-level-only status change.
 
-Run from the repository root after that review and after configuring the three Provider environment
-variables:
+Run from the repository root after configuring the three Provider environment variables:
 
 ```text
 uv run --project apps/api python apps/api/scripts/evaluate_jd_analysis.py \

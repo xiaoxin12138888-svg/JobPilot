@@ -29,8 +29,8 @@ def main() -> int:
 
     dataset = json.loads(args.dataset.read_text(encoding="utf-8"))
     samples = dataset.get("samples")
-    if dataset.get("goldReviewStatus") != "human-reviewed":
-        print("BLOCKED: gold labels are not marked human-reviewed", file=sys.stderr)
+    if not _has_complete_human_review(dataset, samples):
+        print("BLOCKED: gold human review is incomplete", file=sys.stderr)
         return 2
     if not isinstance(samples, list) or len(samples) < 20:
         print("BLOCKED: evaluation dataset must contain at least 20 samples", file=sys.stderr)
@@ -91,6 +91,18 @@ def main() -> int:
         json.dumps(output, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     return 0
+
+
+def _has_complete_human_review(dataset: dict[str, Any], samples: object) -> bool:
+    return (
+        dataset.get("goldReviewStatus") == "human-reviewed"
+        and isinstance(samples, list)
+        and dataset.get("reviewedSampleCount") == len(samples)
+        and all(
+            isinstance(sample, dict) and sample.get("goldReviewStatus") == "human-reviewed"
+            for sample in samples
+        )
+    )
 
 
 def _compare(result: JDAnalysis, gold: dict[str, list[str]]) -> dict[str, Any]:
