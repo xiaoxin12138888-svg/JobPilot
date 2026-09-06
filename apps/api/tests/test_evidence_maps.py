@@ -13,7 +13,12 @@ from fastapi.testclient import TestClient
 from jobpilot_api.application.providers import EvidenceMapProvider, JDAnalysisProvider
 from jobpilot_api.config import ApiSettings
 from jobpilot_api.domain.errors import AnalysisProviderUnavailableError
-from jobpilot_api.domain.evidence_maps import EvidenceMapInput
+from jobpilot_api.domain.evidence_maps import (
+    EvidenceMapInput,
+    EvidenceRequirement,
+    RequirementType,
+    parse_and_ground_evidence_map,
+)
 from jobpilot_api.domain.jd_analysis import JDAnalysisInput
 from jobpilot_api.infrastructure.database.engine import sqlite_database_url
 from jobpilot_api.main import create_app
@@ -134,6 +139,11 @@ def test_generate_get_and_minimal_provider_input(
     }
     assert "不可信" in system_instruction
     assert "quote" in system_instruction
+    assert "不是关键词或字面相等" in system_instruction
+    assert "组合多段" in system_instruction
+    assert "除下述通常学制假设外" in system_instruction
+    assert "简单、透明的时间推理" in system_instruction
+    assert "最多只能判为 PARTIAL" in system_instruction
     assert "description" not in evidence_input.as_provider_data()["job"]
 
 
@@ -283,6 +293,48 @@ def test_invalid_result_never_overwrites_and_grounding_downgrades_invalid_eviden
     assert "fitScore" not in invalid.text
     assert preserved.json() == grounded.json()
     assert preserved.json() != original
+
+
+def test_grounding_preserves_combined_quotes_for_transparent_partial_date_inference() -> None:
+    requirements = (EvidenceRequirement(RequirementType.MUST_HAVE, "2027届"),)
+    raw_content = json.dumps(
+        {
+            "mappings": [
+                {
+                    "requirementType": "MUST_HAVE",
+                    "requirementText": "2027届",
+                    "coverage": "PARTIAL",
+                    "resumeEvidence": [
+                        {"quote": "2023年9月入学"},
+                        {"quote": "本科在读"},
+                    ],
+                    "reason": "2023年入学且为本科；按通常四年学制作出2027届推算，但简历未明确毕业时间。",
+                }
+            ]
+        },
+        ensure_ascii=False,
+    )
+
+    result = parse_and_ground_evidence_map(
+        raw_content,
+        requirements,
+        "教育经历\n2023年9月入学\n本科在读",
+    )
+
+    assert result.as_dict() == {
+        "mappings": [
+            {
+                "requirementType": "MUST_HAVE",
+                "requirementText": "2027届",
+                "coverage": "PARTIAL",
+                "resumeEvidence": [
+                    {"quote": "2023年9月入学"},
+                    {"quote": "本科在读"},
+                ],
+                "reason": "2023年入学且为本科；按通常四年学制作出2027届推算，但简历未明确毕业时间。",
+            }
+        ]
+    }
 
 
 def test_jd_reanalysis_marks_map_stale_and_deletions_cascade(

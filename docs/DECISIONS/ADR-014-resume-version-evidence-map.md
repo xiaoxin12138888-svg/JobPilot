@@ -33,7 +33,10 @@ Phase 6 已把用户保存的 JD 转换为严格、可追溯的结构化要求�
    必须拒绝生成，并保留已有记录。
 7. Provider quote 经 whitespace normalization 后必须是所选 `ResumeVersion.content` 的子串。
    无效 quote 删除；DIRECT/PARTIAL 最终没有有效 quote 时确定性降级为 GAP。GAP 只表示当前简历
-   未找到证据，不表示用户没有能力。
+   未找到证据，不表示用户没有能力。coverage 按多段 grounded facts 的语义关系综合判断，不要求
+   关键词逐字相等；明确事实无需假设即可完整成立时为 DIRECT，需要假设或证据不完整时为
+   PARTIAL。允许简单、透明的日期推理；教育入学时间、明确学历层次与通常学制可支持毕业届别
+   推算，但没有明确毕业/结束时间时最多为 PARTIAL，reason 必须披露所用事实、假设和结论。
 8. 对 Provider 的输入仅包含 Job title、可选 company、当前 JD Analysis 的两类要求，以及用户
    明确选择的一个 Resume content；不发送原始招聘页 HTML、完整 JD、notes、Application、其他
    Job/Resume、浏览数据或本地文件。JD requirement 与 Resume 都作为不可信数据放在 user data，

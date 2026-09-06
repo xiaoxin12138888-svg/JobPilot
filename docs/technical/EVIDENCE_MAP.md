@@ -32,6 +32,13 @@ EvidenceMapping {
 DIRECT 表示当前简历有可直接支持要求的原文；PARTIAL 表示有相关但不完整的原文；GAP 仅表示
 当前简历版本未找到可证明内容。UI 的总览只数各 coverage 的数量，不计算分数、匹配率或概率。
 
+coverage 是对 grounded facts 的语义综合，不是关键词或字面相等。Provider 可以为一项 requirement
+返回多段 quote 并说明它们如何共同形成证据。明确事实无需额外假设即可完整成立时使用 DIRECT；
+证据有关但不完整，或结论依赖显式假设时使用 PARTIAL。允许对简历明确日期做简单、透明的时间
+推理：教育入学时间 + 明确学历层次 + 通常学制可以支持毕业届别推算；若简历没有明确毕业/结束
+时间，该结论最多为 PARTIAL，reason 必须列明日期、学制假设和推算结果。缺少学历层次或必要日期
+时不能推算，也不能把日期扩展为工作年限、经历连续性或其他未写明事实。
+
 ## Persistence and failure
 
 每个 Job + ResumeVersion 保存一个当前记录。读取时比较所存 JD analysis fingerprint 与当前分析，

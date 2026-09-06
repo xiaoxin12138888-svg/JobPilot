@@ -29,6 +29,8 @@
 - [x] Regress BOSS/Nowcoder capture, Job/Application, JD Analysis, SQLite and no-proxy core.
 - [x] Run privacy, secret, raw-response, injection, XSS, remote-runtime and no-score scans.
 - [x] Resolve code-review Critical/Required findings and complete simplification review.
+- [x] RED/GREEN owner feedback: use semantic multi-quote evidence and bounded date inference instead
+  of literal keyword equality, while keeping every quote grounded and inferred cohorts PARTIAL.
 - [ ] Run user-assisted real BOSS + Nowcoder evidence acceptance with explicit external-AI consent.
 - [x] Verify Application Resume association and Resume/Evidence persistence after API/Web restart.
 - [ ] Record only real latency and owner-reviewed PASS/FAIL; synchronize docs and stop before Phase 8.
