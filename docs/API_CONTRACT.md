@@ -195,8 +195,9 @@ Application response 字段为：`id`、`jobId`、`status`、`resumeVersionId`�
 {"isConfigured":true,"evidenceMap":null}
 ```
 
-已有记录包含 `id`、`jobId`、`resumeVersionId`、`schemaVersion: 1`、`result`、`isStale`、
-`createdAt`、`updatedAt`。当前 JD Analysis 或 Resume content 指纹变化时 `isStale: true`。
+已有记录包含 `id`、`jobId`、`resumeVersionId`、`schemaVersion: 1|2`、`result`、`isStale`、
+`createdAt`、`updatedAt`。schema 1 是只含 must-have/preferred 的旧记录；schema 2 是六类条件的
+当前格式。当前 JD Analysis 或 Resume content 指纹变化时 `isStale: true`。
 
 ### `POST /api/v1/jobs/{jobId}/evidence-map`
 
@@ -206,11 +207,16 @@ Application response 字段为：`id`、`jobId`、`status`、`resumeVersionId`�
 
 `confirmExternalAi` 只接受字面值 `true`，证明 Web 已完成本次外发告知。Job/Resume 缺失为 404；
 JD Analysis 缺失、stale 或其他前置条件非法为 422；Provider 未配置/不可用为 503；Provider
-响应非法为 502。失败不覆盖最后一个有效记录。
+响应非法为 502。失败不覆盖最后一个有效记录。成功的新生成固定写入 schema version 2，并在
+同一个 Job + Resume Version 记录上原位更新。
 
-`result` 只有 `mappings`；每项只有 `requirementType: MUST_HAVE|PREFERRED`、原始
-`requirementText`、`coverage: DIRECT|PARTIAL|GAP`、`resumeEvidence: [{quote}]` 与 `reason`。
-不返回分数、匹配率、推荐或 Offer 概率。
+`result` 只有 `mappings`；每项只有原始 `requirementText`、
+`coverage: DIRECT|PARTIAL|GAP`、`resumeEvidence: [{quote}]` 与 `reason`。schema 1 的
+`requirementType` 只允许 `MUST_HAVE|PREFERRED`；schema 2 允许
+`MUST_HAVE|PREFERRED|RESPONSIBILITY|SKILL|EXPERIENCE|EDUCATION`。顺序固定为硬性要求、
+加分项、岗位职责、技能、经验、学历，并保持各 JD Analysis 数组的原顺序。摘要、领域关键词和
+面试重点不进入 mappings。Web 根据 coverage 确定性生成逐项明确结论、全图计数、待确认项与
+主要证据缺口；API 不返回分数、匹配率、推荐或 Offer 概率。
 
 ## 8. Errors
 

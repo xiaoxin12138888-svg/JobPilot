@@ -135,14 +135,17 @@ PDF/DOCX/图片，不提供 OCR、富文本、模板、版本树、自动生成�
 ## 9. Evidence Map
 
 生成前要求 Job、当前非 stale JD Analysis、用户所选 Resume Version、已配置 Provider，以及
-本次操作的明确外发确认。发送数据只含必要岗位上下文、当前 must-have/preferred requirements
-和所选简历正文；不发送原始页面 HTML、完整 JD、notes、Application、其他 Job/Resume 或文件。
+本次操作的明确外发确认。发送数据只含必要岗位上下文、当前硬性要求、加分项、岗位职责、技能、
+经验、学历六类条件和所选简历正文；不发送摘要、领域关键词、面试重点、原始页面 HTML、完整 JD、
+notes、Application、其他 Job/Resume 或文件。
 
 每条 mapping 保留原 requirement 类型/文本，并只使用 `DIRECT`、`PARTIAL`、`GAP`：DIRECT 是
 简历中存在可直接支持要求的原文，PARTIAL 是存在相关但不完整的原文，GAP 只表示当前所选简历
 未找到证据。quote 经空白规范化后必须是简历正文子串；无有效 quote 的 DIRECT/PARTIAL 确定性
-降级为 GAP。must-have 与 preferred 分开展示；总览只做确定性计数，不产生匹配率、ATS/Offer
-分数或推荐。
+降级为 GAP。新生成记录使用 schema version 2；已有 schema version 1 的 must-have/preferred
+记录仍可读取，并在六类条件指纹下显示 stale，成功重新生成后原位升级。六类条件分组展示；每项
+先给出“支持”“部分支持 / 待确认”或“当前无法证明”，再显示判断依据和 grounded quote。总览只
+做全图确定性计数，并列出有限的主要待确认项和证据缺口，不产生匹配率、ATS/Offer 分数或推荐。
 
 coverage 按多段事实之间的语义关系综合判断，不要求岗位文字与简历关键词逐字相等。一项要求可由
 多条各自可追溯的 quote 共同支持；明确事实无需额外假设即可完整证明时为 DIRECT，需要假设或证据
@@ -178,6 +181,7 @@ vector DB、Agent/LangChain、模拟面试、自动投递、新招聘平台、�
 
 Phase 7 必须通过 Resume/Application/Evidence schema、grounding、stale、persistence、API/UI、
 privacy/security 自动测试及全部既有回归。项目负责人还需在 UI 粘贴一份脱敏真实简历，对一个
-已有有效分析的 BOSS Job 和一个牛客 Job 分别确认外发并人工判断 requirement 数量、quote
-grounding、coverage/reason 质量和无数字分数；随后验证 Application 关联与 API/Web 重启持久化。
+已有有效分析的 BOSS Job 和一个牛客 Job 分别确认外发并人工判断六类条件数量、逐项明确结论、
+quote grounding、coverage/reason 质量、全图总览和无数字分数；随后验证 Application 关联与
+API/Web 重启持久化。
 缺少用户确认或人工判断时必须报告 BLOCKED，不得代替负责人宣称 PASS。

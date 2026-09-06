@@ -59,7 +59,8 @@ Alembic revision `0001_job_application` 创建 `jobs` 和 `applications`；`0002
 与 `0003_nowcoder_job_source` 只扩展 Job source CHECK；`0004_jd_analysis_records` 增加每 Job
 唯一的结构化分析；`0005_resume_versions` 增加纯文本版本及 nullable
 `applications.resume_version_id`；`0006_evidence_map_records` 增加每个 Job + Resume Version 的
-唯一当前结果与两份输入指纹。Job 删除级联 Application/JD Analysis/Evidence；被 Application
+唯一当前结果与两份输入指纹；`0007_evidence_map_schema_v2` 扩展其 CHECK 以兼容 schema 1/2，
+存在 schema 2 记录时拒绝降级。Job 删除级联 Application/JD Analysis/Evidence；被 Application
 引用的 Resume 通过 RESTRICT 和 service guard 保留，未引用 Resume 删除时级联其 Evidence。
 自动化测试必须显式传入临时数据库路径。
 
@@ -82,7 +83,9 @@ CORS/Host 不是对同一操作系统账户下恶意进程的认证。若以后�
 
 Web 不引入路由或状态框架。App 只协调 health 和 library/create/resumes/detail 四种视图；岗位库、
 表单、简历版本、详情、Application、JDAnalysisPanel 与 EvidenceMapPanel 为聚焦组件。所有业务
-I/O 经过 api-client，不自行拼 HTTP。JD 分析请求使用 35 秒 client timeout，Evidence Map 生成
+I/O 经过 api-client，不自行拼 HTTP。Evidence Map 按六类条件呈现逐项明确结论、判断依据和原文
+证据，并在 Web 端确定性计算全图计数、待确认项与主要证据缺口。JD 分析请求使用 35 秒 client
+timeout，Evidence Map 生成
 使用 65 秒 client timeout，其余核心请求保持 5 秒。
 
 “去原平台查看/投递”使用 `target="_blank"` 与 `rel="noreferrer"`，没有关联 mutation。
@@ -95,7 +98,8 @@ I/O 经过 api-client，不自行拼 HTTP。JD 分析请求使用 35 秒 client 
 进程环境；三项缺失/非法时服务仍启动并向 Web 返回未配置状态。
 
 JD 服务仅构造 title/company/description/location/salaryText 输入。Evidence 服务只构造必要岗位
-上下文、当前非 stale must-have/preferred requirements 与用户当次确认的一个 Resume content。
+上下文、当前非 stale 的硬性要求、加分项、职责、技能、经验、学历六类条件与用户当次确认的一个
+Resume content；摘要、领域关键词和面试重点不属于匹配条件。
 系统提示与不可信 JD/Resume JSON 分离。Provider content 经过 parse、strict schema、normalize、
 requirement identity/order check 与 Resume quote exact-substring check 后才 upsert；无有效 quote 的
 DIRECT/PARTIAL 降级 GAP。Key、provider envelope、raw malformed response、原始招聘页 HTML、

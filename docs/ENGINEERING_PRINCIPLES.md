@@ -22,7 +22,8 @@
 - 负责路由、表单、展示、可访问性和本地服务状态；
 - 通过 api-client 调用本机 API；
 - 不承载 domain 状态机、数据库访问或外部 provider 逻辑。
-- Resume content 只按纯文本渲染，不使用 `dangerouslySetInnerHTML`；Evidence 总览只做确定性计数。
+- Resume content 只按纯文本渲染，不使用 `dangerouslySetInnerHTML`；Evidence 每项先显示明确结论，
+  全图总览只做确定性计数、待确认项和主要证据缺口。
 
 ### Extension
 
@@ -60,8 +61,9 @@
 - 日志不得记录简历正文、完整 JD、文件内容、本机 secret 或未脱敏外部 payload。
 - Resume content 默认只写本地 SQLite；Evidence Map 只发送用户当次选择的一个版本和当前非
   stale JD requirements，不发送原始 HTML、完整 JD、notes、Application、其他 Job/Resume 或文件。
-- Evidence requirement 必须保持当前 JD Analysis 的类型、文本和顺序；quote 必须能在空白规范化
-  后回溯到所选 Resume，DIRECT/PARTIAL 无有效 quote 时降级 GAP。禁止匹配/ATS/Offer 分数。
+- Evidence requirement 必须保持当前 JD Analysis 六类条件的类型、文本和顺序；旧 schema 1 只读
+  兼容，新生成使用 schema 2。quote 必须能在空白规范化后回溯到所选 Resume，DIRECT/PARTIAL
+  无有效 quote 时降级 GAP。禁止匹配/ATS/Offer 分数。
 
 ## 5. P0 no-proxy rule
 

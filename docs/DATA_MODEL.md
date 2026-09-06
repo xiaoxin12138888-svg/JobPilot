@@ -2,7 +2,8 @@
 
 > 状态：`0001_job_application` 创建 `jobs`/`applications`，`0002`/`0003` 扩展 Job source，
 > `0004_jd_analysis_records` 新增单 Job 当前分析，`0005_resume_versions` 与
-> `0006_evidence_map_records` 新增 Phase 7 本地简历版本、Application 关联和当前 Evidence Map。
+> `0006_evidence_map_records` 新增 Phase 7 本地简历版本、Application 关联和当前 Evidence Map；
+> `0007_evidence_map_schema_v2` 允许旧 schema 1 与当前 schema 2 共存。
 
 ## 1. Storage rules
 
@@ -92,7 +93,7 @@ scheme、host、path，不保存 tracking/session query 或 fragment。所有招
 | `id` | String(36), PK |
 | `job_id` | String(36), NOT NULL, FK jobs.id ON DELETE CASCADE |
 | `resume_version_id` | String(36), NOT NULL, FK resume_versions.id ON DELETE CASCADE |
-| `schema_version` | Integer, NOT NULL, CHECK = 1 |
+| `schema_version` | Integer, NOT NULL, CHECK IN (1, 2) |
 | `result_json` | Text, NOT NULL，canonical structured JSON |
 | `job_analysis_fingerprint` | String(64), NOT NULL |
 | `resume_content_fingerprint` | String(64), NOT NULL |
@@ -101,8 +102,10 @@ scheme、host、path，不保存 tracking/session query 或 fragment。所有招
 
 唯一约束：`(job_id, resume_version_id)`。每组只保留当前记录；成功重新生成保留 id/created_at 并
 更新 result、两份指纹与 updated_at。GET 与当前 JD Analysis/Resume content 指纹比较后计算
-`isStale`，不持久化该布尔值。生成失败不更新或删除旧行。`result_json` 只保存 schema version 1
-的 requirement mappings，不拆 Evidence/score 表。
+`isStale`，不持久化该布尔值。生成失败不更新或删除旧行。旧 schema 1 只允许 must-have/preferred
+mappings；新生成固定为 schema 2，并包含当前分析的硬性要求、加分项、职责、技能、经验与学历
+六类条件。不存在 Evidence/score 拆表。迁移降级到 `0006` 前若仍有 schema 2 记录会明确拒绝，
+不会删除或错误解释已有结果。
 
 ## 7. Application state machine
 
