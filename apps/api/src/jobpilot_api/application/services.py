@@ -3,6 +3,7 @@ from __future__ import annotations
 from jobpilot_api.application.repositories import (
     ApplicationListEntry,
     ApplicationRepository,
+    InterviewRepository,
     JobListEntry,
     JobRepository,
     ResumeVersionRepository,
@@ -10,9 +11,17 @@ from jobpilot_api.application.repositories import (
 from jobpilot_api.domain.applications import (
     Application,
     ApplicationStatus,
+    RejectionReason,
+    normalize_application_outcome,
     validate_status_transition,
 )
 from jobpilot_api.domain.errors import ResourceNotFoundError
+from jobpilot_api.domain.interviews import (
+    InterviewQuestion,
+    InterviewQuestionDraft,
+    InterviewRoundDetail,
+    InterviewRoundDraft,
+)
 from jobpilot_api.domain.jobs import Job, JobDraft
 from jobpilot_api.domain.resume_versions import ResumeVersion, ResumeVersionDraft
 
@@ -106,6 +115,10 @@ class ApplicationService:
             confirm_applied=confirm_applied,
             resume_version_id=None,
             update_resume_version=False,
+            outcome_note=None,
+            update_outcome_note=False,
+            rejection_reason=None,
+            update_rejection_reason=False,
         )
 
     def update(
@@ -116,6 +129,10 @@ class ApplicationService:
         confirm_applied: bool,
         resume_version_id: str | None,
         update_resume_version: bool,
+        outcome_note: str | None,
+        update_outcome_note: bool,
+        rejection_reason: RejectionReason | None,
+        update_rejection_reason: bool,
     ) -> Application:
         current = self.get(application_id)
         if status is not None:
@@ -126,11 +143,30 @@ class ApplicationService:
             and self._resumes.get(resume_version_id) is None
         ):
             raise ResourceNotFoundError("简历版本不存在")
+        target_status = status or current.status
+        target_outcome_note = outcome_note if update_outcome_note else current.outcome_note
+        if update_rejection_reason:
+            target_rejection_reason = rejection_reason
+        elif target_status is ApplicationStatus.REJECTED:
+            target_rejection_reason = current.rejection_reason
+        else:
+            target_rejection_reason = None
+        target_outcome_note, target_rejection_reason = normalize_application_outcome(
+            status=target_status,
+            outcome_note=target_outcome_note,
+            rejection_reason=target_rejection_reason,
+        )
         updated = self._repository.update(
             application_id,
             status=status,
             resume_version_id=resume_version_id,
             update_resume_version=update_resume_version,
+            outcome_note=target_outcome_note,
+            update_outcome_note=update_outcome_note,
+            rejection_reason=target_rejection_reason,
+            update_rejection_reason=(
+                update_rejection_reason or target_rejection_reason != current.rejection_reason
+            ),
         )
         if updated is None:
             raise ResourceNotFoundError("投递记录不存在")
@@ -181,3 +217,86 @@ class ResumeVersionService:
 
     def list(self, *, limit: int, offset: int) -> tuple[list[ResumeVersion], int]:
         return self._repository.list(limit=limit, offset=offset)
+
+
+class InterviewService:
+    def __init__(
+        self,
+        repository: InterviewRepository,
+        applications: ApplicationRepository,
+    ) -> None:
+        self._repository = repository
+        self._applications = applications
+
+    def create_round(self, application_id: str, draft: InterviewRoundDraft) -> InterviewRoundDetail:
+        if self._applications.get(application_id) is None:
+            raise ResourceNotFoundError("投递记录不存在")
+        interview = self._repository.create_round(application_id, draft)
+        return InterviewRoundDetail(interview=interview, questions=())
+
+    def get_round(self, interview_id: str) -> InterviewRoundDetail:
+        detail = self._repository.get_round(interview_id)
+        if detail is None:
+            raise ResourceNotFoundError("面试记录不存在")
+        return detail
+
+    def update_round(self, interview_id: str, changes: dict[str, object]) -> InterviewRoundDetail:
+        current = self.get_round(interview_id).interview
+        values: dict[str, object] = {
+            "round_name": current.round_name,
+            "interview_type": current.interview_type,
+            "scheduled_at": current.scheduled_at,
+            "status": current.status,
+            "interviewer_note": current.interviewer_note,
+            "went_well": current.went_well,
+            "could_improve": current.could_improve,
+            "learning_notes": current.learning_notes,
+            "other_notes": current.other_notes,
+        }
+        values.update(changes)
+        draft = InterviewRoundDraft.create(**values)  # type: ignore[arg-type]
+        updated = self._repository.update_round(interview_id, draft)
+        if updated is None:
+            raise ResourceNotFoundError("面试记录不存在")
+        return updated
+
+    def delete_round(self, interview_id: str) -> None:
+        if not self._repository.delete_round(interview_id):
+            raise ResourceNotFoundError("面试记录不存在")
+
+    def list_rounds(
+        self, *, application_id: str, limit: int, offset: int
+    ) -> tuple[list[InterviewRoundDetail], int]:
+        if self._applications.get(application_id) is None:
+            raise ResourceNotFoundError("投递记录不存在")
+        return self._repository.list_rounds(
+            application_id=application_id, limit=limit, offset=offset
+        )
+
+    def create_question(
+        self, interview_id: str, draft: InterviewQuestionDraft
+    ) -> InterviewQuestion:
+        self.get_round(interview_id)
+        return self._repository.create_question(interview_id, draft)
+
+    def update_question(self, question_id: str, changes: dict[str, object]) -> InterviewQuestion:
+        current = self._repository.get_question(question_id)
+        if current is None:
+            raise ResourceNotFoundError("面试题记录不存在")
+        values: dict[str, object] = {
+            "question": current.question,
+            "category": current.category,
+            "answer_summary": current.answer_summary,
+            "performance": current.performance,
+            "note": current.note,
+        }
+        values.update(changes)
+        draft = InterviewQuestionDraft.create(**values)  # type: ignore[arg-type]
+        updated = self._repository.update_question(question_id, draft)
+        if updated is None:
+            raise ResourceNotFoundError("面试题记录不存在")
+        return updated
+
+    def delete_question(self, question_id: str) -> None:
+        if not self._repository.delete_question(question_id):
+            raise ResourceNotFoundError("面试题记录不存在")

@@ -8,12 +8,20 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from jobpilot_api.application.evidence_maps import EvidenceMapState
 from jobpilot_api.application.jd_analysis import JDAnalysisState
 from jobpilot_api.application.repositories import ApplicationListEntry, JobListEntry
-from jobpilot_api.domain.applications import Application, ApplicationStatus
+from jobpilot_api.domain.applications import Application, ApplicationStatus, RejectionReason
 from jobpilot_api.domain.evidence_maps import (
     EvidenceMap,
     EvidenceMapping,
     EvidenceMapRecord,
     ResumeEvidence,
+)
+from jobpilot_api.domain.interviews import (
+    InterviewQuestion,
+    InterviewRoundDetail,
+    InterviewStatus,
+    InterviewType,
+    QuestionCategory,
+    QuestionPerformance,
 )
 from jobpilot_api.domain.jd_analysis import EvidenceItem, JDAnalysis, JDAnalysisRecord
 from jobpilot_api.domain.jobs import Job
@@ -113,14 +121,20 @@ class ApplicationUpdateRequest(ApiModel):
     status: ApplicationStatus | None = None
     confirm_applied: bool = False
     resume_version_id: str | None = Field(default=None, max_length=36)
+    outcome_note: str | None = None
+    rejection_reason: RejectionReason | None = None
 
     @model_validator(mode="after")
     def require_a_change(self) -> ApplicationUpdateRequest:
         if (
             "status" not in self.model_fields_set
             and "resume_version_id" not in self.model_fields_set
+            and "outcome_note" not in self.model_fields_set
+            and "rejection_reason" not in self.model_fields_set
         ):
-            raise ValueError("status or resumeVersionId must be provided")
+            raise ValueError(
+                "status, resumeVersionId, outcomeNote or rejectionReason must be provided"
+            )
         return self
 
 
@@ -129,6 +143,8 @@ class ApplicationResponse(ApiModel):
     job_id: str
     status: ApplicationStatus
     resume_version_id: str | None
+    outcome_note: str | None
+    rejection_reason: RejectionReason | None
     applied_at: datetime | None
     created_at: datetime
     updated_at: datetime
@@ -140,6 +156,8 @@ class ApplicationResponse(ApiModel):
             job_id=application.job_id,
             status=application.status,
             resume_version_id=application.resume_version_id,
+            outcome_note=application.outcome_note,
+            rejection_reason=application.rejection_reason,
             applied_at=application.applied_at,
             created_at=application.created_at,
             updated_at=application.updated_at,
@@ -161,6 +179,128 @@ class ApplicationListItem(ApplicationResponse):
 
 class ApplicationListResponse(ApiModel):
     items: list[ApplicationListItem]
+    total: int
+    limit: int
+    offset: int
+
+
+class InterviewRoundCreateRequest(ApiModel):
+    round_name: str
+    interview_type: InterviewType
+    scheduled_at: datetime | None = None
+    status: InterviewStatus = InterviewStatus.PLANNED
+    interviewer_note: str | None = None
+    went_well: str | None = None
+    could_improve: str | None = None
+    learning_notes: str | None = None
+    other_notes: str | None = None
+
+
+class InterviewRoundUpdateRequest(ApiModel):
+    round_name: str | None = None
+    interview_type: InterviewType | None = None
+    scheduled_at: datetime | None = None
+    status: InterviewStatus | None = None
+    interviewer_note: str | None = None
+    went_well: str | None = None
+    could_improve: str | None = None
+    learning_notes: str | None = None
+    other_notes: str | None = None
+
+    @model_validator(mode="after")
+    def require_a_change(self) -> InterviewRoundUpdateRequest:
+        if not self.model_fields_set:
+            raise ValueError("at least one field must be provided")
+        return self
+
+
+class InterviewQuestionCreateRequest(ApiModel):
+    question: str
+    category: QuestionCategory
+    answer_summary: str | None = None
+    performance: QuestionPerformance = QuestionPerformance.NOT_SURE
+    note: str | None = None
+
+
+class InterviewQuestionUpdateRequest(ApiModel):
+    question: str | None = None
+    category: QuestionCategory | None = None
+    answer_summary: str | None = None
+    performance: QuestionPerformance | None = None
+    note: str | None = None
+
+    @model_validator(mode="after")
+    def require_a_change(self) -> InterviewQuestionUpdateRequest:
+        if not self.model_fields_set:
+            raise ValueError("at least one field must be provided")
+        return self
+
+
+class InterviewQuestionResponse(ApiModel):
+    id: str
+    interview_round_id: str
+    question: str
+    category: QuestionCategory
+    answer_summary: str | None
+    performance: QuestionPerformance
+    note: str | None
+    created_at: datetime
+    updated_at: datetime
+
+    @classmethod
+    def from_domain(cls, question: InterviewQuestion) -> InterviewQuestionResponse:
+        return cls(
+            id=question.id,
+            interview_round_id=question.interview_round_id,
+            question=question.question,
+            category=question.category,
+            answer_summary=question.answer_summary,
+            performance=question.performance,
+            note=question.note,
+            created_at=question.created_at,
+            updated_at=question.updated_at,
+        )
+
+
+class InterviewRoundResponse(ApiModel):
+    id: str
+    application_id: str
+    round_name: str
+    interview_type: InterviewType
+    scheduled_at: datetime | None
+    status: InterviewStatus
+    interviewer_note: str | None
+    went_well: str | None
+    could_improve: str | None
+    learning_notes: str | None
+    other_notes: str | None
+    questions: list[InterviewQuestionResponse]
+    created_at: datetime
+    updated_at: datetime
+
+    @classmethod
+    def from_domain(cls, detail: InterviewRoundDetail) -> InterviewRoundResponse:
+        interview = detail.interview
+        return cls(
+            id=interview.id,
+            application_id=interview.application_id,
+            round_name=interview.round_name,
+            interview_type=interview.interview_type,
+            scheduled_at=interview.scheduled_at,
+            status=interview.status,
+            interviewer_note=interview.interviewer_note,
+            went_well=interview.went_well,
+            could_improve=interview.could_improve,
+            learning_notes=interview.learning_notes,
+            other_notes=interview.other_notes,
+            questions=[InterviewQuestionResponse.from_domain(item) for item in detail.questions],
+            created_at=interview.created_at,
+            updated_at=interview.updated_at,
+        )
+
+
+class InterviewRoundListResponse(ApiModel):
+    items: list[InterviewRoundResponse]
     total: int
     limit: int
     offset: int

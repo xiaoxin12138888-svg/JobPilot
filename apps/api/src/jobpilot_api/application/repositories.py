@@ -3,8 +3,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
-from jobpilot_api.domain.applications import Application, ApplicationStatus
+from jobpilot_api.domain.applications import Application, ApplicationStatus, RejectionReason
 from jobpilot_api.domain.evidence_maps import EvidenceMap, EvidenceMapRecord
+from jobpilot_api.domain.interviews import (
+    InterviewQuestion,
+    InterviewQuestionDraft,
+    InterviewRound,
+    InterviewRoundDetail,
+    InterviewRoundDraft,
+)
 from jobpilot_api.domain.jd_analysis import JDAnalysis, JDAnalysisRecord
 from jobpilot_api.domain.jobs import Job, JobDraft
 from jobpilot_api.domain.resume_versions import ResumeVersion, ResumeVersionDraft
@@ -55,6 +62,10 @@ class ApplicationRepository(Protocol):
         status: ApplicationStatus | None,
         resume_version_id: str | None,
         update_resume_version: bool,
+        outcome_note: str | None = None,
+        update_outcome_note: bool = False,
+        rejection_reason: RejectionReason | None = None,
+        update_rejection_reason: bool = False,
     ) -> Application | None: ...
 
     def list(
@@ -101,3 +112,31 @@ class EvidenceMapRepository(Protocol):
         job_analysis_fingerprint: str,
         resume_content_fingerprint: str,
     ) -> EvidenceMapRecord: ...
+
+
+class InterviewRepository(Protocol):
+    def create_round(self, application_id: str, draft: InterviewRoundDraft) -> InterviewRound: ...
+
+    def get_round(self, interview_id: str) -> InterviewRoundDetail | None: ...
+
+    def update_round(
+        self, interview_id: str, draft: InterviewRoundDraft
+    ) -> InterviewRoundDetail | None: ...
+
+    def delete_round(self, interview_id: str) -> bool: ...
+
+    def list_rounds(
+        self, *, application_id: str, limit: int, offset: int
+    ) -> tuple[list[InterviewRoundDetail], int]: ...
+
+    def create_question(
+        self, interview_id: str, draft: InterviewQuestionDraft
+    ) -> InterviewQuestion: ...
+
+    def get_question(self, question_id: str) -> InterviewQuestion | None: ...
+
+    def update_question(
+        self, question_id: str, draft: InterviewQuestionDraft
+    ) -> InterviewQuestion | None: ...
+
+    def delete_question(self, question_id: str) -> bool: ...

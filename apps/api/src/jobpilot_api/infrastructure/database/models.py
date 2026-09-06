@@ -52,6 +52,12 @@ class ApplicationModel(Base):
             "status IN ('planned','applied','screening','assessment','interviewing','offer','rejected','withdrawn','closed')",
             name="ck_applications_status",
         ),
+        CheckConstraint(
+            "rejection_reason IS NULL OR rejection_reason IN ("
+            "'TECHNICAL','EXPERIENCE','PRODUCT','BUSINESS','COMMUNICATION',"
+            "'ROLE_FIT','HEADCOUNT','UNKNOWN','OTHER')",
+            name="ck_applications_rejection_reason",
+        ),
         Index("ix_applications_status_updated_at", "status", "updated_at"),
     )
 
@@ -66,6 +72,8 @@ class ApplicationModel(Base):
         String(36),
         ForeignKey("resume_versions.id", ondelete="RESTRICT"),
     )
+    outcome_note: Mapped[str | None] = mapped_column(Text)
+    rejection_reason: Mapped[str | None] = mapped_column(String(32))
     applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -113,5 +121,63 @@ class EvidenceMapRecordModel(Base):
     result_json: Mapped[str] = mapped_column(Text, nullable=False)
     job_analysis_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     resume_content_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class InterviewRoundModel(Base):
+    __tablename__ = "interview_rounds"
+    __table_args__ = (
+        CheckConstraint(
+            "interview_type IN ('PHONE','VIDEO','ONSITE','OTHER')",
+            name="ck_interview_rounds_type",
+        ),
+        CheckConstraint(
+            "status IN ('PLANNED','COMPLETED','CANCELLED')",
+            name="ck_interview_rounds_status",
+        ),
+        Index("ix_interview_rounds_application_scheduled", "application_id", "scheduled_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    application_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("applications.id", ondelete="CASCADE"), nullable=False
+    )
+    round_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    interview_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    interviewer_note: Mapped[str | None] = mapped_column(Text)
+    went_well: Mapped[str | None] = mapped_column(Text)
+    could_improve: Mapped[str | None] = mapped_column(Text)
+    learning_notes: Mapped[str | None] = mapped_column(Text)
+    other_notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class InterviewQuestionModel(Base):
+    __tablename__ = "interview_questions"
+    __table_args__ = (
+        CheckConstraint(
+            "category IN ('PRODUCT','AI','TECHNICAL','PROJECT','BEHAVIORAL','BUSINESS','OTHER')",
+            name="ck_interview_questions_category",
+        ),
+        CheckConstraint(
+            "performance IN ('GOOD','OK','POOR','NOT_SURE')",
+            name="ck_interview_questions_performance",
+        ),
+        Index("ix_interview_questions_round_created", "interview_round_id", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    interview_round_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("interview_rounds.id", ondelete="CASCADE"), nullable=False
+    )
+    question: Mapped[str] = mapped_column(Text, nullable=False)
+    category: Mapped[str] = mapped_column(String(32), nullable=False)
+    answer_summary: Mapped[str | None] = mapped_column(Text)
+    performance: Mapped[str] = mapped_column(String(32), nullable=False)
+    note: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

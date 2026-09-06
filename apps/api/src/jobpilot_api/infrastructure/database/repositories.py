@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from jobpilot_api.application.repositories import ApplicationListEntry, JobListEntry
-from jobpilot_api.domain.applications import Application, ApplicationStatus
+from jobpilot_api.domain.applications import Application, ApplicationStatus, RejectionReason
 from jobpilot_api.domain.errors import (
     ApplicationAlreadyExistsError,
     DatabaseBusyError,
@@ -22,6 +22,17 @@ from jobpilot_api.domain.evidence_maps import (
     EvidenceMapRecord,
     evidence_map_from_stored_json,
 )
+from jobpilot_api.domain.interviews import (
+    InterviewQuestion,
+    InterviewQuestionDraft,
+    InterviewRound,
+    InterviewRoundDetail,
+    InterviewRoundDraft,
+    InterviewStatus,
+    InterviewType,
+    QuestionCategory,
+    QuestionPerformance,
+)
 from jobpilot_api.domain.jd_analysis import (
     JD_ANALYSIS_SCHEMA_VERSION,
     JDAnalysis,
@@ -33,6 +44,8 @@ from jobpilot_api.domain.resume_versions import ResumeVersion, ResumeVersionDraf
 from jobpilot_api.infrastructure.database.models import (
     ApplicationModel,
     EvidenceMapRecordModel,
+    InterviewQuestionModel,
+    InterviewRoundModel,
     JDAnalysisRecordModel,
     JobModel,
     ResumeVersionModel,
@@ -177,6 +190,8 @@ class SqlAlchemyApplicationRepository:
             job_id=job_id,
             status=ApplicationStatus.PLANNED.value,
             resume_version_id=None,
+            outcome_note=None,
+            rejection_reason=None,
             applied_at=None,
             created_at=now,
             updated_at=now,
@@ -205,6 +220,10 @@ class SqlAlchemyApplicationRepository:
         status: ApplicationStatus | None,
         resume_version_id: str | None,
         update_resume_version: bool,
+        outcome_note: str | None = None,
+        update_outcome_note: bool = False,
+        rejection_reason: RejectionReason | None = None,
+        update_rejection_reason: bool = False,
     ) -> Application | None:
         try:
             with self._sessions.begin() as session:
@@ -218,6 +237,12 @@ class SqlAlchemyApplicationRepository:
                         model.applied_at = now
                 if update_resume_version:
                     model.resume_version_id = resume_version_id
+                if update_outcome_note:
+                    model.outcome_note = outcome_note
+                if update_rejection_reason:
+                    model.rejection_reason = (
+                        rejection_reason.value if rejection_reason is not None else None
+                    )
                 model.updated_at = now
         except OperationalError as error:
             raise _database_error(error) from error
@@ -479,6 +504,183 @@ class SqlAlchemyEvidenceMapRepository:
         return _evidence_map_record(model)
 
 
+class SqlAlchemyInterviewRepository:
+    def __init__(self, sessions: sessionmaker[Session]) -> None:
+        self._sessions = sessions
+
+    def create_round(self, application_id: str, draft: InterviewRoundDraft) -> InterviewRound:
+        now = datetime.now(UTC)
+        model = InterviewRoundModel(
+            id=str(uuid4()),
+            application_id=application_id,
+            **_round_draft_values(draft),
+            created_at=now,
+            updated_at=now,
+        )
+        try:
+            with self._sessions.begin() as session:
+                session.add(model)
+        except OperationalError as error:
+            raise _database_error(error) from error
+        return _interview_round(model)
+
+    def get_round(self, interview_id: str) -> InterviewRoundDetail | None:
+        try:
+            with self._sessions() as session:
+                model = session.get(InterviewRoundModel, interview_id)
+                if model is None:
+                    return None
+                questions = session.scalars(
+                    select(InterviewQuestionModel)
+                    .where(InterviewQuestionModel.interview_round_id == interview_id)
+                    .order_by(InterviewQuestionModel.created_at, InterviewQuestionModel.id)
+                ).all()
+                return InterviewRoundDetail(
+                    interview=_interview_round(model),
+                    questions=tuple(_interview_question(question) for question in questions),
+                )
+        except OperationalError as error:
+            raise _database_error(error) from error
+
+    def update_round(
+        self, interview_id: str, draft: InterviewRoundDraft
+    ) -> InterviewRoundDetail | None:
+        try:
+            with self._sessions.begin() as session:
+                model = session.get(InterviewRoundModel, interview_id)
+                if model is None:
+                    return None
+                for name, value in _round_draft_values(draft).items():
+                    setattr(model, name, value)
+                model.updated_at = datetime.now(UTC)
+                questions = session.scalars(
+                    select(InterviewQuestionModel)
+                    .where(InterviewQuestionModel.interview_round_id == interview_id)
+                    .order_by(InterviewQuestionModel.created_at, InterviewQuestionModel.id)
+                ).all()
+        except OperationalError as error:
+            raise _database_error(error) from error
+        return InterviewRoundDetail(
+            interview=_interview_round(model),
+            questions=tuple(_interview_question(question) for question in questions),
+        )
+
+    def delete_round(self, interview_id: str) -> bool:
+        try:
+            with self._sessions.begin() as session:
+                model = session.get(InterviewRoundModel, interview_id)
+                if model is None:
+                    return False
+                session.delete(model)
+                return True
+        except OperationalError as error:
+            raise _database_error(error) from error
+
+    def list_rounds(
+        self, *, application_id: str, limit: int, offset: int
+    ) -> tuple[list[InterviewRoundDetail], int]:
+        statement = (
+            select(InterviewRoundModel)
+            .where(InterviewRoundModel.application_id == application_id)
+            .order_by(
+                InterviewRoundModel.scheduled_at.is_(None),
+                InterviewRoundModel.scheduled_at,
+                InterviewRoundModel.created_at,
+                InterviewRoundModel.id,
+            )
+            .limit(limit)
+            .offset(offset)
+        )
+        try:
+            with self._sessions() as session:
+                models = session.scalars(statement).all()
+                total = (
+                    session.scalar(
+                        select(func.count())
+                        .select_from(InterviewRoundModel)
+                        .where(InterviewRoundModel.application_id == application_id)
+                    )
+                    or 0
+                )
+                questions_by_round: dict[str, list[InterviewQuestion]] = {
+                    model.id: [] for model in models
+                }
+                if questions_by_round:
+                    questions = session.scalars(
+                        select(InterviewQuestionModel)
+                        .where(InterviewQuestionModel.interview_round_id.in_(questions_by_round))
+                        .order_by(InterviewQuestionModel.created_at, InterviewQuestionModel.id)
+                    ).all()
+                    for question in questions:
+                        questions_by_round[question.interview_round_id].append(
+                            _interview_question(question)
+                        )
+                return (
+                    [
+                        InterviewRoundDetail(
+                            interview=_interview_round(model),
+                            questions=tuple(questions_by_round[model.id]),
+                        )
+                        for model in models
+                    ],
+                    total,
+                )
+        except OperationalError as error:
+            raise _database_error(error) from error
+
+    def create_question(
+        self, interview_id: str, draft: InterviewQuestionDraft
+    ) -> InterviewQuestion:
+        now = datetime.now(UTC)
+        model = InterviewQuestionModel(
+            id=str(uuid4()),
+            interview_round_id=interview_id,
+            **_question_draft_values(draft),
+            created_at=now,
+            updated_at=now,
+        )
+        try:
+            with self._sessions.begin() as session:
+                session.add(model)
+        except OperationalError as error:
+            raise _database_error(error) from error
+        return _interview_question(model)
+
+    def get_question(self, question_id: str) -> InterviewQuestion | None:
+        try:
+            with self._sessions() as session:
+                model = session.get(InterviewQuestionModel, question_id)
+                return _interview_question(model) if model is not None else None
+        except OperationalError as error:
+            raise _database_error(error) from error
+
+    def update_question(
+        self, question_id: str, draft: InterviewQuestionDraft
+    ) -> InterviewQuestion | None:
+        try:
+            with self._sessions.begin() as session:
+                model = session.get(InterviewQuestionModel, question_id)
+                if model is None:
+                    return None
+                for name, value in _question_draft_values(draft).items():
+                    setattr(model, name, value)
+                model.updated_at = datetime.now(UTC)
+        except OperationalError as error:
+            raise _database_error(error) from error
+        return _interview_question(model)
+
+    def delete_question(self, question_id: str) -> bool:
+        try:
+            with self._sessions.begin() as session:
+                model = session.get(InterviewQuestionModel, question_id)
+                if model is None:
+                    return False
+                session.delete(model)
+                return True
+        except OperationalError as error:
+            raise _database_error(error) from error
+
+
 def _draft_values(draft: JobDraft) -> dict[str, object]:
     return {
         "title": draft.title,
@@ -490,6 +692,30 @@ def _draft_values(draft: JobDraft) -> dict[str, object]:
         "normalized_source_url": draft.normalized_source_url,
         "description": draft.description,
         "notes": draft.notes,
+    }
+
+
+def _round_draft_values(draft: InterviewRoundDraft) -> dict[str, object]:
+    return {
+        "round_name": draft.round_name,
+        "interview_type": draft.interview_type.value,
+        "scheduled_at": draft.scheduled_at,
+        "status": draft.status.value,
+        "interviewer_note": draft.interviewer_note,
+        "went_well": draft.went_well,
+        "could_improve": draft.could_improve,
+        "learning_notes": draft.learning_notes,
+        "other_notes": draft.other_notes,
+    }
+
+
+def _question_draft_values(draft: InterviewQuestionDraft) -> dict[str, object]:
+    return {
+        "question": draft.question,
+        "category": draft.category.value,
+        "answer_summary": draft.answer_summary,
+        "performance": draft.performance.value,
+        "note": draft.note,
     }
 
 
@@ -516,7 +742,43 @@ def _application(model: ApplicationModel) -> Application:
         job_id=model.job_id,
         status=ApplicationStatus(model.status),
         resume_version_id=model.resume_version_id,
+        outcome_note=model.outcome_note,
+        rejection_reason=(
+            RejectionReason(model.rejection_reason) if model.rejection_reason is not None else None
+        ),
         applied_at=_utc(model.applied_at) if model.applied_at else None,
+        created_at=_utc(model.created_at),
+        updated_at=_utc(model.updated_at),
+    )
+
+
+def _interview_round(model: InterviewRoundModel) -> InterviewRound:
+    return InterviewRound(
+        id=model.id,
+        application_id=model.application_id,
+        round_name=model.round_name,
+        interview_type=InterviewType(model.interview_type),
+        scheduled_at=_utc(model.scheduled_at) if model.scheduled_at else None,
+        status=InterviewStatus(model.status),
+        interviewer_note=model.interviewer_note,
+        went_well=model.went_well,
+        could_improve=model.could_improve,
+        learning_notes=model.learning_notes,
+        other_notes=model.other_notes,
+        created_at=_utc(model.created_at),
+        updated_at=_utc(model.updated_at),
+    )
+
+
+def _interview_question(model: InterviewQuestionModel) -> InterviewQuestion:
+    return InterviewQuestion(
+        id=model.id,
+        interview_round_id=model.interview_round_id,
+        question=model.question,
+        category=QuestionCategory(model.category),
+        answer_summary=model.answer_summary,
+        performance=QuestionPerformance(model.performance),
+        note=model.note,
         created_at=_utc(model.created_at),
         updated_at=_utc(model.updated_at),
     )

@@ -10,7 +10,12 @@ from sqlalchemy.orm import sessionmaker
 from jobpilot_api.application.evidence_maps import EvidenceMapService
 from jobpilot_api.application.jd_analysis import JDAnalysisService
 from jobpilot_api.application.providers import EvidenceMapProvider, JDAnalysisProvider
-from jobpilot_api.application.services import ApplicationService, JobService, ResumeVersionService
+from jobpilot_api.application.services import (
+    ApplicationService,
+    InterviewService,
+    JobService,
+    ResumeVersionService,
+)
 from jobpilot_api.config import LLMSettings
 from jobpilot_api.infrastructure.ai.openai_compatible import (
     OpenAICompatibleJDAnalysisProvider,
@@ -19,6 +24,7 @@ from jobpilot_api.infrastructure.database.engine import create_database_engine
 from jobpilot_api.infrastructure.database.repositories import (
     SqlAlchemyApplicationRepository,
     SqlAlchemyEvidenceMapRepository,
+    SqlAlchemyInterviewRepository,
     SqlAlchemyJDAnalysisRepository,
     SqlAlchemyJobRepository,
     SqlAlchemyResumeVersionRepository,
@@ -41,6 +47,7 @@ class ServiceProvider:
         self._analysis: JDAnalysisService | None = None
         self._resumes: ResumeVersionService | None = None
         self._evidence_maps: EvidenceMapService | None = None
+        self._interviews: InterviewService | None = None
         configured_provider = (
             OpenAICompatibleJDAnalysisProvider(llm_settings) if llm_settings is not None else None
         )
@@ -55,6 +62,7 @@ class ServiceProvider:
         JDAnalysisService,
         ResumeVersionService,
         EvidenceMapService,
+        InterviewService,
     ]:
         if (
             self._jobs is None
@@ -62,6 +70,7 @@ class ServiceProvider:
             or self._analysis is None
             or self._resumes is None
             or self._evidence_maps is None
+            or self._interviews is None
         ):
             with self._lock:
                 if (
@@ -70,6 +79,7 @@ class ServiceProvider:
                     or self._analysis is None
                     or self._resumes is None
                     or self._evidence_maps is None
+                    or self._interviews is None
                 ):
                     engine = create_database_engine(self._database_path)
                     sessions = sessionmaker(engine, expire_on_commit=False)
@@ -78,6 +88,7 @@ class ServiceProvider:
                     analysis_repository = SqlAlchemyJDAnalysisRepository(sessions)
                     resume_repository = SqlAlchemyResumeVersionRepository(sessions)
                     evidence_map_repository = SqlAlchemyEvidenceMapRepository(sessions)
+                    interview_repository = SqlAlchemyInterviewRepository(sessions)
                     self._engine = engine
                     self._jobs = JobService(job_repository)
                     self._applications = ApplicationService(
@@ -98,12 +109,17 @@ class ServiceProvider:
                         self._analysis,
                         self._evidence_map_provider,
                     )
+                    self._interviews = InterviewService(
+                        interview_repository,
+                        application_repository,
+                    )
         return (
             self._jobs,
             self._applications,
             self._analysis,
             self._resumes,
             self._evidence_maps,
+            self._interviews,
         )
 
     def close(self) -> None:
@@ -112,25 +128,30 @@ class ServiceProvider:
 
 
 def get_job_service(request: Request) -> JobService:
-    jobs, _, _, _, _ = request.app.state.service_provider.services()
+    jobs, _, _, _, _, _ = request.app.state.service_provider.services()
     return jobs
 
 
 def get_application_service(request: Request) -> ApplicationService:
-    _, applications, _, _, _ = request.app.state.service_provider.services()
+    _, applications, _, _, _, _ = request.app.state.service_provider.services()
     return applications
 
 
 def get_analysis_service(request: Request) -> JDAnalysisService:
-    _, _, analysis, _, _ = request.app.state.service_provider.services()
+    _, _, analysis, _, _, _ = request.app.state.service_provider.services()
     return analysis
 
 
 def get_resume_version_service(request: Request) -> ResumeVersionService:
-    _, _, _, resumes, _ = request.app.state.service_provider.services()
+    _, _, _, resumes, _, _ = request.app.state.service_provider.services()
     return resumes
 
 
 def get_evidence_map_service(request: Request) -> EvidenceMapService:
-    _, _, _, _, evidence_maps = request.app.state.service_provider.services()
+    _, _, _, _, evidence_maps, _ = request.app.state.service_provider.services()
     return evidence_maps
+
+
+def get_interview_service(request: Request) -> InterviewService:
+    _, _, _, _, _, interviews = request.app.state.service_provider.services()
+    return interviews

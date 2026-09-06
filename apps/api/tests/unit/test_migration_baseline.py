@@ -10,7 +10,7 @@ from jobpilot_api.infrastructure.database.engine import sqlite_database_url
 from jobpilot_api.infrastructure.database.models import Base
 
 
-def test_model_metadata_and_migration_history_contain_phase_7_resume_tables() -> None:
+def test_model_metadata_and_migration_history_contain_phase_8_interview_tables() -> None:
     config = Config("apps/api/alembic.ini")
     script = ScriptDirectory.from_config(config)
 
@@ -20,8 +20,101 @@ def test_model_metadata_and_migration_history_contain_phase_7_resume_tables() ->
         "jd_analysis_records",
         "resume_versions",
         "evidence_map_records",
+        "interview_rounds",
+        "interview_questions",
     }
     assert len(script.get_heads()) == 1
+
+
+def test_phase_8_interview_migration_is_reversible_and_cascades(tmp_path: Path) -> None:
+    database_path = tmp_path / "phase-8-interviews.db"
+    config = Config("apps/api/alembic.ini")
+    config.set_main_option("sqlalchemy.url", sqlite_database_url(database_path).render_as_string())
+    command.upgrade(config, "0007_evidence_map_schema_v2")
+
+    with sqlite3.connect(database_path) as connection:
+        connection.execute("PRAGMA foreign_keys=ON")
+        connection.execute(
+            """
+            INSERT INTO jobs (id, title, company, source, created_at, updated_at)
+            VALUES ('job-1', '虚构岗位', '虚构公司', 'manual', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO applications (id, job_id, status, created_at, updated_at)
+            VALUES ('application-1', 'job-1', 'planned', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """
+        )
+        connection.commit()
+
+    command.upgrade(config, "head")
+    with sqlite3.connect(database_path) as connection:
+        connection.execute("PRAGMA foreign_keys=ON")
+        application_columns = {
+            row[1] for row in connection.execute("PRAGMA table_info(applications)").fetchall()
+        }
+        round_foreign_keys = connection.execute(
+            "PRAGMA foreign_key_list(interview_rounds)"
+        ).fetchall()
+        question_foreign_keys = connection.execute(
+            "PRAGMA foreign_key_list(interview_questions)"
+        ).fetchall()
+        connection.execute(
+            """
+            INSERT INTO interview_rounds (
+                id, application_id, round_name, interview_type, status, created_at, updated_at
+            ) VALUES (
+                'round-1', 'application-1', '一面', 'VIDEO', 'PLANNED',
+                CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+            )
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO interview_questions (
+                id, interview_round_id, question, category, performance, created_at, updated_at
+            ) VALUES (
+                'question-1', 'round-1', '虚构面试题', 'PROJECT', 'OK',
+                CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+            )
+            """
+        )
+        connection.execute("DELETE FROM applications WHERE id = 'application-1'")
+        connection.commit()
+        remaining_rounds = connection.execute("SELECT count(*) FROM interview_rounds").fetchone()[0]
+        remaining_questions = connection.execute(
+            "SELECT count(*) FROM interview_questions"
+        ).fetchone()[0]
+
+    assert {"outcome_note", "rejection_reason"}.issubset(application_columns)
+    assert any(
+        row[2] == "applications" and row[3] == "application_id" and row[6] == "CASCADE"
+        for row in round_foreign_keys
+    )
+    assert any(
+        row[2] == "interview_rounds" and row[3] == "interview_round_id" and row[6] == "CASCADE"
+        for row in question_foreign_keys
+    )
+    assert remaining_rounds == 0
+    assert remaining_questions == 0
+
+    command.downgrade(config, "0007_evidence_map_schema_v2")
+    with sqlite3.connect(database_path) as connection:
+        tables = {
+            row[0]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table'"
+            ).fetchall()
+        }
+        application_columns = {
+            row[1] for row in connection.execute("PRAGMA table_info(applications)").fetchall()
+        }
+
+    assert "interview_rounds" not in tables
+    assert "interview_questions" not in tables
+    assert "outcome_note" not in application_columns
+    assert "rejection_reason" not in application_columns
 
 
 def test_alembic_connects_to_an_explicit_temporary_sqlite_database(tmp_path: Path) -> None:
@@ -119,7 +212,7 @@ def test_phase_4_source_migration_preserves_phase_3_data_and_is_reversible(tmp_p
     command.upgrade(config, "head")
     with sqlite3.connect(database_path) as connection:
         version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
-    assert version == ("0007_evidence_map_schema_v2",)
+    assert version == ("0008_interview_feedback",)
 
 
 def test_source_migration_refuses_to_downgrade_while_boss_jobs_exist(tmp_path: Path) -> None:
@@ -200,7 +293,7 @@ def test_phase_5_source_migration_preserves_existing_data_and_is_reversible(
 
     with sqlite3.connect(database_path) as connection:
         version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
-    assert version == ("0007_evidence_map_schema_v2",)
+    assert version == ("0008_interview_feedback",)
 
 
 def test_phase_5_source_migration_refuses_downgrade_while_nowcoder_jobs_exist(
@@ -269,7 +362,7 @@ def test_phase_6_analysis_migration_is_reversible_and_cascades(tmp_path: Path) -
     command.upgrade(config, "head")
     with sqlite3.connect(database_path) as connection:
         version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
-    assert version == ("0007_evidence_map_schema_v2",)
+    assert version == ("0008_interview_feedback",)
 
 
 def test_phase_7_resume_migration_is_reversible_and_preserves_applications(

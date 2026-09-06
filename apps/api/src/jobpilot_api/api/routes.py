@@ -8,6 +8,7 @@ from jobpilot_api.api.dependencies import (
     get_analysis_service,
     get_application_service,
     get_evidence_map_service,
+    get_interview_service,
     get_job_service,
     get_resume_version_service,
 )
@@ -19,6 +20,13 @@ from jobpilot_api.api.schemas import (
     ApplicationResponse,
     ApplicationUpdateRequest,
     EvidenceMapGenerateRequest,
+    InterviewQuestionCreateRequest,
+    InterviewQuestionResponse,
+    InterviewQuestionUpdateRequest,
+    InterviewRoundCreateRequest,
+    InterviewRoundListResponse,
+    InterviewRoundResponse,
+    InterviewRoundUpdateRequest,
     JobAnalysisResponse,
     JobCreateRequest,
     JobEvidenceMapResponse,
@@ -34,8 +42,14 @@ from jobpilot_api.api.schemas import (
 )
 from jobpilot_api.application.evidence_maps import EvidenceMapService
 from jobpilot_api.application.jd_analysis import JDAnalysisService
-from jobpilot_api.application.services import ApplicationService, JobService, ResumeVersionService
+from jobpilot_api.application.services import (
+    ApplicationService,
+    InterviewService,
+    JobService,
+    ResumeVersionService,
+)
 from jobpilot_api.domain.applications import ApplicationStatus
+from jobpilot_api.domain.interviews import InterviewQuestionDraft, InterviewRoundDraft
 from jobpilot_api.domain.jobs import JobDraft
 from jobpilot_api.domain.resume_versions import ResumeVersionDraft
 
@@ -196,8 +210,102 @@ def update_application(
         confirm_applied=request.confirm_applied,
         resume_version_id=request.resume_version_id,
         update_resume_version="resume_version_id" in request.model_fields_set,
+        outcome_note=request.outcome_note,
+        update_outcome_note="outcome_note" in request.model_fields_set,
+        rejection_reason=request.rejection_reason,
+        update_rejection_reason="rejection_reason" in request.model_fields_set,
     )
     return ApplicationResponse.from_domain(application)
+
+
+@router.get("/applications/{application_id}/interviews", response_model=InterviewRoundListResponse)
+def list_interview_rounds(
+    application_id: str,
+    service: Annotated[InterviewService, Depends(get_interview_service)],
+    limit: PageLimit = 50,
+    offset: PageOffset = 0,
+) -> InterviewRoundListResponse:
+    items, total = service.list_rounds(application_id=application_id, limit=limit, offset=offset)
+    return InterviewRoundListResponse(
+        items=[InterviewRoundResponse.from_domain(item) for item in items],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.post(
+    "/applications/{application_id}/interviews",
+    response_model=InterviewRoundResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_interview_round(
+    application_id: str,
+    request: InterviewRoundCreateRequest,
+    service: Annotated[InterviewService, Depends(get_interview_service)],
+) -> InterviewRoundResponse:
+    draft = InterviewRoundDraft.create(**request.model_dump())
+    return InterviewRoundResponse.from_domain(service.create_round(application_id, draft))
+
+
+@router.get("/interviews/{interview_id}", response_model=InterviewRoundResponse)
+def get_interview_round(
+    interview_id: str,
+    service: Annotated[InterviewService, Depends(get_interview_service)],
+) -> InterviewRoundResponse:
+    return InterviewRoundResponse.from_domain(service.get_round(interview_id))
+
+
+@router.patch("/interviews/{interview_id}", response_model=InterviewRoundResponse)
+def update_interview_round(
+    interview_id: str,
+    request: InterviewRoundUpdateRequest,
+    service: Annotated[InterviewService, Depends(get_interview_service)],
+) -> InterviewRoundResponse:
+    changes = request.model_dump(exclude_unset=True)
+    return InterviewRoundResponse.from_domain(service.update_round(interview_id, changes))
+
+
+@router.delete("/interviews/{interview_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_interview_round(
+    interview_id: str,
+    service: Annotated[InterviewService, Depends(get_interview_service)],
+) -> Response:
+    service.delete_round(interview_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/interviews/{interview_id}/questions",
+    response_model=InterviewQuestionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_interview_question(
+    interview_id: str,
+    request: InterviewQuestionCreateRequest,
+    service: Annotated[InterviewService, Depends(get_interview_service)],
+) -> InterviewQuestionResponse:
+    draft = InterviewQuestionDraft.create(**request.model_dump())
+    return InterviewQuestionResponse.from_domain(service.create_question(interview_id, draft))
+
+
+@router.patch("/interview-questions/{question_id}", response_model=InterviewQuestionResponse)
+def update_interview_question(
+    question_id: str,
+    request: InterviewQuestionUpdateRequest,
+    service: Annotated[InterviewService, Depends(get_interview_service)],
+) -> InterviewQuestionResponse:
+    changes = request.model_dump(exclude_unset=True)
+    return InterviewQuestionResponse.from_domain(service.update_question(question_id, changes))
+
+
+@router.delete("/interview-questions/{question_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_interview_question(
+    question_id: str,
+    service: Annotated[InterviewService, Depends(get_interview_service)],
+) -> Response:
+    service.delete_question(question_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/resume-versions", response_model=ResumeVersionListResponse)
