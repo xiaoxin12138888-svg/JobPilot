@@ -103,12 +103,10 @@ def test_invalid_quotes_are_removed_and_unsupported_positive_coverage_becomes_ga
     assert result.mappings[0].reason == "当前简历版本中未发现可证明该要求的有效原文证据。"
 
 
-def test_new_provider_result_allows_at_most_three_quotes_but_existing_record_stays_readable() -> None:
+def test_new_results_cap_quotes_and_old_records_remain_readable() -> None:
     requirement = (EvidenceRequirement(RequirementType.MUST_HAVE, "产品需求分析和项目推进"),)
     quotes = ["证据一", "证据二", "证据三", "证据四"]
-    raw_content = _payload(
-        [_mapping("MUST_HAVE", "产品需求分析和项目推进", "DIRECT", quotes)]
-    )
+    raw_content = _payload([_mapping("MUST_HAVE", "产品需求分析和项目推进", "DIRECT", quotes)])
 
     with pytest.raises(AnalysisInvalidResponseError, match="无法验证"):
         parse_and_ground_evidence_map(raw_content, requirement, "；".join(quotes))
@@ -156,9 +154,15 @@ def test_new_provider_result_allows_at_most_three_quotes_but_existing_record_sta
             "结论：部分支持 / 待确认；当前简历显示硕士在读，但没有明确毕业年份，需要用户确认。",
         ),
     ],
-    ids=["A-semantic-direct", "B-cross-team-partial", "C-sql-direct", "D-sales-gap", "E-cohort-partial"],
+    ids=[
+        "A-semantic-direct",
+        "B-cross-team-partial",
+        "C-sql-direct",
+        "D-sales-gap",
+        "E-cohort-partial",
+    ],
 )
-def test_semantic_fake_provider_cases_keep_grounded_quotes_and_frozen_coverage(
+def test_semantic_cases_preserve_grounding_and_frozen_coverage(
     requirement: str,
     resume_content: str,
     coverage: str,

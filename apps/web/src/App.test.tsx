@@ -559,14 +559,14 @@ describe('App', () => {
     await act(async () => resolveGeneration?.(generated));
     expect(
       await screen.findByText(
-        '共分析 6 项：支持 2 项，部分支持 / 待确认 2 项，当前无法证明 2 项。',
+        '共分析 6 项：直接证据 2 项，部分支持 / 待确认 2 项，当前无法证明 2 项。',
       ),
     ).toBeInTheDocument();
     const evidenceRegion = screen.getByRole('region', { name: '简历综合证据分析' });
     for (const heading of ['硬性要求', '加分项', '岗位职责', '技能', '经验', '学历']) {
       expect(within(evidenceRegion).getByRole('heading', { name: heading })).toBeInTheDocument();
     }
-    expect(within(evidenceRegion).getAllByText('结论：支持')).toHaveLength(2);
+    expect(within(evidenceRegion).getAllByText('结论：直接证据')).toHaveLength(2);
     expect(within(evidenceRegion).getAllByText('结论：部分支持 / 待确认')).toHaveLength(2);
     expect(within(evidenceRegion).getAllByText('结论：当前无法证明')).toHaveLength(2);
     expect(within(evidenceRegion).getByRole('heading', { name: '待确认事项' })).toBeInTheDocument();

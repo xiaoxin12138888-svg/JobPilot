@@ -179,9 +179,10 @@ def test_generate_get_and_minimal_provider_input(
     assert "quote" in system_instruction
     assert "不是关键词或字面相等" in system_instruction
     assert "组合多段" in system_instruction
-    assert "除下述通常学制假设外" in system_instruction
-    assert "简单、透明的时间推理" in system_instruction
-    assert "最多只能判为 PARTIAL" in system_instruction
+    assert "完整 resumeContent" in system_instruction
+    assert "1 至 3 条" in system_instruction
+    assert "未明确提供毕业年份、预计毕业时间或培养年限" in system_instruction
+    assert "通常学制" not in system_instruction
     assert "description" not in evidence_input.as_provider_data()["job"]
 
 
@@ -412,7 +413,7 @@ def test_invalid_result_never_overwrites_and_grounding_downgrades_invalid_eviden
     assert preserved.json() != original
 
 
-def test_grounding_keeps_partial_cohort_evidence_without_external_program_length_inference() -> None:
+def test_grounding_keeps_partial_cohort_without_external_inference() -> None:
     requirements = (EvidenceRequirement(RequirementType.MUST_HAVE, "2027届"),)
     raw_content = json.dumps(
         {

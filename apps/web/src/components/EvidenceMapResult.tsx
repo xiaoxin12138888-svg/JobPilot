@@ -5,7 +5,7 @@ import type {
 } from '@jobpilot/api-client';
 
 const CONCLUSION_LABELS: Record<EvidenceCoverage, string> = {
-  DIRECT: '支持',
+  DIRECT: '直接证据',
   PARTIAL: '部分支持 / 待确认',
   GAP: '当前无法证明',
 };
@@ -40,7 +40,7 @@ export function EvidenceMapResult({ mappings }: { mappings: EvidenceMapping[] })
           </div>
           <dl className="evidence-overview-counts" aria-label="全部岗位条件判断统计">
             <div>
-              <dt>支持</dt>
+              <dt>直接证据</dt>
               <dd>{counts.DIRECT}</dd>
             </div>
             <div>
@@ -54,8 +54,8 @@ export function EvidenceMapResult({ mappings }: { mappings: EvidenceMapping[] })
           </dl>
         </div>
         <p className="evidence-overview-summary">
-          共分析 {mappings.length} 项：支持 {counts.DIRECT} 项，部分支持 / 待确认 {counts.PARTIAL}{' '}
-          项，当前无法证明 {counts.GAP} 项。
+          共分析 {mappings.length} 项：直接证据 {counts.DIRECT} 项，部分支持 / 待确认{' '}
+          {counts.PARTIAL} 项，当前无法证明 {counts.GAP} 项。
         </p>
         <div className="evidence-priority-grid">
           <PriorityList
@@ -123,7 +123,7 @@ function EvidenceGroup({ title, mappings }: { title: string; mappings: EvidenceM
       <div className="evidence-group-header">
         <h3>{title}</h3>
         <div className="evidence-counts" aria-label={`${title}判断统计`}>
-          <span>支持 {counts.DIRECT}</span>
+          <span>直接证据 {counts.DIRECT}</span>
           <span>部分支持 {counts.PARTIAL}</span>
           <span>无法证明 {counts.GAP}</span>
         </div>
