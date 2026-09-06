@@ -197,6 +197,7 @@ textarea:focus-visible {
   font-family: Georgia, 'Times New Roman', serif;
   font-size: clamp(2.3rem, 6vw, 4.5rem);
   line-height: 1.05;
+  text-wrap: balance;
 }
 .page-heading p {
   max-width: 40rem;
@@ -872,6 +873,169 @@ dd {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.section-heading-row,
+.interview-round-header,
+.question-section-heading,
+.question-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.section-heading-row {
+  margin-bottom: 1rem;
+}
+.section-heading-row h2,
+.section-heading-row .eyebrow,
+.question-section-heading h4,
+.question-card h5,
+.question-copy p {
+  margin: 0;
+}
+.interview-list,
+.question-list {
+  display: grid;
+  gap: 1rem;
+}
+.interview-round {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid #cfd8d1;
+  border-radius: 0.65rem;
+  background: #fbfcfa;
+}
+.interview-round h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+}
+.interview-round-header .muted {
+  margin: 0;
+}
+.interview-round time {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.compact-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+.text-button {
+  min-height: 2rem;
+  padding: 0;
+  border: 0;
+  color: var(--accent);
+  font-weight: 750;
+  background: transparent;
+  cursor: pointer;
+}
+.text-button:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.2rem;
+}
+.text-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.round-status,
+.question-meta span {
+  display: inline-flex;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 750;
+}
+.round-status-planned {
+  color: #704d0c;
+  background: #f6e9c4;
+}
+.round-status-completed {
+  color: var(--accent-dark);
+  background: var(--accent-soft);
+}
+.round-status-cancelled {
+  color: #566059;
+  background: #eceeea;
+}
+.interview-form,
+.question-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.55rem;
+  background: white;
+}
+.interview-form-wide,
+.question-form-wide {
+  grid-column: 1 / -1;
+}
+.review-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0 0;
+}
+.review-summary div {
+  min-width: 0;
+  padding: 0.75rem;
+  border-left: 3px solid #b8cdbf;
+  background: white;
+}
+.review-summary dd {
+  margin-top: 0.35rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.question-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+.question-section-heading {
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+.question-card {
+  min-width: 0;
+  padding: 0.85rem;
+  border: 1px solid #deded8;
+  border-radius: 0.55rem;
+  background: white;
+}
+.question-card h5 {
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.question-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.65rem 0 0;
+}
+.question-meta span {
+  color: #445248;
+  background: #edf1ed;
+}
+.question-copy {
+  margin-top: 0.8rem;
+}
+.question-copy strong {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.question-copy p {
+  margin-top: 0.25rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .application-card {
   position: sticky;
   top: 1rem;
@@ -1107,6 +1271,16 @@ dd {
   .evidence-priority-grid {
     grid-template-columns: 1fr;
   }
+  .interview-round-header,
+  .question-card-heading {
+    flex-direction: column;
+  }
+  .compact-actions {
+    justify-content: flex-start;
+  }
+  .review-summary {
+    grid-template-columns: 1fr;
+  }
   .feedback-totals,
   .feedback-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1175,6 +1349,30 @@ dd {
   }
   .feedback-funnel li:first-child {
     border-top: 0;
+  }
+  .section-heading-row,
+  .question-section-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .section-heading-row .button,
+  .compact-actions,
+  .compact-actions .text-button,
+  .question-section-heading .text-button {
+    width: 100%;
+  }
+  .compact-actions {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .interview-form,
+  .question-form {
+    grid-template-columns: 1fr;
+  }
+  .interview-form-wide,
+  .question-form-wide {
+    grid-column: auto;
   }
   .resume-editor textarea {
     min-height: 20rem;
