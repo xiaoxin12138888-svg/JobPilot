@@ -10,6 +10,20 @@ questions, manual self review and outcome facts. Compute a deterministic local F
 directly from SQLite. The whole phase must work with every `JOBPILOT_LLM_*` variable absent and must
 not add LLM, RAG, Agent, telemetry, event tracking, scoring or an analytics framework.
 
+## Implementation status
+
+Backend, shared contracts, Web Interview/Question/Application outcome flows, factual Feedback Summary
+and responsive styling are implemented in incremental commits through `5c5bc12`. Automated and
+provider-free isolated browser acceptance use an explicit temporary SQLite database and have verified
+one completed round, three fictional questions, self review, outcome/rejection reason, Resume Version
+and source groups, clean console output, four responsive widths and API restart persistence.
+
+The user's current 8001 process was started before the Phase 8 API contract and still returns the old
+Application response. It created the requested Application but cannot serve current Interview fields.
+This run leaves `runtime-data/jobpilot.db` untouched while that stale process owns it; therefore
+real-workspace acceptance remains blocked until the project owner stops the stale process and starts the
+supported current launcher. This blocker must not be hidden by the isolated acceptance result.
+
 ## Frozen contract
 
 - `InterviewRound` belongs to one Application and contains a name, `PHONE|VIDEO|ONSITE|OTHER` type,

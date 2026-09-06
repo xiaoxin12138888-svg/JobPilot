@@ -1,20 +1,26 @@
 # JobPilot
 
-JobPilot 是面向个人求职者的本地优先求职工作台。它计划把用户在招聘网站上主动查看并确认的信息整理到一个本机 workspace，逐步支持岗位管理、申请跟踪和简历版本关联。
+JobPilot 是面向个人求职者的本地优先求职工作台。它把用户主动确认的岗位、投递、简历版本、
+面试记录与结果复盘整理到一个本机 workspace。
 
 JobPilot 不替代招聘网站，不建设职位数据库，也不代表用户自动搜索、抓取或投递。
 
 ## 当前状态
 
-项目已通过 **Phase 3 — Job & Application Domain Foundation**、**Phase 4 — BOSS Direct Job Capture**、**Phase 5 — Nowcoder Adapter & Shared Capture Contract** 与 **Phase 6 — JD Structured AI Analysis**。当前分支 `phase/7-resume-evidence-map` 正在完成 **Phase 7 — Resume Version & Evidence Map**；本地实现与自动化已完成，真实简历外发、BOSS/牛客 Evidence Map 和重启持久化仍需项目负责人在 UI 中明确确认并人工验收。核心能力包括：
+项目已通过 **Phase 3 — Job & Application Domain Foundation**、**Phase 4 — BOSS Direct Job Capture**、**Phase 5 — Nowcoder Adapter & Shared Capture Contract** 与 **Phase 6 — JD Structured AI Analysis**。**Phase 7 — Resume Version & Evidence Map** 已实现，但真实语义质量验收仍为 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`。当前分支 `phase/8-interview-feedback` 正在收尾 **Phase 8 — Interview Record & Feedback Loop**；自动化和隔离浏览器验收已完成，真实 runtime 数据库验收仍等待最新 API 进程启动。核心能力包括：
 
-- React Web：本机 API 状态、岗位库、纯文本简历版本、岗位详情/编辑/删除、投递状态/使用简历记录，以及可选 JD Analysis/Evidence Map；
+- React Web：本机 API 状态、岗位库、纯文本简历版本、岗位详情/编辑/删除、投递状态/使用简历记录、面试轮次与题目、自我复盘、Application 结果记录、事实型求职复盘，以及可选 JD Analysis/Evidence Map；
 - Chrome Extension：使用 `activeTab` + `scripting` 的用户主动采集 Popup，无后台进程；唯一 host permission 是 `http://127.0.0.1:8000/*`；
-- FastAPI：公开 `GET /health`、Job/Application/Resume Version 与每个 Job 的可选分析/Evidence Map API，默认绑定 `127.0.0.1`；
-- SQLite、SQLAlchemy 与 Alembic：launcher 启动前自动升级 `runtime-data/jobpilot.db`，业务表为 `jobs`、`applications`、`jd_analysis_records`、`resume_versions` 与 `evidence_map_records`；
+- FastAPI：公开 `GET /health`、Job/Application/Resume Version、Interview 与事实型 Feedback Summary，以及每个 Job 的可选分析/Evidence Map API，默认绑定 `127.0.0.1`；
+- SQLite、SQLAlchemy 与 Alembic：launcher 启动前自动升级 `runtime-data/jobpilot.db`，业务表为 `jobs`、`applications`、`jd_analysis_records`、`resume_versions`、`evidence_map_records`、`interview_rounds` 与 `interview_questions`；
 - `packages/shared-types` 与 `packages/api-client`：提供 camelCase 业务契约、credential-free 请求和不可信响应校验。
 
 Phase 4 已交付 BOSS 直聘当前岗位页采集；Phase 5 在同一确认编辑与本地保存链路上新增牛客岗位详情页。两个 Adapter 都只读取用户当前打开页面的必要可见文本。Phase 6 不改 Extension，只允许 Web 在用户点击后把单个已保存 Job 的最小 JD 字段经 FastAPI 发送给显式配置的 Provider。Phase 7 增加本地纯文本 Resume Version、Application 显式使用版本和 Evidence Map；新生成结果会综合当前非 stale JD Analysis 的硬性要求、加分项、职责、技能、经验与学历六类条件，并从完整简历中寻找一至三段可追溯的语义证据，而非要求关键词相同。语义判断不能补全简历未写的能力、年限、学历、毕业年份或其他用户事实。只有用户在当次操作中确认后，所选简历正文才会与这些条件一起发往同一个可选 Provider。不开 AI 时本地核心照常工作。
+
+Phase 8 不调用 LLM：用户可在已有 Application 下记录多轮面试、实际题目、回答摘要、自评和手动
+复盘，并为淘汰/Offer 等终态保存自己的结果说明。`求职复盘` 直接从 SQLite 计算岗位、投递、
+面试、题目、结果、来源和简历版本事实；不存派生统计，不给 AI 分数、推荐或因果结论。面试动作
+不会自动改变 Application 状态。
 
 ## 本地优先意味着什么
 
@@ -47,7 +53,7 @@ Extension 必须满足：
 
 ```text
 React Web ---------\
-                    > exact loopback HTTP -> FastAPI -> Job/Application/Resume/analysis/evidence
+                    > exact loopback HTTP -> FastAPI -> Job/Application/Resume/Interview/Feedback
 Chrome Extension --/                            |
                                                  v
                                       runtime-data/jobpilot.db (SQLite)
@@ -159,7 +165,9 @@ pnpm run api:import:check
 - [JD 结构化 AI 分析](docs/technical/JD_AI_ANALYSIS.md)
 - [简历版本](docs/technical/RESUME_VERSION.md)
 - [简历证据映射](docs/technical/EVIDENCE_MAP.md)
+- [面试记录](docs/technical/INTERVIEW_RECORD.md)
+- [事实反馈闭环](docs/technical/FEEDBACK_LOOP.md)
 - [JD 分析评测状态](docs/evaluation/JD_ANALYSIS_RESULTS.md)
 - [架构决策记录](docs/DECISIONS/README.md)
 
-本地产品边界由 [ADR-008](docs/DECISIONS/ADR-008-local-first-single-user-no-authentication.md) 固定，SQLite 存储由 [ADR-009](docs/DECISIONS/ADR-009-local-sqlite-storage.md) 固定，BOSS/牛客共享采集合同由 [ADR-012](docs/DECISIONS/ADR-012-nowcoder-shared-capture-contract.md) 固定，可选 JD 分析由 [ADR-013](docs/DECISIONS/ADR-013-jd-structured-ai-analysis.md) 固定，Resume Version 与 grounded Evidence Map 由 [ADR-014](docs/DECISIONS/ADR-014-resume-version-evidence-map.md) 固定。被移除的历史认证实现和 ADR 可从 annotated tag `pre-local-first-cleanup` 恢复；它们不是当前产品文档。
+本地产品边界由 [ADR-008](docs/DECISIONS/ADR-008-local-first-single-user-no-authentication.md) 固定，SQLite 存储由 [ADR-009](docs/DECISIONS/ADR-009-local-sqlite-storage.md) 固定，BOSS/牛客共享采集合同由 [ADR-012](docs/DECISIONS/ADR-012-nowcoder-shared-capture-contract.md) 固定，可选 JD 分析由 [ADR-013](docs/DECISIONS/ADR-013-jd-structured-ai-analysis.md) 固定，Resume Version 与 grounded Evidence Map 由 [ADR-014](docs/DECISIONS/ADR-014-resume-version-evidence-map.md) 固定，本地面试记录与事实反馈由 [ADR-015](docs/DECISIONS/ADR-015-interview-record-feedback-loop.md) 固定。被移除的历史认证实现和 ADR 可从 annotated tag `pre-local-first-cleanup` 恢复；它们不是当前产品文档。

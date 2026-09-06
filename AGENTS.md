@@ -2,11 +2,11 @@
 
 ## Current phase
 
-Phase 6 JD Structured AI Analysis is complete and accepted. Phase 7 Resume Version & Evidence Map is `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`. Phase 8 Interview Record & Feedback Loop is owner-approved on `phase/8-interview-feedback`. Implement only local Interview Round/Question records, manual self review, additive Application outcome detail and deterministic factual feedback statistics. Stop before the next phase. Do not change Phase 6/7 prompts, schemas, datasets or evaluation; do not add file parsing/upload, resume generation or whole-resume rewriting, matching/ATS/Offer scores, recommendations, RAG, embeddings, vector databases, Agent frameworks, AI interview features, recording/transcription, automatic submission, another recruitment platform, cloud sync, authentication, telemetry or analytics frameworks.
+Phase 6 JD Structured AI Analysis is complete and accepted. Phase 7 Resume Version & Evidence Map is `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`. Phase 8 Interview Record & Feedback Loop is owner-approved and implemented on `phase/8-interview-feedback`; automated and isolated browser acceptance are complete, while real runtime acceptance remains blocked until the latest API process is started. Keep only local Interview Round/Question records, manual self review, additive Application outcome detail and deterministic factual feedback statistics. Stop before the next phase. Do not change Phase 6/7 prompts, schemas, datasets or evaluation; do not add file parsing/upload, resume generation or whole-resume rewriting, matching/ATS/Offer scores, recommendations, RAG, embeddings, vector databases, Agent frameworks, AI interview features, recording/transcription, automatic submission, another recruitment platform, cloud sync, authentication, telemetry or analytics frameworks.
 
 ## Canonical context
 
-Read ADR-008 through ADR-014, `tasks/plan.md`, `tasks/todo.md`, README, PRODUCT_SPEC, ARCHITECTURE, API_CONTRACT, DATA_MODEL, ROADMAP, ENGINEERING_PRINCIPLES and the files in `docs/technical/`. Historical remote-identity experiments exist only at `pre-local-first-cleanup` and are not current design input.
+Read ADR-008 through ADR-015, `tasks/plan.md`, `tasks/todo.md`, README, PRODUCT_SPEC, ARCHITECTURE, API_CONTRACT, DATA_MODEL, ROADMAP, ENGINEERING_PRINCIPLES and the files in `docs/technical/`. Historical remote-identity experiments exist only at `pre-local-first-cleanup` and are not current design input.
 
 ## Toolchains
 

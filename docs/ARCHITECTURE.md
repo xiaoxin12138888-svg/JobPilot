@@ -1,8 +1,8 @@
 # JobPilot 总体架构
 
-> 状态：ADR-008 至 ADR-014 Accepted。Phase 7 在同一可选 Provider seam 上增加纯文本 Resume
-> Version、Application 使用版本与 grounded Evidence Map，同时保持 local-first、single-user、
-> no-account、SQLite 核心。Phase 8 未获批。
+> 状态：ADR-008 至 ADR-015 Accepted。Phase 7 为
+> `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`。Phase 8 在同一本地 SQLite 边界增加 Interview
+> Record 与请求时计算的事实 Feedback Summary，不依赖 Provider。
 
 ## 1. 运行时
 
@@ -13,7 +13,7 @@ flowchart LR
     E[Chrome Extension Job capture Popup]
     C[packages/api-client]
     A[FastAPI 127.0.0.1:8000]
-    S[(runtime-data/jobpilot.db)]
+    S[(runtime-data/jobpilot.db\nJob / Application / Resume / Interview)]
     R[原招聘平台]
     P[显式配置的 LLM Provider]
 
@@ -31,15 +31,16 @@ flowchart LR
 
 受支持 launcher 在 Uvicorn 前把 SQLite migration 升级到 head。业务请求通过 FastAPI 访问
 SQLite；`GET /health` 仍不连接数据库。Web 与 Extension 永不直连 SQLite，API 不访问招聘网站。
-Provider 不参与 health、启动、Job/Application/Resume CRUD 或采集。JD 分析只接收单个 Job 的
-批准字段；Evidence Map 只在当次确认后接收当前 requirements 和所选 Resume content。
+Provider 不参与 health、启动、Job/Application/Resume/Interview CRUD、Feedback Summary 或采集。
+JD 分析只接收单个 Job 的批准字段；Evidence Map 只在当次确认后接收当前 requirements 和所选
+Resume content。
 
 ## 2. Monorepo 边界
 
 ```text
-apps/web                 岗位库、简历版本、详情、投递跟踪与可选分析/Evidence 展示
+apps/web                 岗位库、简历版本、详情、投递/面试记录、事实复盘与可选分析/Evidence 展示
 apps/extension           BOSS/牛客页面分派、一次性只读 Adapter、确认编辑 Popup
-apps/api/domain          Job/Application/Resume/Analysis/Evidence 值、schema 与校验规则
+apps/api/domain          Job/Application/Resume/Interview/Feedback/Analysis/Evidence 值与规则
 apps/api/application     use-case service、专用 repository port 与 JD/Evidence Provider ports
 apps/api/infrastructure  SQLAlchemy/SQLite/Alembic 与一个 OpenAI-compatible adapter
 apps/api/api             FastAPI schema、router、安全和错误映射
@@ -60,9 +61,11 @@ Alembic revision `0001_job_application` 创建 `jobs` 和 `applications`；`0002
 唯一的结构化分析；`0005_resume_versions` 增加纯文本版本及 nullable
 `applications.resume_version_id`；`0006_evidence_map_records` 增加每个 Job + Resume Version 的
 唯一当前结果与两份输入指纹；`0007_evidence_map_schema_v2` 扩展其 CHECK 以兼容 schema 1/2，
-存在 schema 2 记录时拒绝降级。Job 删除级联 Application/JD Analysis/Evidence；被 Application
-引用的 Resume 通过 RESTRICT 和 service guard 保留，未引用 Resume 删除时级联其 Evidence。
-自动化测试必须显式传入临时数据库路径。
+存在 schema 2 记录时拒绝降级；`0008_interview_feedback` 为 Application 增加结果说明/淘汰原因，
+并新增 `interview_rounds` 与 `interview_questions`。Job 删除级联 Application、Interview、Question、
+JD Analysis 和 Evidence；Round 删除级联 Question。被 Application 引用的 Resume 通过 RESTRICT
+和 service guard 保留，未引用 Resume 删除时级联其 Evidence。自动化测试必须显式传入临时数据库
+路径。
 
 ## 4. API 与 localhost 写入边界
 
@@ -81,12 +84,13 @@ CORS/Host 不是对同一操作系统账户下恶意进程的认证。若以后�
 
 ## 5. Web architecture
 
-Web 不引入路由或状态框架。App 只协调 health 和 library/create/resumes/detail 四种视图；岗位库、
-表单、简历版本、详情、Application、JDAnalysisPanel 与 EvidenceMapPanel 为聚焦组件。所有业务
-I/O 经过 api-client，不自行拼 HTTP。Evidence Map 按六类条件呈现逐项明确结论、判断依据和原文
-证据，并在 Web 端确定性计算全图计数、待确认项与主要证据缺口。JD 分析请求使用 35 秒 client
-timeout，Evidence Map 生成
-使用 65 秒 client timeout，其余核心请求保持 5 秒。
+Web 不引入路由或状态框架。App 只协调 health 和 library/create/resumes/detail/feedback 五种视图；
+岗位库、表单、简历版本、详情、Application、Interview、Feedback、JDAnalysisPanel 与
+EvidenceMapPanel 为聚焦组件。所有业务 I/O 经过 api-client，不自行拼 HTTP。Interview UI 只记录
+用户输入的本地事实且不改变 Application；Feedback UI 只呈现 API 的确定性统计。Evidence Map 按
+六类条件呈现逐项明确结论、判断依据和原文证据，并在 Web 端确定性计算全图计数、待确认项与主要
+证据缺口。JD 分析请求使用 35 秒 client timeout，Evidence Map 生成使用 65 秒 client timeout，
+其余核心请求保持 5 秒。
 
 “去原平台查看/投递”使用 `target="_blank"` 与 `rel="noreferrer"`，没有关联 mutation。
 
@@ -107,7 +111,19 @@ section 组合一至三条 grounded quotes 做语义判断，但不得通过外�
 时间推导未写出的毕业年份。Key、provider envelope、raw malformed response、原始招聘页 HTML、
 完整 JD、notes、Application、其他 Job/Resume 和本地文件不跨越 Evidence 边界。
 
-## 7. Local-first 与后续边界
+## 7. Interview 与 Feedback boundary
+
+`InterviewService` 通过专用 repository 管理 Application 下的轮次与问题。列表一次返回每轮及其
+问题，避免 Web 逐轮查询；创建、编辑、完成、取消或删除面试都不会调用 Application 状态机。
+Application 的 `outcomeNote`/`rejectionReason` 仍通过现有 Application service 显式更新，淘汰原因
+离开 `rejected` 状态时清空。
+
+`FeedbackSummaryService` 只组合 repository 返回的 aggregate facts。Repository 使用有界聚合查询
+计算 totals、不同 Application 的面试参与、题目分类、自评、淘汰原因、来源和简历版本分组；
+domain 层确定性生成 funnel 和弱项排序。结果不持久化、不调用 Provider、不读取简历正文，也不
+产生评分、建议或因果推断。转化率在分母为零或后续事实计数大于前序计数时为 null。
+
+## 8. Local-first 与后续边界
 
 installed core runtime 不依赖远程身份、CDN、字体/脚本、telemetry、update、对象存储或 AI。
 Extension 只使用 `activeTab` 与 `scripting`；没有 background、常驻 content script、`tabs`

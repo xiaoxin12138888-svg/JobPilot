@@ -1,8 +1,9 @@
 # JobPilot Roadmap
 
 > 当前阶段：Phase 6 已于 2026-09-05 完成并通过。Phase 7 — Resume Version & Evidence Map
-> 已获批并完成本地实现/自动化，等待项目负责人完成真实 BOSS/牛客 Evidence、Application 关联
-> 与重启持久化验收。BOSS 与牛客保持 `SUPPORTED — V1`；Phase 8 未获批。
+> 保持 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`。Phase 8 — Interview Record & Feedback Loop
+> 已获批并完成实现、自动化与隔离浏览器验收；真实 runtime 验收等待最新 API 进程启动。BOSS 与
+> 牛客保持 `SUPPORTED — V1`。
 
 ## 1. Global gates
 
@@ -71,7 +72,8 @@ evidence grounding、单条 SQLite 持久化、stale/reanalysis 与 Job Detail �
 
 ## 7. Phase 7 — Resume Version & Evidence Map
 
-状态：Active（Phase 7C 语义证据修正已实现；真实 BOSS/牛客人工验收待完成）。
+状态：`IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`（Phase 7C 语义证据修正已实现；负责人暂停
+真实 BOSS/牛客语义质量结论）。
 
 只交付本地纯文本 Resume Version、Application 显式记录本次实际使用版本，以及当前 JD
 requirements 到所选 Resume 原文的 Evidence Map。新生成的 schema 2 综合硬性要求、加分项、
@@ -89,19 +91,37 @@ BOSS 与牛客语义结果由负责人确认前标记 PASS。
 自动投递或新招聘平台。只有真实 BOSS/牛客 Evidence 质量、Application 关联与重启持久化均由
 项目负责人确认后，Phase 7 才能标记 PASS。
 
-## 8. Later phases
+## 8. Phase 8 — Interview Record & Feedback Loop
 
-Phase 7 PASS 后的候选是 Phase 8 — Interview Preparation & Personal Knowledge Base；必须由负责人
-另行明确批准。模拟面试、其余招聘平台、复盘与发布加固也需更晚单独评审。远程能力必须显式
-启用、可替换、可降级，不能成为本地 Job/Application/Resume 核心依赖。
+状态：Implemented；自动化与隔离浏览器验收完成，真实 runtime 验收 blocked by stale API process。
 
-## 9. P0 no-proxy gate
+只交付完全本地的 Interview Round/Question、手动回答与自我复盘、Application 结果说明/用户记录的
+淘汰原因，以及请求时从 SQLite 计算的事实 Feedback Summary。面试行为不自动改变 Application，
+结果说明不建立第二套 Offer/Outcome 模型，Feedback 不持久化派生结果、不调用 Provider、不产生
+AI 评分、建议或因果结论。
+
+漏斗原始数量保持事实；相邻分母为零或因漏记中间阶段而出现后一阶段大于前一阶段时，转化率为
+null，不显示 0% 假象或超过 100% 的结果。题目分类、自评、弱项、淘汰原因、来源和简历版本分组
+均为确定性计数。整个 Phase 在所有 `JOBPILOT_LLM_*` 缺失时完整工作，且不读取简历正文。
+
+当前源码、临时 migration/API/Web 重启、浏览器录入一轮三题、手动复盘、Application 结果、
+Feedback 数量与 320/768/1024/1440 布局均已验证。用户正在运行的 8001 仍是旧进程，本轮在其
+占用期间保持真实 `runtime-data/jobpilot.db` 不变；因此只有项目负责人用 supported launcher
+启动最新 API，并在真实 workspace 复核后，Phase 8 才能标记 PASS。
+
+## 9. Later phases
+
+AI 面试、模拟面试、Personal Knowledge Base、其余招聘平台、策略建议与发布加固必须由负责人
+另行明确批准。远程能力必须显式启用、可替换、可降级，不能成为本地
+Job/Application/Resume/Interview 核心依赖。
+
+## 10. P0 no-proxy gate
 
 installed runtime 不访问远程身份、公共 CDN、远程字体/脚本、GitHub runtime/raw、telemetry、
 update 或强制境外 AI。未来每个 Adapter 必须分别记录招聘页、Extension、识别、解析、
 确认保存和岗位库的真实关闭代理结果；任一核心步骤依赖代理就不能标为支持。
 
-## 10. Stop boundary
+## 11. Stop boundary
 
-不得在真实 Evidence/Application/restart 验收 blocker 存在时宣称 Phase 7 PASS。不得自动开始
-Phase 8，也不得实现智联、实习僧、猎聘、国聘等其他平台。
+不得把暂停中的 Phase 7 写成 PASS。不得在真实 runtime/restart 验收 blocker 存在时宣称 Phase 8
+PASS，也不得自动开始下一阶段、实现 AI 面试、策略推荐或智联/实习僧/猎聘/国聘等其他平台。

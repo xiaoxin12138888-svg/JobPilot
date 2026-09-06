@@ -24,6 +24,8 @@
 - 不承载 domain 状态机、数据库访问或外部 provider 逻辑。
 - Resume content 只按纯文本渲染，不使用 `dangerouslySetInnerHTML`；Evidence 每项先显示明确结论，
   全图总览只做确定性计数、待确认项和主要证据缺口。
+- Interview 问题、回答、复盘和 Application 结果只按纯文本渲染；面试操作不得隐式推进投递状态。
+- Feedback 只呈现本地事实计数、nullable 漏斗率和分组，不输出评分、建议或因果结论。
 
 ### Extension
 
@@ -50,8 +52,9 @@
 
 ## 4. Data and security
 
-- 当前业务数据只含 `jobs`、`applications`、`jd_analysis_records`、`resume_versions` 与
-  `evidence_map_records`；所有表不含 `user_id` 或身份字段；
+- 当前业务数据只含 `jobs`、`applications`、`jd_analysis_records`、`resume_versions`、
+  `evidence_map_records`、`interview_rounds` 与 `interview_questions`；所有表不含 `user_id` 或
+  身份字段；
 - 数据库只使用本地 SQLite file URL；默认 `runtime-data/jobpilot.db` 属于用户数据，自动化不得触碰；
 - SQLite connections 启用 foreign keys 与有界 busy timeout；当前保留 rollback journal，WAL 必须由实测需要驱动；
 - 操作系统账户与文件权限保护本地静态数据；
@@ -59,6 +62,8 @@
 - Extension Origin 不加入 Web CORS allowlist；扩展写入身份由固定 ID 的精确 Origin gate 约束；
 - DOM、粘贴文本、URL、文件和所有外部响应均为不可信输入；
 - 日志不得记录简历正文、完整 JD、文件内容、本机 secret 或未脱敏外部 payload。
+- 面试问题、回答摘要、复盘、面试官备注与 Application 结果不得写日志、telemetry、Extension、
+  Git 或真实数据 fixture；Feedback Summary 不读取简历正文。
 - AI invalid-response 诊断只能记录固定白名单分类码，不记录 Job/Resume ID、外部响应或输入片段。
 - Resume content 默认只写本地 SQLite；Evidence Map 只发送用户当次选择的一个版本和当前非
   stale JD requirements，不发送原始 HTML、完整 JD、notes、Application、其他 Job/Resume 或文件。
@@ -67,6 +72,8 @@
   每项最多组合三条跨 section 的真实原文，无有效 quote 时降级 GAP。允许语义支持，不要求关键
   词相同；但不允许使用外部常识补全或升级简历未写的能力、年限、学历、毕业年份或项目事实。
   禁止匹配/ATS/Offer 分数。
+- Feedback 的面试岗位只按至少存在一轮的不同 Application 计数；漏斗率只在前一阶段分母非零且
+  后一阶段不超过前一阶段时计算。原始计数不截断、不推断缺失记录，派生统计不持久化。
 
 ## 5. P0 no-proxy rule
 
@@ -112,6 +119,7 @@
 - tests、lint、format、typecheck、build 和 API gates 通过；
 - loopback/CORS、secret、remote-runtime、manifest/CSP 和 tracked-artifact 扫描通过；
 - browser/runtime 无法验证时明确报告 BLOCKED，不虚构 PASS；
+- 全部 `JOBPILOT_LLM_*` 缺失时 Interview 与 Feedback 仍完整可用；
 - `code-review-and-quality` 为 Critical 0 / Required 0；
 - `code-simplification` 后无确认的死代码；
 - 文档与实现一致，工作树按任务要求交付。

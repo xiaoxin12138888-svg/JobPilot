@@ -1,7 +1,8 @@
 # JobPilot API Contract
 
-> 状态：`GET /health`、Job/Application、BOSS/牛客 capture、Job Analysis、Resume Version 与
-> Evidence Map contract 已由 ADR-014 冻结。JSON 字段使用 camelCase。
+> 状态：`GET /health`、Job/Application、BOSS/牛客 capture、Job Analysis、Resume Version、
+> Evidence Map、Interview 与 Feedback Summary contract 已由 ADR-015 冻结。JSON 字段使用
+> camelCase。
 
 ## 1. Runtime boundary
 
@@ -122,10 +123,128 @@ Application。列表 item 除 Application 字段外增加 `jobTitle` 与 `compan
 状态必须符合领域流转表。任何进入 `applied` 的请求都要求 `confirmApplied: true`。不存在的
 Resume Version 拒绝；省略 `resumeVersionId` 表示不修改该关联，不得自动推断。
 
-Application response 字段为：`id`、`jobId`、`status`、`resumeVersionId`、`appliedAt`、
-`createdAt`、`updatedAt`。
+结果说明与淘汰原因也通过同一 endpoint 显式设置或清空：
 
-## 5. Job analysis endpoints
+```json
+{"outcomeNote":"二面后未通过","rejectionReason":"COMMUNICATION"}
+```
+
+`rejectionReason` 只允许在有效状态为 `rejected` 时非空；离开 `rejected` 且未显式提交该字段时，
+已有原因会自动清空。允许值为 `TECHNICAL|EXPERIENCE|PRODUCT|BUSINESS|COMMUNICATION|ROLE_FIT|HEADCOUNT|UNKNOWN|OTHER`。
+`outcomeNote` 是用户记录的普通结果说明，也承载最小 Offer 信息，不代表系统判断。
+
+Application response 字段为：`id`、`jobId`、`status`、`resumeVersionId`、`outcomeNote`、
+`rejectionReason`、`appliedAt`、`createdAt`、`updatedAt`。
+
+## 5. Interview endpoints
+
+### `GET /api/v1/applications/{applicationId}/interviews`
+
+使用 `limit`（默认 50，1–100）与非负 `offset`，返回该 Application 的面试轮次及每轮完整
+`questions` 数组，避免客户端逐轮查询。Application 不存在返回 404。
+
+### `POST /api/v1/applications/{applicationId}/interviews`
+
+```json
+{
+  "roundName": "一面",
+  "interviewType": "VIDEO",
+  "scheduledAt": "2026-09-07T10:00:00Z",
+  "status": "PLANNED",
+  "interviewerNote": "产品负责人",
+  "wentWell": null,
+  "couldImprove": null,
+  "learningNotes": null,
+  "otherNotes": null
+}
+```
+
+`roundName` 必填；`interviewType` 为 `PHONE|VIDEO|ONSITE|OTHER`；`status` 默认为 `PLANNED`，
+并只允许 `PLANNED|COMPLETED|CANCELLED`。成功为 201。创建、完成、取消或删除轮次不修改
+Application 状态。
+
+### `GET /api/v1/interviews/{interviewId}`
+
+返回一个轮次及其 `questions`，不存在为 404。
+
+### `PATCH /api/v1/interviews/{interviewId}`
+
+接受 create 字段的非空 patch，可独立清空可选文本/时间。手动复盘字段为 `wentWell`、
+`couldImprove`、`learningNotes`、`otherNotes`。返回更新后的轮次与全部 questions。
+
+### `DELETE /api/v1/interviews/{interviewId}`
+
+成功为 204，并级联该轮所有问题。Web 调用前必须明确确认。
+
+### `POST /api/v1/interviews/{interviewId}/questions`
+
+```json
+{
+  "question": "请描述一次需求取舍",
+  "category": "PRODUCT",
+  "answerSummary": "用户自己的回答摘要",
+  "performance": "OK",
+  "note": "需要补充量化依据"
+}
+```
+
+`question` 与 `category` 必填。category 允许
+`PRODUCT|AI|TECHNICAL|PROJECT|BEHAVIORAL|BUSINESS|OTHER`；performance 默认为 `NOT_SURE`，
+允许 `GOOD|OK|POOR|NOT_SURE`。成功为 201。
+
+### `PATCH /api/v1/interview-questions/{questionId}`
+
+接受 question create 字段的非空 patch，返回更新后的问题。
+
+### `DELETE /api/v1/interview-questions/{questionId}`
+
+成功为 204。轮次与问题响应中的文本都是本地不可信纯文本；API 不调用 Provider、不写内容日志。
+
+Interview Question response 字段为：`id`、`interviewRoundId`、`question`、`category`、
+`answerSummary`、`performance`、`note`、`createdAt`、`updatedAt`。Interview Round response 字段为：
+`id`、`applicationId`、`roundName`、`interviewType`、`scheduledAt`、`status`、
+`interviewerNote`、四个复盘字段、`questions`、`createdAt`、`updatedAt`。
+
+## 6. Feedback Summary endpoint
+
+### `GET /api/v1/feedback-summary`
+
+无 body/query，返回请求时直接从 SQLite 计算的事实：
+
+```json
+{
+  "hasData": true,
+  "totals": {
+    "savedJobs": 1,
+    "applications": 1,
+    "interviewApplications": 1,
+    "interviews": 1,
+    "questions": 3,
+    "offers": 0,
+    "rejected": 1
+  },
+  "funnel": [
+    {"stage": "SAVED_JOBS", "count": 1, "conversionRate": null},
+    {"stage": "APPLICATIONS", "count": 1, "conversionRate": 1.0},
+    {"stage": "INTERVIEW_APPLICATIONS", "count": 1, "conversionRate": 1.0},
+    {"stage": "OFFERS", "count": 0, "conversionRate": 0.0}
+  ],
+  "questionCategories": [],
+  "performances": [],
+  "weakCategories": [],
+  "rejectionReasons": [],
+  "unrecordedRejectionReasons": 0,
+  "resumeVersions": [],
+  "sources": []
+}
+```
+
+`conversionRate` 以前一阶段 count 为分母；分母为零或后一阶段 count 大于前一阶段时为 null。
+`weakCategories` 只统计 `OK + POOR`，并返回 `category`、`questionCount`、`weakCount`。来源与简历
+版本分组只含 `applications`、`interviewApplications`、`offers`。该 endpoint 不存派生结果、不读取
+简历正文、不调用 Provider，也不返回分数、建议或因果结论。
+
+## 7. Job analysis endpoints
 
 ### `GET /api/v1/jobs/{jobId}/analysis`
 
@@ -148,7 +267,7 @@ Application response 字段为：`id`、`jobId`、`status`、`resumeVersionId`�
 `domainKeywords`、`interviewFocus`。除 summary/skills/keywords 外的数组 item 为
 `{"text":"...","evidence":"..."|null}`。缺失信息用空字符串/数组，不返回 Markdown。
 
-## 6. Resume Version endpoints
+## 8. Resume Version endpoints
 
 ### `GET /api/v1/resume-versions`
 
@@ -185,7 +304,7 @@ Application response 字段为：`id`、`jobId`、`status`、`resumeVersionId`�
 未被 Application 引用时成功为 204，并级联该版本的 Evidence Map；被引用时返回
 `409 RESUME_VERSION_IN_USE`，不删除历史关联。
 
-## 7. Evidence Map endpoints
+## 9. Evidence Map endpoints
 
 ### `GET /api/v1/jobs/{jobId}/evidence-map?resumeVersionId={resumeVersionId}`
 
@@ -226,7 +345,7 @@ JD Analysis 缺失、stale 或其他前置条件非法为 422；Provider 未配�
 时间或培养年限时，届别最多为 PARTIAL，且不得推导目标毕业年份。quote 的精确 grounding 和
 旧存量记录的有界读取兼容保持不变。
 
-## 8. Errors
+## 10. Errors
 
 所有公开错误保持：
 
@@ -246,7 +365,7 @@ Job，便于 Extension 打开本机详情；其他错误保持原有三字段 en
 
 主要状态：
 
-- 404：Job/Application/Resume Version 不存在；
+- 404：Job/Application/Interview/Interview Question/Resume Version 不存在；
 - 409：重复 normalized URL、一个 Job 已有 Application，或 Resume Version 正被 Application 引用；
 - 422：request/domain validation、非法状态流转或 Evidence Map 前置条件失败；
 - 502：`AI_INVALID_RESPONSE`，Provider envelope/content/schema 无法验证；公开响应不增加诊断字段，

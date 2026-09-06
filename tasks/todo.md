@@ -6,36 +6,44 @@
 - [x] Keep Phase 7 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`; do not change Evidence Map behavior.
 - [x] Freeze ADR/model/API/statistics/privacy rules and the next-phase stop boundary.
 - [x] Preserve `操作手册.txt`, runtime SQLite data, Provider secrets and all existing user records.
-- [ ] Prove all Phase 8 behavior works with no LLM Provider configuration.
+- [x] Prove all Phase 8 behavior works with no LLM Provider configuration.
 
 ## Backend
 
-- [ ] RED/GREEN InterviewRound validation, create/list/get/update/delete and persistence.
-- [ ] RED/GREEN InterviewQuestion create/update/delete, category/performance and round cascade.
-- [ ] RED/GREEN Application outcome note/rejection reason consistency and deletion cascades.
-- [ ] RED/GREEN deterministic feedback counts, funnel, categories, performance, rejection reasons,
+- [x] RED/GREEN InterviewRound validation, create/list/get/update/delete and persistence.
+- [x] RED/GREEN InterviewQuestion create/update/delete, category/performance and round cascade.
+- [x] RED/GREEN Application outcome note/rejection reason consistency and deletion cascades.
+- [x] RED/GREEN deterministic feedback counts, funnel, categories, performance, rejection reasons,
   Resume Version groups, source groups, empty state and zero denominators.
-- [ ] Verify upgrade/downgrade/upgrade on explicit temporary SQLite databases only.
+- [x] Verify upgrade/downgrade/upgrade on explicit temporary SQLite databases only.
 
 ## Client and Web
 
-- [ ] Extend shared types/api-client with strict Interview and Feedback contracts and no credentials.
-- [ ] Add accessible interview create/edit/complete/delete and self-review UX in Job Detail.
-- [ ] Add question create/edit/delete with category, actual answer, performance and notes.
-- [ ] Add explicit Application outcome detail and clearly label rejection reason as a user record.
-- [ ] Add factual Feedback Summary empty/populated views with no score or recommendation language.
-- [ ] Verify keyboard behavior and 320/768/1024/1440 responsive layouts.
+- [x] Extend shared types/api-client with strict Interview and Feedback contracts and no credentials.
+- [x] Add accessible interview create/edit/complete/cancel/delete and self-review UX in Job Detail.
+- [x] Add question create/edit/delete with category, actual answer, performance and notes.
+- [x] Add explicit Application outcome detail and clearly label rejection reason as a user record.
+- [x] Add factual Feedback Summary empty/populated views with no score or recommendation language.
+- [x] Verify keyboard behavior and 320/768/1024/1440 responsive layouts.
 
 ## Validation and acceptance
 
-- [ ] Run all Python/TypeScript tests, lint, format, typecheck, builds and import/startup gates.
-- [ ] Regress BOSS, Nowcoder, Job, Application, JD AI, Resume and existing Evidence Map behavior.
-- [ ] Run privacy/XSS/log/telemetry/remote-call/schema/cascade safety review.
-- [ ] Complete code review and simplification with Critical 0 and Required 0.
+- [x] Run all Python/TypeScript tests, lint, format, typecheck, builds and import/startup gates.
+- [x] Regress BOSS, Nowcoder, Job, Application, JD AI, Resume and existing Evidence Map behavior.
+- [x] Run privacy/XSS/log/telemetry/remote-call/schema/cascade safety review.
+- [x] Complete code review and simplification with Critical 0 and Required 0.
 - [ ] Use one existing Application to enter one local round, at least three fictional/historical questions,
   manual self review and completion; confirm factual Feedback Summary values without database edits.
 - [ ] Restart API/Web and confirm round, questions, review, outcome and feedback persistence.
-- [ ] Stop before the next phase and wait for project-owner approval.
+- [x] Stop before the next phase and wait for project-owner approval.
+
+Isolated browser acceptance note (2026-09-06): with every Provider variable absent, a temporary
+SQLite database and local 8002/5176 stack persisted one fictional Job/Application, one completed round,
+three questions, self review, a user-recorded rejection reason and a linked fictional Resume Version
+across API restart. Feedback counts/groups and 320/768/1024/1440 layouts matched the frozen contract;
+the browser console had no errors or warnings. This does not satisfy the two unchecked real-workspace
+items: the user's 8001 process still serves the pre-Phase-8 Application contract, so this run left the
+live `runtime-data/jobpilot.db` untouched while that stale process owns it.
 
 ---
 

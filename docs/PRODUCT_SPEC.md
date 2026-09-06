@@ -1,8 +1,9 @@
 # JobPilot 产品规格
 
 > 状态：Phase 3 至 Phase 6 已通过，BOSS 与牛客均为 `SUPPORTED — V1`。Phase 7 — Resume
-> Version & Evidence Map 已获批并完成本地实现/自动化；真实简历外发、BOSS/牛客结果质量与重启
-> 持久化仍等待项目负责人在 UI 中确认和验收。Phase 8 未获批。
+> Version & Evidence Map 为 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`。Phase 8 — Interview
+> Record & Feedback Loop 已获批并完成实现、自动化与隔离浏览器验收；真实 runtime 验收仍等待
+> 最新 API 进程启动。
 
 ## 1. 产品定位
 
@@ -50,6 +51,15 @@ Phase 7 在结构化 JD 后增加可解释证据链：
 
 Evidence Map 选择不会自动改写 Application，Application 的简历选择也不会自动触发 AI。
 
+Phase 8 增加完全本地的面试与事实复盘链路：
+
+```text
+已有 Application -> 添加面试轮次 -> 记录实际问题/回答摘要/自评 -> 手动复盘并标记轮次完成
+-> 用户另行更新 Application 状态与结果说明 -> 求职复盘读取 SQLite 当前事实统计
+```
+
+Interview 行为不自动改变 Application；Feedback Summary 不调用 Provider、不保存派生结果。
+
 ## 3. Job
 
 Job 是用户主动保存的岗位快照，包含职位、公司、地点、薪资文本、来源、原平台 URL、
@@ -85,6 +95,11 @@ Application 表示一个 Job 的真实求职进度。一个 Job 最多一个 App
 `confirmApplied: true`；首次进入时记录 `applied_at`。`resumeVersionId` 默认为 null，只有用户在
 已有 Application 上明确选择并保存时才设置，也可明确清空或更换。
 
+`outcomeNote` 是用户手动填写的结果说明，在 `offer`、`rejected`、`withdrawn` 或 `closed` 时
+显示，也可为空；它同时承载最小 Offer 说明，不创建第二套 Offer 模型。`rejectionReason` 只在
+`rejected` 时允许使用，分类来自固定枚举，离开淘汰状态时自动清空。界面必须明确说明淘汰原因是
+用户记录的已知情况或自我判断，不是系统判定。
+
 ## 5. 原平台行为
 
 “去原平台查看/投递”只是一个安全的新窗口链接：
@@ -106,6 +121,9 @@ Application 表示一个 Job 的真实求职进度。一个 Job 最多一个 App
 - Application 建立、显式已投递确认和状态更新；
 - 纯文本 Resume Version 新建、查看、编辑/重命名、复制和受引用保护的删除；
 - Application 实际使用 Resume Version 的显式选择、保存和清空；
+- 面试轮次创建、编辑、完成、取消/删除，实际问题 CRUD、回答摘要、表现自评和手动复盘；
+- Application 结果说明与用户填写的淘汰原因；
+- `求职复盘` 的 loading/error/retry/empty/populated 状态和事实统计；
 - Job Detail 的 JD Analysis 与 Evidence Map 前置、确认、loading、success、stale、error/retry；
 - 320/768/1024/1440 响应式布局与键盘可访问控件。
 
@@ -157,7 +175,29 @@ coverage 按多段事实之间的语义关系综合判断，不要求岗位文�
 每个 Job + Resume Version 只保留一个当前结果。JD Analysis 或 Resume content 变化后旧结果保留
 但标为 stale；重新生成失败保留最后一个有效结果及 stale 状态，不暴露 Provider 原始错误。
 
-## 10. 本地与 no-proxy 边界
+## 10. Interview Record
+
+每个 Application 可以有多轮面试。轮次包含名称、`PHONE|VIDEO|ONSITE|OTHER` 类型、可选计划
+时间、`PLANNED|COMPLETED|CANCELLED` 状态、面试官备注，以及“做得好的地方”“没答好的地方”
+“需要补充学习”“其他备注”四个可选自我复盘字段。创建、完成、取消或删除轮次都不推断或修改
+Application 状态。
+
+每轮可记录多道实际问题。问题包含七类手动分类、用户自己的回答摘要、
+`GOOD|OK|POOR|NOT_SURE` 自评和备注。轮次删除前必须明确确认，并级联删除该轮问题；全部内容
+按不可信纯文本处理，只保存在本机 SQLite，不进入 Extension、日志、Provider 或真实测试 fixture。
+
+## 11. Factual Feedback Summary
+
+`求职复盘` 每次直接查询 SQLite，展示已保存岗位、Application、至少有一轮面试的岗位、轮次、
+题目、Offer 与淘汰数量，并按题目分类、自评、弱项类别、淘汰原因、简历版本和岗位来源分组。
+高频薄弱类别只把 `OK + POOR` 计为弱项，并按弱项数、该类题目总数和固定 enum 顺序排序。
+
+漏斗固定为保存岗位 → Application → 有面试记录的 Application → 当前 Offer。转化率以前一个
+阶段为分母；分母为零或由于用户漏记中间事实而出现后一阶段大于前一阶段时返回 null，界面不
+显示 0% 假象或超过 100% 的误导值。原始计数不截断、不补推缺失事实。统计不产生评分、推荐、
+策略或不同来源/简历版本之间的因果结论。
+
+## 12. 本地与 no-proxy 边界
 
 - Web、Extension 与 API 只通过精确 loopback 通信；
 - installed runtime 不依赖账号、云服务、CDN、远程字体/脚本、telemetry、update 或境外 AI；
@@ -172,17 +212,18 @@ coverage 按多段事实之间的语义关系综合判断，不要求岗位文�
   本地核心不依赖 Provider，也不修改系统或浏览器代理。
 - 简历默认只在本机 SQLite；任何 Evidence Map 外发都要求用户在当次 Web 操作中确认。
 
-## 11. Phase 7 非目标
+## 13. Phase 8 非目标
 
 PDF/DOCX/图片/OCR、文件上传、简历生成/整份改写、ATS/匹配/Offer 分数、推荐、RAG、embedding、
-vector DB、Agent/LangChain、模拟面试、自动投递、新招聘平台、云同步、账号、认证和多用户均不
-属于 Phase 7。
+vector DB、Agent/LangChain、AI 面试、模拟面试、自动答案、录音/转写、日历同步、自动投递、
+新招聘平台、云同步、账号、认证和多用户均不属于 Phase 8。
 
-## 12. 成功标准
+## 14. 成功标准
 
-Phase 7 必须通过 Resume/Application/Evidence schema、grounding、stale、persistence、API/UI、
-privacy/security 自动测试及全部既有回归。项目负责人还需在 UI 粘贴一份脱敏真实简历，对一个
-已有有效分析的 BOSS Job 和一个牛客 Job 分别确认外发并人工判断六类条件数量、逐项明确结论、
-quote grounding、coverage/reason 质量、全图总览和无数字分数；随后验证 Application 关联与
-API/Web 重启持久化。
-缺少用户确认或人工判断时必须报告 BLOCKED，不得代替负责人宣称 PASS。
+Phase 8 必须通过 Interview/Application/Feedback schema、CRUD、cascade、统计、API/UI、
+provider-free、privacy/security 自动测试和全部既有回归。浏览器验收必须录入至少一轮、三道
+虚构/历史问题、回答自评、手动复盘与 Application 结果，核对 Feedback 分类、表现、来源、简历
+版本和重启持久化，并检查 320/768/1024/1440 与键盘焦点。
+
+Phase 7 的真实语义质量验收保持独立暂停，Phase 8 不得把它改写为 PASS。真实 runtime 进程未加载
+最新 migration/API 时，Phase 8 只能报告 BLOCKED；隔离临时数据库验收不能冒充用户数据验收。
