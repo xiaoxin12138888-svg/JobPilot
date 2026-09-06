@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
 from collections.abc import Iterator
 from pathlib import Path
@@ -369,6 +370,7 @@ def test_stale_and_failed_regeneration_preserve_the_last_valid_result(
 
 def test_invalid_result_never_overwrites_and_grounding_downgrades_invalid_evidence(
     evidence_context: tuple[TestClient, FakeProvider, Path],
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     client, provider, _database_path = evidence_context
     job = _create_analyzed_job(client)
@@ -404,11 +406,15 @@ def test_invalid_result_never_overwrites_and_grounding_downgrades_invalid_eviden
     assert first_mapping["resumeEvidence"] == []
 
     provider.evidence_response = '{"mappings":[],"fitScore":99}'
-    invalid = client.post(endpoint, json=request)
+    with caplog.at_level(logging.WARNING, logger="jobpilot_api.evidence_map_diagnostics"):
+        invalid = client.post(endpoint, json=request)
     preserved = client.get(endpoint, params={"resumeVersionId": resume["id"]})
     assert invalid.status_code == 502
     assert invalid.json()["error"]["code"] == "AI_INVALID_RESPONSE"
     assert "fitScore" not in invalid.text
+    assert "diagnostic=SCHEMA_MISMATCH" in caplog.text
+    assert "fitScore" not in caplog.text
+    assert "使用 SQL 完成业务数据统计" not in caplog.text
     assert preserved.json() == grounded.json()
     assert preserved.json() != original
 

@@ -8,7 +8,10 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
-from jobpilot_api.domain.errors import AnalysisInvalidResponseError
+from jobpilot_api.domain.errors import (
+    AnalysisInvalidResponseDiagnostic,
+    AnalysisInvalidResponseError,
+)
 from jobpilot_api.domain.jd_analysis import MAX_ANALYSIS_ITEMS, JDAnalysisRecord
 
 EVIDENCE_MAP_SCHEMA_VERSION = 2
@@ -203,7 +206,7 @@ def _parse_evidence_map(
     try:
         value = json.loads(raw_content)
     except (json.JSONDecodeError, TypeError):
-        raise _invalid_response() from None
+        raise _invalid_response(AnalysisInvalidResponseDiagnostic.INVALID_JSON) from None
     if not isinstance(value, dict) or frozenset(value) != MAP_KEYS:
         raise _invalid_response()
     raw_mappings = value["mappings"]
@@ -223,7 +226,7 @@ def _parse_evidence_map(
             EvidenceRequirement(item.requirement_type, item.requirement_text) for item in mappings
         )
         if actual != expected_requirements:
-            raise _invalid_response()
+            raise _invalid_response(AnalysisInvalidResponseDiagnostic.REQUIREMENT_MISMATCH)
     return EvidenceMap(mappings=mappings)
 
 
@@ -271,8 +274,10 @@ def _resume_evidence(
     normalized_resume: str | None,
     max_items: int,
 ) -> tuple[ResumeEvidence, ...]:
-    if not isinstance(value, list) or len(value) > max_items:
+    if not isinstance(value, list):
         raise _invalid_response()
+    if len(value) > max_items:
+        raise _invalid_response(AnalysisInvalidResponseDiagnostic.EVIDENCE_LIMIT_EXCEEDED)
     result: list[ResumeEvidence] = []
     seen: set[str] = set()
     for raw_item in value:
@@ -311,5 +316,12 @@ def _fingerprint(value: object) -> str:
     return hashlib.sha256(canonical).hexdigest()
 
 
-def _invalid_response() -> AnalysisInvalidResponseError:
-    return AnalysisInvalidResponseError("AI 返回的证据映射无法验证，请稍后重试")
+def _invalid_response(
+    diagnostic_code: AnalysisInvalidResponseDiagnostic = (
+        AnalysisInvalidResponseDiagnostic.SCHEMA_MISMATCH
+    ),
+) -> AnalysisInvalidResponseError:
+    return AnalysisInvalidResponseError(
+        "AI 返回的证据映射无法验证，请稍后重试",
+        diagnostic_code=diagnostic_code,
+    )

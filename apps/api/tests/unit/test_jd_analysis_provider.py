@@ -207,14 +207,20 @@ def test_provider_maps_transport_failures_to_one_sanitized_error(error: Exceptio
 
 
 @pytest.mark.parametrize(
-    "body",
+    ("body", "expected_diagnostic"),
     [
-        b"not-json",
-        json.dumps({"choices": []}).encode(),
-        json.dumps({"choices": [{"message": {"content": 123}}]}).encode(),
+        (b"not-json", "PROVIDER_ENVELOPE"),
+        (json.dumps({"choices": []}).encode(), "PROVIDER_ENVELOPE"),
+        (
+            json.dumps({"choices": [{"message": {"content": 123}}]}).encode(),
+            "PROVIDER_ENVELOPE",
+        ),
     ],
 )
-def test_provider_rejects_malformed_envelopes_without_returning_raw_data(body: bytes) -> None:
+def test_provider_rejects_malformed_envelopes_without_returning_raw_data(
+    body: bytes,
+    expected_diagnostic: str,
+) -> None:
     provider = OpenAICompatibleJDAnalysisProvider(
         _settings(), opener=StubOpener(StubResponse(body))
     )
@@ -222,6 +228,7 @@ def test_provider_rejects_malformed_envelopes_without_returning_raw_data(body: b
     with pytest.raises(AnalysisInvalidResponseError, match="无法验证") as captured:
         provider.analyze(_input("岗位描述"), system_instruction="system")
 
+    assert captured.value.diagnostic_code == expected_diagnostic
     assert "choices" not in str(captured.value)
 
 

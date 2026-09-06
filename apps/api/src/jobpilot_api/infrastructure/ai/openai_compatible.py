@@ -7,6 +7,7 @@ from urllib.request import HTTPRedirectHandler, OpenerDirector, ProxyHandler, Re
 
 from jobpilot_api.config import LLMSettings
 from jobpilot_api.domain.errors import (
+    AnalysisInvalidResponseDiagnostic,
     AnalysisInvalidResponseError,
     AnalysisProviderUnavailableError,
 )
@@ -87,4 +88,7 @@ class OpenAICompatibleJDAnalysisProvider:
 
 
 def _invalid_response() -> AnalysisInvalidResponseError:
-    return AnalysisInvalidResponseError("AI 返回的分析结果无法验证，请稍后重试")
+    return AnalysisInvalidResponseError(
+        "AI 返回的分析结果无法验证，请稍后重试",
+        diagnostic_code=AnalysisInvalidResponseDiagnostic.PROVIDER_ENVELOPE,
+    )

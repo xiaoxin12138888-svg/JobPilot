@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from enum import StrEnum
+
 
 class DomainError(Exception):
     code = "DOMAIN_ERROR"
@@ -54,9 +56,28 @@ class AnalysisProviderUnavailableError(DomainError):
     status_code = 503
 
 
+class AnalysisInvalidResponseDiagnostic(StrEnum):
+    INVALID_JSON = "INVALID_JSON"
+    PROVIDER_ENVELOPE = "PROVIDER_ENVELOPE"
+    SCHEMA_MISMATCH = "SCHEMA_MISMATCH"
+    REQUIREMENT_MISMATCH = "REQUIREMENT_MISMATCH"
+    EVIDENCE_LIMIT_EXCEEDED = "EVIDENCE_LIMIT_EXCEEDED"
+
+
 class AnalysisInvalidResponseError(DomainError):
     code = "AI_INVALID_RESPONSE"
     status_code = 502
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        diagnostic_code: AnalysisInvalidResponseDiagnostic = (
+            AnalysisInvalidResponseDiagnostic.SCHEMA_MISMATCH
+        ),
+    ) -> None:
+        super().__init__(message)
+        self.diagnostic_code = diagnostic_code.value
 
 
 class JDAnalysisRequiredError(DomainError):
