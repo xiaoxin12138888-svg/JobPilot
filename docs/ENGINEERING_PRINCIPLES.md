@@ -59,6 +59,7 @@
 - Extension Origin 不加入 Web CORS allowlist；扩展写入身份由固定 ID 的精确 Origin gate 约束；
 - DOM、粘贴文本、URL、文件和所有外部响应均为不可信输入；
 - 日志不得记录简历正文、完整 JD、文件内容、本机 secret 或未脱敏外部 payload。
+- AI invalid-response 诊断只能记录固定白名单分类码，不记录 Job/Resume ID、外部响应或输入片段。
 - Resume content 默认只写本地 SQLite；Evidence Map 只发送用户当次选择的一个版本和当前非
   stale JD requirements，不发送原始 HTML、完整 JD、notes、Application、其他 Job/Resume 或文件。
 - Evidence requirement 必须保持当前 JD Analysis 六类条件的类型、文本和顺序；旧 schema 1 只读

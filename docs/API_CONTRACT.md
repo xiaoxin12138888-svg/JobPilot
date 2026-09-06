@@ -249,7 +249,8 @@ Job，便于 Extension 打开本机详情；其他错误保持原有三字段 en
 - 404：Job/Application/Resume Version 不存在；
 - 409：重复 normalized URL、一个 Job 已有 Application，或 Resume Version 正被 Application 引用；
 - 422：request/domain validation、非法状态流转或 Evidence Map 前置条件失败；
-- 502：`AI_INVALID_RESPONSE`，Provider envelope/content/schema 无法验证；
+- 502：`AI_INVALID_RESPONSE`，Provider envelope/content/schema 无法验证；公开响应不增加诊断字段，
+  本机日志只记录固定白名单失败分类，不记录任何输入或原始响应；
 - 503：SQLite 暂时 locked/busy，或 `AI_NOT_CONFIGURED` / `AI_PROVIDER_UNAVAILABLE`；
 - 403/415：localhost 写安全边界；
 - 500：统一未知错误，不返回 exception、SQL 或 traceback。

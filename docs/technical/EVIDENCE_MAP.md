@@ -58,3 +58,9 @@ fingerprint，因此旧 schema 1 记录会成为 stale；成功重新生成保�
 schema 2。SQLite migration `0007_evidence_map_schema_v2` 允许版本 1/2，存在版本 2 行时拒绝降级。
 stale 结果可以显示但不能冒充最新结果。Provider 超时、不可用或返回非法内容时，最后一个有效
 记录不删除、不覆盖；错误继续使用 Phase 6 的稳定脱敏语义。
+
+非法 Provider 结果仍统一向客户端返回 `502 AI_INVALID_RESPONSE`，但本机 API warning 日志会附带
+一个固定白名单分类：`INVALID_JSON`、`PROVIDER_ENVELOPE`、`SCHEMA_MISMATCH`、
+`REQUIREMENT_MISMATCH` 或 `EVIDENCE_LIMIT_EXCEEDED`。日志只记录分类码，不记录 Job/Resume ID、
+简历、JD、Provider 原始 envelope/content、API Key 或其他外部 payload。无法 grounding 的 quote
+沿用安全删除与 coverage 降级规则，不作为 502 失败分类。

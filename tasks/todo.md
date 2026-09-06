@@ -7,15 +7,18 @@
 - [x] RED/GREEN semantic cases A–E with B frozen as PARTIAL and the 2027 cohort case forbidding
   customary-program-length inference.
 - [x] Replace the Evidence Map prompt without changing Schema, Provider, timeout, persistence or UI.
+- [x] Add allowlisted local diagnostics for invalid Provider envelope/JSON/schema/requirement/evidence
+  limits without logging payloads or changing the public `AI_INVALID_RESPONSE` contract.
 - [x] Synchronize canonical docs and pass all Python/TypeScript/build/security gates.
 - [x] Complete review/simplification with Critical 0 and Required 0.
 - [ ] Run separately consented real BOSS and Nowcoder semantic acceptance; owner must judge PASS/FAIL.
 - [ ] Stop before Phase 8 and do not announce Phase 7 PASS.
 
-Real acceptance note (2026-09-06): two separately confirmed Nowcoder generation attempts returned the
-sanitized unavailable state. The first completed around the 60-second provider window; the second,
-after an API restart with Provider configuration detected, completed in 61,509 ms. No Evidence Map was
-created, no automatic retry was sent, and owner content acceptance remains blocked.
+Real acceptance note (2026-09-06): two separately confirmed Nowcoder generation attempts showed the
+same bounded generic Web error. The second, after an API restart with Provider configuration detected,
+completed in 61,509 ms; terminal evidence subsequently confirmed HTTP 502 rather than 503. No Evidence
+Map was created, no automatic retry was sent, and owner content acceptance remains blocked pending a
+fresh run with the new sanitized diagnostic logging.
 
 ## Comprehensive Evidence Map amendment — approved 2026-09-06
 
