@@ -1,5 +1,17 @@
 # Phase 7 — Resume Version & Evidence Map Checklist
 
+## Phase 7C semantic evidence refinement — approved 2026-09-06
+
+- [ ] RED/GREEN prompt contract for complete-Resume semantic search, non-lexical wording and 1–3
+  combined grounded quotes.
+- [ ] RED/GREEN semantic cases A–E with B frozen as PARTIAL and the 2027 cohort case forbidding
+  customary-program-length inference.
+- [ ] Replace the Evidence Map prompt without changing Schema, Provider, timeout, persistence or UI.
+- [ ] Synchronize canonical docs and pass all Python/TypeScript/build/security gates.
+- [ ] Complete review/simplification with Critical 0 and Required 0.
+- [ ] Run separately consented real BOSS and Nowcoder semantic acceptance; owner must judge PASS/FAIL.
+- [ ] Stop before Phase 8 and do not announce Phase 7 PASS.
+
 ## Comprehensive Evidence Map amendment — approved 2026-09-06
 
 - [x] RED/GREEN six-group JD criteria, schema 2 persistence, schema 1 read compatibility and migration.

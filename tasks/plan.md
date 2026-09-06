@@ -69,6 +69,48 @@ local-first boundary.
 - Old schema 1 records remain readable and become stale when the expanded criterion fingerprint is
   applied; successful regeneration replaces the same row with schema 2.
 
+## Phase 7C — Semantic Evidence Matching Refinement
+
+> Owner-approved on 2026-09-06 after real acceptance exposed overly lexical matching. Phase 7 is
+> not accepted yet, and Phase 8 remains unauthorized.
+
+### Frozen behavior
+
+- Evidence matching is semantic: understand each requirement first, then search the complete selected
+  Resume Version. Different wording and evidence from multiple sections may support the same item.
+- DIRECT requires one to three grounded quotes that together prove the requirement without adding a
+  user fact. PARTIAL has relevant grounded evidence but lacks a key component or needs user
+  confirmation. GAP is allowed only after the complete Resume contains no reasonable supporting fact.
+- Semantic inference may explain how written facts support a requirement. It may not infer or upgrade
+  proficiency, work duration, education, graduation year, project scale or any other unwritten fact.
+- A start date plus degree-in-progress does not establish a graduation cohort through a customary
+  program-length assumption. Without an explicit graduation year, expected graduation date or stated
+  program duration, a cohort requirement is at most PARTIAL and must identify the missing fact.
+- Quote grounding, requirement identity/order, prompt-injection separation, schema 2, privacy,
+  optional Provider behavior, no-score rules and failure preservation remain unchanged.
+
+### Ordered tasks and verification
+
+1. RED prompt-contract tests for whole-Resume semantic search, different wording, one-to-three combined
+   quotes and the ban on customary-program-length graduation inference.
+2. RED/GREEN fake-provider cases A–E for semantic DIRECT/PARTIAL/GAP outputs while retaining exact
+   requirement identity and Resume quote grounding.
+3. Replace the current Evidence Map instruction with the smallest frozen semantic-grounded revision;
+   do not add embeddings, RAG, a vector database, LangChain or production text-specific rules.
+4. Synchronize ADR/product/technical/agent docs, run all Python/TypeScript/build/security gates, then
+   complete code review and simplification with Critical 0 / Required 0.
+5. After restart, obtain separate action-time consent for real BOSS and Nowcoder regeneration. Record
+   latency and require the owner to judge semantic quality; never declare acceptance automatically.
+
+### Success criteria
+
+- Cases A/C are DIRECT using differently worded, grounded Resume facts; case B is frozen as PARTIAL
+  because collaboration/closure is relevant but does not alone prove end-to-end cross-team ownership.
+- Case D is GAP because the complete Resume has no sales fact; case E is PARTIAL without customary
+  study-duration reasoning or an asserted graduation year.
+- Existing BOSS, Nowcoder, JD AI, Application, grounding, injection, privacy, Provider-optional and
+  no-score regressions all remain green.
+
 ## Ordered work
 
 1. Freeze ADR-014, plan/checklist, data/API/privacy/grounding rules and the Phase 8 stop boundary.
