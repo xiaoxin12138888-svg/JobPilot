@@ -34,6 +34,65 @@ export const APPLICATION_STATUS_LABELS: Readonly<Record<ApplicationStatus, strin
   closed: '岗位关闭',
 };
 
+export type RejectionReason =
+  | 'TECHNICAL'
+  | 'EXPERIENCE'
+  | 'PRODUCT'
+  | 'BUSINESS'
+  | 'COMMUNICATION'
+  | 'ROLE_FIT'
+  | 'HEADCOUNT'
+  | 'UNKNOWN'
+  | 'OTHER';
+
+export const REJECTION_REASON_LABELS: Readonly<Record<RejectionReason, string>> = {
+  TECHNICAL: '技术能力',
+  EXPERIENCE: '经验匹配',
+  PRODUCT: '产品能力',
+  BUSINESS: '业务理解',
+  COMMUNICATION: '沟通表达',
+  ROLE_FIT: '岗位匹配',
+  HEADCOUNT: '岗位名额',
+  UNKNOWN: '未知',
+  OTHER: '其他',
+};
+
+export type InterviewType = 'PHONE' | 'VIDEO' | 'ONSITE' | 'OTHER';
+export type InterviewStatus = 'PLANNED' | 'COMPLETED' | 'CANCELLED';
+export type QuestionCategory =
+  'PRODUCT' | 'AI' | 'TECHNICAL' | 'PROJECT' | 'BEHAVIORAL' | 'BUSINESS' | 'OTHER';
+export type QuestionPerformance = 'GOOD' | 'OK' | 'POOR' | 'NOT_SURE';
+
+export const INTERVIEW_TYPE_LABELS: Readonly<Record<InterviewType, string>> = {
+  PHONE: '电话',
+  VIDEO: '视频',
+  ONSITE: '现场',
+  OTHER: '其他',
+};
+
+export const INTERVIEW_STATUS_LABELS: Readonly<Record<InterviewStatus, string>> = {
+  PLANNED: '待进行',
+  COMPLETED: '已完成',
+  CANCELLED: '已取消',
+};
+
+export const QUESTION_CATEGORY_LABELS: Readonly<Record<QuestionCategory, string>> = {
+  PRODUCT: '产品',
+  AI: 'AI',
+  TECHNICAL: '技术',
+  PROJECT: '项目',
+  BEHAVIORAL: '行为',
+  BUSINESS: '业务',
+  OTHER: '其他',
+};
+
+export const QUESTION_PERFORMANCE_LABELS: Readonly<Record<QuestionPerformance, string>> = {
+  GOOD: '答得较好',
+  OK: '一般',
+  POOR: '答得不好',
+  NOT_SURE: '不确定',
+};
+
 export interface Job {
   id: string;
   title: string;
@@ -77,6 +136,8 @@ export interface Application {
   jobId: string;
   status: ApplicationStatus;
   resumeVersionId: string | null;
+  outcomeNote: string | null;
+  rejectionReason: RejectionReason | null;
   appliedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -98,6 +159,118 @@ export interface UpdateApplicationInput {
   status?: ApplicationStatus;
   confirmApplied?: boolean;
   resumeVersionId?: string | null;
+  outcomeNote?: string | null;
+  rejectionReason?: RejectionReason | null;
+}
+
+export interface InterviewQuestion {
+  id: string;
+  interviewRoundId: string;
+  question: string;
+  category: QuestionCategory;
+  answerSummary: string | null;
+  performance: QuestionPerformance;
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InterviewRound {
+  id: string;
+  applicationId: string;
+  roundName: string;
+  interviewType: InterviewType;
+  scheduledAt: string | null;
+  status: InterviewStatus;
+  interviewerNote: string | null;
+  wentWell: string | null;
+  couldImprove: string | null;
+  learningNotes: string | null;
+  otherNotes: string | null;
+  questions: InterviewQuestion[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InterviewRoundListResponse {
+  items: InterviewRound[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface CreateInterviewRoundInput {
+  roundName: string;
+  interviewType: InterviewType;
+  scheduledAt?: string | null;
+  status?: InterviewStatus;
+  interviewerNote?: string | null;
+  wentWell?: string | null;
+  couldImprove?: string | null;
+  learningNotes?: string | null;
+  otherNotes?: string | null;
+}
+
+export type UpdateInterviewRoundInput = Partial<CreateInterviewRoundInput>;
+
+export interface CreateInterviewQuestionInput {
+  question: string;
+  category: QuestionCategory;
+  answerSummary?: string | null;
+  performance?: QuestionPerformance;
+  note?: string | null;
+}
+
+export type UpdateInterviewQuestionInput = Partial<CreateInterviewQuestionInput>;
+
+export type FunnelStageName = 'SAVED_JOBS' | 'APPLICATIONS' | 'INTERVIEW_APPLICATIONS' | 'OFFERS';
+
+export interface FeedbackTotals {
+  savedJobs: number;
+  applications: number;
+  interviewApplications: number;
+  interviews: number;
+  questions: number;
+  offers: number;
+  rejected: number;
+}
+
+export interface FunnelStage {
+  stage: FunnelStageName;
+  count: number;
+  conversionRate: number | null;
+}
+
+export interface FeedbackGroupStats {
+  applications: number;
+  interviewApplications: number;
+  offers: number;
+}
+
+export interface SourceFeedbackStats extends FeedbackGroupStats {
+  source: JobSource;
+}
+
+export interface ResumeVersionFeedbackStats extends FeedbackGroupStats {
+  resumeVersionId: string;
+  resumeVersionName: string;
+}
+
+export interface FeedbackSummary {
+  hasData: boolean;
+  totals: FeedbackTotals;
+  funnel: FunnelStage[];
+  questionCategories: { category: QuestionCategory; count: number }[];
+  performances: { performance: QuestionPerformance; count: number }[];
+  weakCategories: {
+    category: QuestionCategory;
+    questionCount: number;
+    weakCount: number;
+  }[];
+  rejectionReasons: { reason: RejectionReason; count: number }[];
+  unrecordedRejectionReasons: number;
+  resumeVersions: ResumeVersionFeedbackStats[];
+  sources: SourceFeedbackStats[];
 }
 
 export interface ResumeVersion {

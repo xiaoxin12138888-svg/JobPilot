@@ -4,8 +4,14 @@ import type {
   Application,
   ApplicationListResponse,
   ApplicationStatus,
+  CreateInterviewQuestionInput,
+  CreateInterviewRoundInput,
   CreateResumeVersionInput,
   DuplicateResumeVersionInput,
+  FeedbackSummary,
+  InterviewQuestion,
+  InterviewRound,
+  InterviewRoundListResponse,
   CreateJobInput,
   Job,
   JobAnalysisResponse,
@@ -14,11 +20,21 @@ import type {
   JobSource,
   ResumeVersion,
   ResumeVersionListResponse,
+  UpdateInterviewQuestionInput,
+  UpdateInterviewRoundInput,
   UpdateApplicationInput,
   UpdateJobInput,
   UpdateResumeVersionInput,
 } from '@jobpilot/shared-types';
-export { APPLICATION_STATUS_LABELS, JOB_SOURCE_LABELS } from '@jobpilot/shared-types';
+export {
+  APPLICATION_STATUS_LABELS,
+  INTERVIEW_STATUS_LABELS,
+  INTERVIEW_TYPE_LABELS,
+  JOB_SOURCE_LABELS,
+  QUESTION_CATEGORY_LABELS,
+  QUESTION_PERFORMANCE_LABELS,
+  REJECTION_REASON_LABELS,
+} from '@jobpilot/shared-types';
 
 export type {
   ApiErrorEnvelope,
@@ -28,6 +44,8 @@ export type {
   ApplicationListResponse,
   ApplicationStatus,
   CreateJobInput,
+  CreateInterviewQuestionInput,
+  CreateInterviewRoundInput,
   CreateResumeVersionInput,
   DuplicateResumeVersionInput,
   EvidenceCoverage,
@@ -37,6 +55,16 @@ export type {
   EvidenceMapSchemaVersion,
   EvidenceMapping,
   EvidenceRequirementType,
+  FeedbackGroupStats,
+  FeedbackSummary,
+  FeedbackTotals,
+  FunnelStage,
+  FunnelStageName,
+  InterviewQuestion,
+  InterviewRound,
+  InterviewRoundListResponse,
+  InterviewStatus,
+  InterviewType,
   JDAnalysis,
   JDAnalysisRecord,
   Job,
@@ -48,9 +76,16 @@ export type {
   ResumeEvidence,
   ResumeVersion,
   ResumeVersionListResponse,
+  ResumeVersionFeedbackStats,
+  RejectionReason,
+  SourceFeedbackStats,
   UpdateApplicationInput,
   UpdateJobInput,
+  UpdateInterviewQuestionInput,
+  UpdateInterviewRoundInput,
   UpdateResumeVersionInput,
+  QuestionCategory,
+  QuestionPerformance,
 } from '@jobpilot/shared-types';
 
 const REQUEST_TIMEOUT_MILLISECONDS = 5_000;
@@ -99,6 +134,11 @@ export interface ApplicationListFilters {
   offset?: number;
 }
 
+export interface InterviewListFilters {
+  limit?: number;
+  offset?: number;
+}
+
 export interface ApiClient {
   getHealth(): Promise<ApiHealthResponse>;
   createJob(input: CreateJobInput): Promise<Job>;
@@ -114,6 +154,24 @@ export interface ApiClient {
   listApplications(filters?: ApplicationListFilters): Promise<ApplicationListResponse>;
   getApplication(applicationId: string): Promise<Application>;
   updateApplication(applicationId: string, input: UpdateApplicationInput): Promise<Application>;
+  createInterview(applicationId: string, input: CreateInterviewRoundInput): Promise<InterviewRound>;
+  listInterviews(
+    applicationId: string,
+    filters?: InterviewListFilters,
+  ): Promise<InterviewRoundListResponse>;
+  getInterview(interviewId: string): Promise<InterviewRound>;
+  updateInterview(interviewId: string, input: UpdateInterviewRoundInput): Promise<InterviewRound>;
+  deleteInterview(interviewId: string): Promise<void>;
+  createInterviewQuestion(
+    interviewId: string,
+    input: CreateInterviewQuestionInput,
+  ): Promise<InterviewQuestion>;
+  updateInterviewQuestion(
+    questionId: string,
+    input: UpdateInterviewQuestionInput,
+  ): Promise<InterviewQuestion>;
+  deleteInterviewQuestion(questionId: string): Promise<void>;
+  getFeedbackSummary(): Promise<FeedbackSummary>;
   createResumeVersion(input: CreateResumeVersionInput): Promise<ResumeVersion>;
   listResumeVersions(): Promise<ResumeVersionListResponse>;
   getResumeVersion(resumeVersionId: string): Promise<ResumeVersion>;
@@ -315,6 +373,61 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         await request(`/api/v1/applications/${encodeURIComponent(applicationId)}`, 'PATCH', input),
       );
     },
+    async createInterview(applicationId, input): Promise<InterviewRound> {
+      return requireInterviewRound(
+        await request(
+          `/api/v1/applications/${encodeURIComponent(applicationId)}/interviews`,
+          'POST',
+          input,
+        ),
+      );
+    },
+    async listInterviews(applicationId, filters = {}): Promise<InterviewRoundListResponse> {
+      const query = buildQuery(filters);
+      return requireInterviewRoundList(
+        await request(
+          `/api/v1/applications/${encodeURIComponent(applicationId)}/interviews${query}`,
+          'GET',
+        ),
+      );
+    },
+    async getInterview(interviewId): Promise<InterviewRound> {
+      return requireInterviewRound(
+        await request(`/api/v1/interviews/${encodeURIComponent(interviewId)}`, 'GET'),
+      );
+    },
+    async updateInterview(interviewId, input): Promise<InterviewRound> {
+      return requireInterviewRound(
+        await request(`/api/v1/interviews/${encodeURIComponent(interviewId)}`, 'PATCH', input),
+      );
+    },
+    async deleteInterview(interviewId): Promise<void> {
+      await request(`/api/v1/interviews/${encodeURIComponent(interviewId)}`, 'DELETE');
+    },
+    async createInterviewQuestion(interviewId, input): Promise<InterviewQuestion> {
+      return requireInterviewQuestion(
+        await request(
+          `/api/v1/interviews/${encodeURIComponent(interviewId)}/questions`,
+          'POST',
+          input,
+        ),
+      );
+    },
+    async updateInterviewQuestion(questionId, input): Promise<InterviewQuestion> {
+      return requireInterviewQuestion(
+        await request(
+          `/api/v1/interview-questions/${encodeURIComponent(questionId)}`,
+          'PATCH',
+          input,
+        ),
+      );
+    },
+    async deleteInterviewQuestion(questionId): Promise<void> {
+      await request(`/api/v1/interview-questions/${encodeURIComponent(questionId)}`, 'DELETE');
+    },
+    async getFeedbackSummary(): Promise<FeedbackSummary> {
+      return requireFeedbackSummary(await request('/api/v1/feedback-summary', 'GET'));
+    },
     async createResumeVersion(input): Promise<ResumeVersion> {
       return requireResumeVersion(await request('/api/v1/resume-versions', 'POST', input));
     },
@@ -402,6 +515,34 @@ function requireApplicationList(value: unknown): ApplicationListResponse {
     throw new Error('JobPilot API returned an invalid Application list response');
   }
   return value as unknown as ApplicationListResponse;
+}
+
+function requireInterviewRound(value: unknown): InterviewRound {
+  if (!isInterviewRound(value)) {
+    throw new Error('JobPilot API returned an invalid Interview response');
+  }
+  return value as InterviewRound;
+}
+
+function requireInterviewRoundList(value: unknown): InterviewRoundListResponse {
+  if (!isPage(value) || !value.items.every(isInterviewRound)) {
+    throw new Error('JobPilot API returned an invalid Interview list response');
+  }
+  return value as unknown as InterviewRoundListResponse;
+}
+
+function requireInterviewQuestion(value: unknown): InterviewQuestion {
+  if (!isInterviewQuestion(value)) {
+    throw new Error('JobPilot API returned an invalid Interview Question response');
+  }
+  return value as InterviewQuestion;
+}
+
+function requireFeedbackSummary(value: unknown): FeedbackSummary {
+  if (!isFeedbackSummary(value)) {
+    throw new Error('JobPilot API returned an invalid Feedback Summary response');
+  }
+  return value as FeedbackSummary;
 }
 
 function requireResumeVersion(value: unknown): ResumeVersion {
@@ -582,7 +723,36 @@ const APPLICATION_KEYS = [
   'jobId',
   'status',
   'resumeVersionId',
+  'outcomeNote',
+  'rejectionReason',
   'appliedAt',
+  'createdAt',
+  'updatedAt',
+] as const;
+const INTERVIEW_QUESTION_KEYS = [
+  'id',
+  'interviewRoundId',
+  'question',
+  'category',
+  'answerSummary',
+  'performance',
+  'note',
+  'createdAt',
+  'updatedAt',
+] as const;
+const INTERVIEW_ROUND_KEYS = [
+  'id',
+  'applicationId',
+  'roundName',
+  'interviewType',
+  'scheduledAt',
+  'status',
+  'interviewerNote',
+  'wentWell',
+  'couldImprove',
+  'learningNotes',
+  'otherNotes',
+  'questions',
   'createdAt',
   'updatedAt',
 ] as const;
@@ -617,9 +787,153 @@ function isApplicationFields(value: Record<string, unknown>): boolean {
     typeof value.jobId === 'string' &&
     isApplicationStatus(value.status) &&
     isNullableString(value.resumeVersionId) &&
+    isNullableString(value.outcomeNote) &&
+    (value.rejectionReason === null || isRejectionReason(value.rejectionReason)) &&
     (value.appliedAt === null || isDateString(value.appliedAt)) &&
     isDateString(value.createdAt) &&
     isDateString(value.updatedAt)
+  );
+}
+
+function isInterviewQuestion(value: unknown): value is InterviewQuestion {
+  return (
+    isRecordWithKeys(value, INTERVIEW_QUESTION_KEYS) &&
+    typeof value.id === 'string' &&
+    typeof value.interviewRoundId === 'string' &&
+    typeof value.question === 'string' &&
+    isQuestionCategory(value.category) &&
+    isNullableString(value.answerSummary) &&
+    isQuestionPerformance(value.performance) &&
+    isNullableString(value.note) &&
+    isDateString(value.createdAt) &&
+    isDateString(value.updatedAt)
+  );
+}
+
+function isInterviewRound(value: unknown): value is InterviewRound {
+  return (
+    isRecordWithKeys(value, INTERVIEW_ROUND_KEYS) &&
+    typeof value.id === 'string' &&
+    typeof value.applicationId === 'string' &&
+    typeof value.roundName === 'string' &&
+    isInterviewType(value.interviewType) &&
+    (value.scheduledAt === null || isDateString(value.scheduledAt)) &&
+    isInterviewStatus(value.status) &&
+    isNullableString(value.interviewerNote) &&
+    isNullableString(value.wentWell) &&
+    isNullableString(value.couldImprove) &&
+    isNullableString(value.learningNotes) &&
+    isNullableString(value.otherNotes) &&
+    Array.isArray(value.questions) &&
+    value.questions.every(isInterviewQuestion) &&
+    isDateString(value.createdAt) &&
+    isDateString(value.updatedAt)
+  );
+}
+
+function isFeedbackSummary(value: unknown): value is FeedbackSummary {
+  return (
+    isRecordWithKeys(value, [
+      'hasData',
+      'totals',
+      'funnel',
+      'questionCategories',
+      'performances',
+      'weakCategories',
+      'rejectionReasons',
+      'unrecordedRejectionReasons',
+      'resumeVersions',
+      'sources',
+    ]) &&
+    typeof value.hasData === 'boolean' &&
+    isFeedbackTotals(value.totals) &&
+    Array.isArray(value.funnel) &&
+    value.funnel.every(
+      (item) =>
+        isRecordWithKeys(item, ['stage', 'count', 'conversionRate']) &&
+        isFunnelStage(item.stage) &&
+        isNonNegativeInteger(item.count) &&
+        (item.conversionRate === null || isNonNegativeNumber(item.conversionRate)),
+    ) &&
+    Array.isArray(value.questionCategories) &&
+    value.questionCategories.every(
+      (item) =>
+        isRecordWithKeys(item, ['category', 'count']) &&
+        isQuestionCategory(item.category) &&
+        isNonNegativeInteger(item.count),
+    ) &&
+    Array.isArray(value.performances) &&
+    value.performances.every(
+      (item) =>
+        isRecordWithKeys(item, ['performance', 'count']) &&
+        isQuestionPerformance(item.performance) &&
+        isNonNegativeInteger(item.count),
+    ) &&
+    Array.isArray(value.weakCategories) &&
+    value.weakCategories.every(
+      (item) =>
+        isRecordWithKeys(item, ['category', 'questionCount', 'weakCount']) &&
+        isQuestionCategory(item.category) &&
+        isNonNegativeInteger(item.questionCount) &&
+        isNonNegativeInteger(item.weakCount),
+    ) &&
+    Array.isArray(value.rejectionReasons) &&
+    value.rejectionReasons.every(
+      (item) =>
+        isRecordWithKeys(item, ['reason', 'count']) &&
+        isRejectionReason(item.reason) &&
+        isNonNegativeInteger(item.count),
+    ) &&
+    isNonNegativeInteger(value.unrecordedRejectionReasons) &&
+    Array.isArray(value.resumeVersions) &&
+    value.resumeVersions.every(isResumeVersionFeedbackStats) &&
+    Array.isArray(value.sources) &&
+    value.sources.every(isSourceFeedbackStats)
+  );
+}
+
+function isFeedbackTotals(value: unknown): boolean {
+  return (
+    isRecordWithKeys(value, [
+      'savedJobs',
+      'applications',
+      'interviewApplications',
+      'interviews',
+      'questions',
+      'offers',
+      'rejected',
+    ]) && Object.values(value).every(isNonNegativeInteger)
+  );
+}
+
+function isResumeVersionFeedbackStats(value: unknown): boolean {
+  return (
+    isRecordWithKeys(value, [
+      'resumeVersionId',
+      'resumeVersionName',
+      'applications',
+      'interviewApplications',
+      'offers',
+    ]) &&
+    typeof value.resumeVersionId === 'string' &&
+    typeof value.resumeVersionName === 'string' &&
+    isFeedbackGroupStats(value)
+  );
+}
+
+function isSourceFeedbackStats(value: unknown): boolean {
+  return (
+    isRecordWithKeys(value, ['source', 'applications', 'interviewApplications', 'offers']) &&
+    (value.source === 'manual' || value.source === 'boss' || value.source === 'nowcoder') &&
+    isFeedbackGroupStats(value)
+  );
+}
+
+function isFeedbackGroupStats(value: Record<string, unknown>): boolean {
+  return (
+    isNonNegativeInteger(value.applications) &&
+    isNonNegativeInteger(value.interviewApplications) &&
+    isNonNegativeInteger(value.offers)
   );
 }
 
@@ -710,6 +1024,61 @@ function isDateString(value: unknown): value is string {
 
 function isApplicationStatus(value: unknown): value is ApplicationStatus {
   return typeof value === 'string' && APPLICATION_STATUSES.has(value as ApplicationStatus);
+}
+
+function isRejectionReason(value: unknown): boolean {
+  return (
+    value === 'TECHNICAL' ||
+    value === 'EXPERIENCE' ||
+    value === 'PRODUCT' ||
+    value === 'BUSINESS' ||
+    value === 'COMMUNICATION' ||
+    value === 'ROLE_FIT' ||
+    value === 'HEADCOUNT' ||
+    value === 'UNKNOWN' ||
+    value === 'OTHER'
+  );
+}
+
+function isInterviewType(value: unknown): boolean {
+  return value === 'PHONE' || value === 'VIDEO' || value === 'ONSITE' || value === 'OTHER';
+}
+
+function isInterviewStatus(value: unknown): boolean {
+  return value === 'PLANNED' || value === 'COMPLETED' || value === 'CANCELLED';
+}
+
+function isQuestionCategory(value: unknown): boolean {
+  return (
+    value === 'PRODUCT' ||
+    value === 'AI' ||
+    value === 'TECHNICAL' ||
+    value === 'PROJECT' ||
+    value === 'BEHAVIORAL' ||
+    value === 'BUSINESS' ||
+    value === 'OTHER'
+  );
+}
+
+function isQuestionPerformance(value: unknown): boolean {
+  return value === 'GOOD' || value === 'OK' || value === 'POOR' || value === 'NOT_SURE';
+}
+
+function isFunnelStage(value: unknown): boolean {
+  return (
+    value === 'SAVED_JOBS' ||
+    value === 'APPLICATIONS' ||
+    value === 'INTERVIEW_APPLICATIONS' ||
+    value === 'OFFERS'
+  );
+}
+
+function isNonNegativeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0;
+}
+
+function isNonNegativeNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0;
 }
 
 function isLoopbackHostname(hostname: string): boolean {

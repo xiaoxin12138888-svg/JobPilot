@@ -17,7 +17,12 @@ describe('createApiClient', () => {
     expect(Object.keys(apiClientModule).sort()).toEqual([
       'APPLICATION_STATUS_LABELS',
       'ApiRequestError',
+      'INTERVIEW_STATUS_LABELS',
+      'INTERVIEW_TYPE_LABELS',
       'JOB_SOURCE_LABELS',
+      'QUESTION_CATEGORY_LABELS',
+      'QUESTION_PERFORMANCE_LABELS',
+      'REJECTION_REASON_LABELS',
       'createApiClient',
       'validateApiBaseUrl',
     ]);
@@ -283,6 +288,133 @@ describe('createApiClient', () => {
       body: JSON.stringify({ resumeVersionId: 'resume-1' }),
       credentials: 'omit',
     });
+  });
+
+  it('records Application outcome detail with no credentials', async () => {
+    const application = {
+      ...createApplicationPayload('planned'),
+      status: 'rejected' as const,
+      outcomeNote: '二面后未通过',
+      rejectionReason: 'EXPERIENCE' as const,
+    };
+    const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(application));
+    const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
+
+    await expect(
+      client.updateApplication('application-1', {
+        status: 'rejected',
+        outcomeNote: '二面后未通过',
+        rejectionReason: 'EXPERIENCE',
+      }),
+    ).resolves.toEqual(application);
+    expect(fetchImplementation.mock.calls[0]?.[1]).toMatchObject({
+      method: 'PATCH',
+      body: JSON.stringify({
+        status: 'rejected',
+        outcomeNote: '二面后未通过',
+        rejectionReason: 'EXPERIENCE',
+      }),
+      credentials: 'omit',
+    });
+  });
+
+  it('creates, lists, updates and deletes local interview records', async () => {
+    const interview = createInterviewPayload();
+    const question = createQuestionPayload();
+    const fetchImplementation = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(jsonResponse(interview, 201))
+      .mockResolvedValueOnce(jsonResponse({ items: [interview], total: 1, limit: 20, offset: 0 }))
+      .mockResolvedValueOnce(jsonResponse({ ...interview, status: 'COMPLETED' }))
+      .mockResolvedValueOnce(jsonResponse(question, 201))
+      .mockResolvedValueOnce(jsonResponse({ ...question, performance: 'GOOD' }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
+
+    await expect(
+      client.createInterview('application-1', {
+        roundName: '一面',
+        interviewType: 'VIDEO',
+      }),
+    ).resolves.toEqual(interview);
+    await expect(
+      client.listInterviews('application-1', { limit: 20, offset: 0 }),
+    ).resolves.toMatchObject({ total: 1 });
+    await expect(
+      client.updateInterview('interview-1', { status: 'COMPLETED' }),
+    ).resolves.toMatchObject({ status: 'COMPLETED' });
+    await expect(
+      client.createInterviewQuestion('interview-1', {
+        question: '为什么选择这个岗位？',
+        category: 'PRODUCT',
+        performance: 'OK',
+      }),
+    ).resolves.toEqual(question);
+    await expect(
+      client.updateInterviewQuestion('question-1', { performance: 'GOOD' }),
+    ).resolves.toMatchObject({ performance: 'GOOD' });
+    await expect(client.deleteInterviewQuestion('question-1')).resolves.toBeUndefined();
+    await expect(client.deleteInterview('interview-1')).resolves.toBeUndefined();
+
+    expect(fetchImplementation.mock.calls.map((call) => [call[0], call[1]?.method])).toEqual([
+      ['http://127.0.0.1:8000/api/v1/applications/application-1/interviews', 'POST'],
+      [
+        'http://127.0.0.1:8000/api/v1/applications/application-1/interviews?limit=20&offset=0',
+        'GET',
+      ],
+      ['http://127.0.0.1:8000/api/v1/interviews/interview-1', 'PATCH'],
+      ['http://127.0.0.1:8000/api/v1/interviews/interview-1/questions', 'POST'],
+      ['http://127.0.0.1:8000/api/v1/interview-questions/question-1', 'PATCH'],
+      ['http://127.0.0.1:8000/api/v1/interview-questions/question-1', 'DELETE'],
+      ['http://127.0.0.1:8000/api/v1/interviews/interview-1', 'DELETE'],
+    ]);
+    expect(fetchImplementation.mock.calls.every((call) => call[1]?.credentials === 'omit')).toBe(
+      true,
+    );
+  });
+
+  it.each([
+    { ...createInterviewPayload(), privateField: 'must-not-pass' },
+    { ...createInterviewPayload(), interviewType: 'CHAT' },
+    { ...createInterviewPayload(), questions: [{ ...createQuestionPayload(), performance: 80 }] },
+  ])('rejects an untrusted Interview payload', async (payload) => {
+    const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(payload));
+    const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
+
+    await expect(client.getInterview('interview-1')).rejects.toThrow('invalid Interview response');
+  });
+
+  it('gets and validates the deterministic Feedback Summary', async () => {
+    const payload = createFeedbackSummaryPayload();
+    const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(payload));
+    const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
+
+    await expect(client.getFeedbackSummary()).resolves.toEqual(payload);
+    expect(fetchImplementation.mock.calls[0]?.[0]).toBe(
+      'http://127.0.0.1:8000/api/v1/feedback-summary',
+    );
+    expect(fetchImplementation.mock.calls[0]?.[1]).toMatchObject({
+      method: 'GET',
+      credentials: 'omit',
+    });
+  });
+
+  it.each([
+    { ...createFeedbackSummaryPayload(), recommendation: '优先使用 V1' },
+    {
+      ...createFeedbackSummaryPayload(),
+      funnel: [{ stage: 'OFFERS', count: 1, conversionRate: '33%' }],
+    },
+    {
+      ...createFeedbackSummaryPayload(),
+      questionCategories: [{ category: 'AUTO', count: 1 }],
+    },
+  ])('rejects an untrusted Feedback Summary payload', async (payload) => {
+    const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(payload));
+    const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
+
+    await expect(client.getFeedbackSummary()).rejects.toThrow('invalid Feedback Summary response');
   });
 
   it('loads only the application belonging to one job', async () => {
@@ -562,9 +694,80 @@ function createApplicationPayload(status: 'planned' | 'applied') {
     jobId: 'job-1',
     status,
     resumeVersionId: null,
+    outcomeNote: null,
+    rejectionReason: null,
     appliedAt: status === 'applied' ? '2026-09-03T00:01:00Z' : null,
     createdAt: '2026-09-03T00:00:00Z',
     updatedAt: '2026-09-03T00:01:00Z',
+  };
+}
+
+function createQuestionPayload() {
+  return {
+    id: 'question-1',
+    interviewRoundId: 'interview-1',
+    question: '为什么选择这个岗位？',
+    category: 'PRODUCT' as const,
+    answerSummary: '结合虚构项目说明动机。',
+    performance: 'OK' as const,
+    note: null,
+    createdAt: '2026-09-06T00:00:00Z',
+    updatedAt: '2026-09-06T00:00:00Z',
+  };
+}
+
+function createInterviewPayload() {
+  return {
+    id: 'interview-1',
+    applicationId: 'application-1',
+    roundName: '一面',
+    interviewType: 'VIDEO' as const,
+    scheduledAt: null,
+    status: 'PLANNED' as const,
+    interviewerNote: null,
+    wentWell: null,
+    couldImprove: null,
+    learningNotes: null,
+    otherNotes: null,
+    questions: [] as ReturnType<typeof createQuestionPayload>[],
+    createdAt: '2026-09-06T00:00:00Z',
+    updatedAt: '2026-09-06T00:00:00Z',
+  };
+}
+
+function createFeedbackSummaryPayload() {
+  return {
+    hasData: true,
+    totals: {
+      savedJobs: 5,
+      applications: 4,
+      interviewApplications: 3,
+      interviews: 4,
+      questions: 4,
+      offers: 1,
+      rejected: 2,
+    },
+    funnel: [
+      { stage: 'SAVED_JOBS' as const, count: 5, conversionRate: null },
+      { stage: 'APPLICATIONS' as const, count: 4, conversionRate: 0.8 },
+      { stage: 'INTERVIEW_APPLICATIONS' as const, count: 3, conversionRate: 0.75 },
+      { stage: 'OFFERS' as const, count: 1, conversionRate: 1 / 3 },
+    ],
+    questionCategories: [{ category: 'PRODUCT' as const, count: 4 }],
+    performances: [{ performance: 'OK' as const, count: 4 }],
+    weakCategories: [{ category: 'PRODUCT' as const, questionCount: 4, weakCount: 3 }],
+    rejectionReasons: [{ reason: 'EXPERIENCE' as const, count: 1 }],
+    unrecordedRejectionReasons: 1,
+    resumeVersions: [
+      {
+        resumeVersionId: 'resume-1',
+        resumeVersionName: '产品版 V1',
+        applications: 2,
+        interviewApplications: 2,
+        offers: 1,
+      },
+    ],
+    sources: [{ source: 'manual' as const, applications: 2, interviewApplications: 2, offers: 0 }],
   };
 }
 
