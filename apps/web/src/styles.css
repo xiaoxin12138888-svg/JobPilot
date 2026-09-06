@@ -910,6 +910,26 @@ dd {
   display: grid;
   gap: 0.8rem;
 }
+.application-outcome {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+}
+.application-outcome h3,
+.application-outcome .outcome-guidance,
+.application-outcome .success-note {
+  margin: 0;
+}
+.application-outcome h3 {
+  font-size: 0.95rem;
+}
+.outcome-guidance {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
 .confirmation-note {
   margin: 1.2rem 0 0 !important;
   padding-top: 1rem;

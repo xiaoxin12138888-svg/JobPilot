@@ -341,6 +341,76 @@ describe('App', () => {
     });
   });
 
+  it('records a user-provided rejection reason and outcome note', async () => {
+    const job = createJob();
+    const application = createApplication('rejected');
+    const updateApplication = vi.fn().mockResolvedValue({
+      ...application,
+      outcomeNote: '二面后未通过',
+      rejectionReason: 'EXPERIENCE',
+    });
+    const apiClient = createApiClient({
+      getJob: vi.fn().mockResolvedValue(job),
+      listApplications: vi
+        .fn()
+        .mockResolvedValue(page([{ ...application, jobTitle: job.title, company: job.company }])),
+      updateApplication,
+    });
+    window.history.replaceState(null, '', `/?jobId=${job.id}`);
+
+    render(<App apiClient={apiClient} />);
+
+    expect(
+      await screen.findByText('这是你记录的已知情况或自我判断，不是系统判定。'),
+    ).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('结果说明'), {
+      target: { value: '二面后未通过' },
+    });
+    fireEvent.change(screen.getByLabelText('原因记录（由用户填写）'), {
+      target: { value: 'EXPERIENCE' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '保存结果记录' }));
+
+    await vi.waitFor(() =>
+      expect(updateApplication).toHaveBeenCalledWith(application.id, {
+        outcomeNote: '二面后未通过',
+        rejectionReason: 'EXPERIENCE',
+      }),
+    );
+    expect(await screen.findByText('结果记录已保存。')).toBeInTheDocument();
+  });
+
+  it('reuses outcome note for Offer details without a second outcome model', async () => {
+    const job = createJob();
+    const application = createApplication('offer');
+    const updateApplication = vi.fn().mockResolvedValue({
+      ...application,
+      outcomeNote: '薪资已确认，10 月入职',
+    });
+    const apiClient = createApiClient({
+      getJob: vi.fn().mockResolvedValue(job),
+      listApplications: vi
+        .fn()
+        .mockResolvedValue(page([{ ...application, jobTitle: job.title, company: job.company }])),
+      updateApplication,
+    });
+    window.history.replaceState(null, '', `/?jobId=${job.id}`);
+
+    render(<App apiClient={apiClient} />);
+
+    fireEvent.change(await screen.findByLabelText('Offer 说明'), {
+      target: { value: '薪资已确认，10 月入职' },
+    });
+    expect(screen.queryByLabelText('原因记录（由用户填写）')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '保存结果记录' }));
+
+    await vi.waitFor(() =>
+      expect(updateApplication).toHaveBeenCalledWith(application.id, {
+        outcomeNote: '薪资已确认，10 月入职',
+      }),
+    );
+  });
+
   it('adds a manual interview round without changing the Application status', async () => {
     const job = createJob();
     const application = createApplication('interviewing');

@@ -6,7 +6,10 @@ import type {
   Application,
   ApplicationStatus,
   ResumeVersion,
+  UpdateApplicationInput,
 } from '@jobpilot/api-client';
+
+import { ApplicationOutcomeForm } from './ApplicationOutcomeForm';
 
 interface ApplicationPanelProps {
   apiClient: ApiClient;
@@ -52,6 +55,17 @@ export function ApplicationPanel({
     }
   }
 
+  async function saveOutcome(input: UpdateApplicationInput) {
+    if (!application) return;
+    setError(undefined);
+    try {
+      onApplicationChange(await apiClient.updateApplication(application.id, input));
+    } catch (updateError) {
+      setError(messageFor(updateError, '结果记录保存失败，请稍后重试。'));
+      throw updateError;
+    }
+  }
+
   return (
     <aside className="application-card">
       <p className="eyebrow">APPLICATION</p>
@@ -74,6 +88,9 @@ export function ApplicationPanel({
             application={application}
             onChange={changeStatus}
           />
+          {isOutcomeStatus(application.status) && (
+            <ApplicationOutcomeForm application={application} onSave={saveOutcome} />
+          )}
         </>
       ) : (
         <>
@@ -227,4 +244,10 @@ function ApplicationControl({
 
 function messageFor(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback;
+}
+
+function isOutcomeStatus(status: ApplicationStatus): boolean {
+  return (
+    status === 'offer' || status === 'rejected' || status === 'withdrawn' || status === 'closed'
+  );
 }
