@@ -168,4 +168,6 @@ def build_feedback_summary(
 
 
 def _rate(numerator: int, denominator: int) -> float | None:
-    return numerator / denominator if denominator else None
+    if denominator == 0 or numerator > denominator:
+        return None
+    return numerator / denominator

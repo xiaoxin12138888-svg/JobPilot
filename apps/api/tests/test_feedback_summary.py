@@ -172,6 +172,31 @@ def test_feedback_summary_handles_applications_without_interviews(client: TestCl
     assert summary["funnel"][3]["conversionRate"] is None
 
 
+def test_feedback_funnel_omits_rate_when_incomplete_records_would_exceed_100_percent(
+    client: TestClient,
+) -> None:
+    interviewed = _create_application(client, "有面试记录岗位", "manual", None)
+    _create_round(client, interviewed["id"], "一面")
+    for title in ("漏记面试 Offer 一", "漏记面试 Offer 二"):
+        offered = _create_application(client, title, "manual", None)
+        _move_to_interviewing(client, offered["id"])
+        response = client.patch(
+            f"/api/v1/applications/{offered['id']}",
+            json={"status": "offer"},
+        )
+        assert response.status_code == 200, response.text
+
+    summary = client.get("/api/v1/feedback-summary").json()
+
+    assert summary["totals"]["interviewApplications"] == 1
+    assert summary["totals"]["offers"] == 2
+    assert summary["funnel"][3] == {
+        "stage": "OFFERS",
+        "count": 2,
+        "conversionRate": None,
+    }
+
+
 def test_feedback_summary_works_without_any_provider_configuration(client: TestClient) -> None:
     application = _create_application(client, "无 Provider 岗位", "manual", None)
     _create_round(client, application["id"], "一面")

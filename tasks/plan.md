@@ -31,7 +31,9 @@ not add LLM, RAG, Agent, telemetry, event tracking, scoring or an analytics fram
   rounds, questions, offers and rejected Applications.
 - Funnel stages are saved Jobs -> Applications -> Applications with a recorded interview -> current
   Offer Applications. Each rate uses the immediately preceding count as denominator and is `null` when
-  that denominator is zero. Empty feedback never renders a misleading 0% success rate.
+  that denominator is zero or incomplete intermediate records make the later count exceed it. Counts
+  remain factual and are never clamped or inferred. Empty feedback never renders a misleading 0% success
+  rate.
 - Category/performance/rejection-reason summaries are counts. Weak categories use deterministic
   `OK + POOR`, include only positive weak counts and sort by weak count, question count and enum order.
   Resume-version and source summaries report Application, interviewed-Application and Offer counts
@@ -59,7 +61,7 @@ not add LLM, RAG, Agent, telemetry, event tracking, scoring or an analytics fram
 ## Risks and mitigations
 
 - Misleading funnel claims: derive interview participation from recorded rounds, publish denominators and
-  return nullable rates rather than treating missing history as 0% success.
+  return nullable rates rather than treating missing history as 0% success or showing a rate above 100%.
 - Sensitive interview text leakage: never log payloads, render only React text nodes and use fictional tests.
 - Cascade data loss: require explicit Web confirmation and verify round/Application/Job cascade paths.
 - Large Job Detail component: keep interview and feedback UI in focused components with typed callbacks.

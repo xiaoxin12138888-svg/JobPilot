@@ -28,6 +28,8 @@ JobPilot 已能保存岗位、投递和实际使用的简历版本，但 Applica
    原因、来源和简历版本分组；不持久化派生结果，不调用 Provider，不产生评分、推荐或因果结论。
 8. 面试岗位数定义为“至少有一轮 InterviewRound 的不同 Application 数”。Funnel 为保存岗位、
    Application、面试岗位、当前 Offer；相邻阶段分母为零时 rate 为 null，Web 不展示 0% 假象。
+   如果用户漏记中间阶段，导致后一阶段事实数量大于前一阶段，rate 同样为 null；各阶段原始数量
+   保持不变，不显示超过 100% 的误导转化率，也不截断或推断缺失记录。
 9. 高频薄弱类别只按 `OK + POOR` 计数，按弱项数、该类总题数和固定 enum 顺序确定性排序。
 10. 整个功能在所有 `JOBPILOT_LLM_*` 未配置时完整工作。Phase 6/7 Provider、Prompt、Schema、Gold
     Dataset 和评测算法不变；Phase 7 保持 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`。
