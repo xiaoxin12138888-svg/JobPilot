@@ -1,6 +1,7 @@
 # Implementation Plan: Phase 7 — Resume Version & Evidence Map
 
-> Owner-approved on 2026-09-05. Phase 8 is not authorized.
+> Owner-approved on 2026-09-05; comprehensive Evidence Map expansion approved on 2026-09-06.
+> Phase 8 is not authorized.
 
 ## Objective
 
@@ -17,16 +18,56 @@ local-first boundary.
   Application creation and Evidence Map generation never infer it.
 - A referenced Resume Version returns `RESUME_VERSION_IN_USE`; unused deletion cascades only its
   Evidence Map records.
-- One current Evidence Map per Job + Resume Version stores schema 1 JSON and exact JD-analysis and
+- One current Evidence Map per Job + Resume Version stores versioned JSON and exact JD-analysis and
   Resume-content fingerprints. GET computes stale; failed reanalysis preserves the last valid row.
-- Requirements come only from the current non-stale JD Analysis must-have/preferred arrays. Quotes
-  must occur in normalized Resume content; unsupported evidence is removed and unsupported
-  DIRECT/PARTIAL is downgraded to GAP.
+- New generation uses schema 2 and maps six current JD Analysis groups: must-have, preferred,
+  responsibilities, skills, experience and education. Schema 1 must-have/preferred records remain
+  readable. Summary, domain keywords and interview focus are context/preparation fields, not matching
+  criteria, and stay outside the Evidence Map.
+- Quotes must occur in normalized Resume content; unsupported evidence is removed and unsupported
+  DIRECT/PARTIAL is downgraded to GAP. Each item shows an explicit conclusion before its grounded
+  evidence and reasoning.
 - Provider input is minimal and treats JD/Resume as untrusted data. It reuses the existing optional
   Provider configuration, 60-second timeout, redirect rejection, no-proxy transport and sanitized
   errors. Every outbound Resume request requires a same-action UI disclosure and confirmation.
 - Web adds a minimal Resume page, Evidence Map on Job Detail and an explicit Application selector.
-  It renders plain text only and displays deterministic counts, never matching/ATS/Offer scores.
+  It renders plain text only and displays deterministic whole-map counts, pending confirmation and
+  evidence gaps across the six groups, never matching/ATS/Offer scores.
+
+## Approved comprehensive Evidence Map increment
+
+### Contract
+
+- Additive requirement types are `RESPONSIBILITY`, `SKILL`, `EXPERIENCE` and `EDUCATION`; existing
+  `MUST_HAVE` and `PREFERRED` values remain unchanged.
+- New records use `schemaVersion: 2`; reads accept existing schema 1 and current schema 2. The SQLite
+  table remains the same, with a reversible constraint migration allowing versions 1 and 2.
+- The Provider must return every supplied criterion once, in the original type/text/order. It must
+  lead each reason with a direct support or uncertainty conclusion and retain exact Resume quotes.
+- Overall totals, items needing confirmation and evidence gaps are computed from validated mappings
+  in the Web; they are not Provider-authored scores or recommendations.
+
+### Ordered tasks and verification
+
+1. RED/GREEN domain, migration and API tests for six-group input, schema 2 persistence, schema 1 read
+   compatibility and strict unknown-type rejection.
+2. RED/GREEN shared-types/api-client validation for both schema versions and all six requirement
+   types; reject invalid version/type combinations.
+3. RED/GREEN Web grouping, explicit conclusion, deterministic whole-map summary and main gaps while
+   preserving consent/loading/error/stale behavior and responsive plain-text rendering.
+4. Synchronize ADR/product/API/data/technical docs; run Python and TypeScript test/lint/format/typecheck
+   and Web build gates, migration upgrade/downgrade/upgrade, review and simplification.
+5. After restart, request new action-time consent before one real Provider regeneration; record real
+   latency and require owner content-quality PASS/FAIL. Do not enter Phase 8.
+
+### Success criteria
+
+- A JD whose must-have array contains only a cohort requirement still produces mappings for any
+  available responsibilities, skills, experience and education criteria.
+- The UI answers each criterion explicitly, summarizes all six groups without a score, and exposes
+  pending confirmation and unsupported criteria without inventing Resume facts.
+- Old schema 1 records remain readable and become stale when the expanded criterion fingerprint is
+  applied; successful regeneration replaces the same row with schema 2.
 
 ## Ordered work
 

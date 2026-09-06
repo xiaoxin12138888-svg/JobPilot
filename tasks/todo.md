@@ -1,5 +1,14 @@
 # Phase 7 — Resume Version & Evidence Map Checklist
 
+## Comprehensive Evidence Map amendment — approved 2026-09-06
+
+- [ ] RED/GREEN six-group JD criteria, schema 2 persistence, schema 1 read compatibility and migration.
+- [ ] RED/GREEN shared types and strict API-client validation for Evidence Map schemas 1 and 2.
+- [ ] RED/GREEN explicit per-item conclusions, six UI groups, whole-map totals and principal gaps.
+- [ ] Synchronize canonical docs and pass all Python/TypeScript/build/migration/security gates.
+- [ ] Run one user-confirmed real regeneration, record latency and obtain owner content PASS/FAIL.
+- [ ] Stop before Phase 8; do not add scores, recommendations, generation or resume rewriting.
+
 ## Contract and safety
 
 - [x] Receive explicit Phase 7 approval and branch from clean Phase 6 HEAD.
