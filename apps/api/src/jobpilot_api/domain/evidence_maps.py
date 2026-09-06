@@ -13,7 +13,8 @@ from jobpilot_api.domain.jd_analysis import MAX_ANALYSIS_ITEMS, JDAnalysisRecord
 
 EVIDENCE_MAP_SCHEMA_VERSION = 2
 MAX_EVIDENCE_MAPPINGS = MAX_ANALYSIS_ITEMS * 6
-MAX_RESUME_EVIDENCE_ITEMS = 20
+MAX_GENERATED_RESUME_EVIDENCE_ITEMS = 3
+MAX_STORED_RESUME_EVIDENCE_ITEMS = 20
 MAX_EVIDENCE_TEXT_LENGTH = 2_000
 GROUNDED_GAP_REASON = "当前简历版本中未发现可证明该要求的有效原文证据。"
 MAP_KEYS = frozenset({"mappings"})
@@ -169,6 +170,7 @@ def parse_and_ground_evidence_map(
         expected_requirements=requirements,
         normalized_resume=_normalize_text(resume_content),
         allowed_requirement_types=frozenset(RequirementType),
+        max_resume_evidence_items=MAX_GENERATED_RESUME_EVIDENCE_ITEMS,
     )
 
 
@@ -186,6 +188,7 @@ def evidence_map_from_stored_json(raw_content: str, *, schema_version: int) -> E
         expected_requirements=None,
         normalized_resume=None,
         allowed_requirement_types=allowed_requirement_types,
+        max_resume_evidence_items=MAX_STORED_RESUME_EVIDENCE_ITEMS,
     )
 
 
@@ -195,6 +198,7 @@ def _parse_evidence_map(
     expected_requirements: tuple[EvidenceRequirement, ...] | None,
     normalized_resume: str | None,
     allowed_requirement_types: frozenset[RequirementType],
+    max_resume_evidence_items: int,
 ) -> EvidenceMap:
     try:
         value = json.loads(raw_content)
@@ -210,6 +214,7 @@ def _parse_evidence_map(
             raw_mapping,
             normalized_resume=normalized_resume,
             allowed_requirement_types=allowed_requirement_types,
+            max_resume_evidence_items=max_resume_evidence_items,
         )
         for raw_mapping in raw_mappings
     )
@@ -227,6 +232,7 @@ def _mapping(
     *,
     normalized_resume: str | None,
     allowed_requirement_types: frozenset[RequirementType],
+    max_resume_evidence_items: int,
 ) -> EvidenceMapping:
     if not isinstance(raw_mapping, dict) or frozenset(raw_mapping) != MAPPING_KEYS:
         raise _invalid_response()
@@ -240,7 +246,9 @@ def _mapping(
     requirement_text = _string(raw_mapping["requirementText"])
     reason = _string(raw_mapping["reason"])
     resume_evidence = _resume_evidence(
-        raw_mapping["resumeEvidence"], normalized_resume=normalized_resume
+        raw_mapping["resumeEvidence"],
+        normalized_resume=normalized_resume,
+        max_items=max_resume_evidence_items,
     )
     if normalized_resume is not None:
         if coverage == Coverage.GAP:
@@ -257,8 +265,13 @@ def _mapping(
     )
 
 
-def _resume_evidence(value: Any, *, normalized_resume: str | None) -> tuple[ResumeEvidence, ...]:
-    if not isinstance(value, list) or len(value) > MAX_RESUME_EVIDENCE_ITEMS:
+def _resume_evidence(
+    value: Any,
+    *,
+    normalized_resume: str | None,
+    max_items: int,
+) -> tuple[ResumeEvidence, ...]:
+    if not isinstance(value, list) or len(value) > max_items:
         raise _invalid_response()
     result: list[ResumeEvidence] = []
     seen: set[str] = set()

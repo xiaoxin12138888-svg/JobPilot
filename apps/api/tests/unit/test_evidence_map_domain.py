@@ -103,6 +103,81 @@ def test_invalid_quotes_are_removed_and_unsupported_positive_coverage_becomes_ga
     assert result.mappings[0].reason == "当前简历版本中未发现可证明该要求的有效原文证据。"
 
 
+def test_new_provider_result_allows_at_most_three_quotes_but_existing_record_stays_readable() -> None:
+    requirement = (EvidenceRequirement(RequirementType.MUST_HAVE, "产品需求分析和项目推进"),)
+    quotes = ["证据一", "证据二", "证据三", "证据四"]
+    raw_content = _payload(
+        [_mapping("MUST_HAVE", "产品需求分析和项目推进", "DIRECT", quotes)]
+    )
+
+    with pytest.raises(AnalysisInvalidResponseError, match="无法验证"):
+        parse_and_ground_evidence_map(raw_content, requirement, "；".join(quotes))
+
+    stored = evidence_map_from_stored_json(raw_content, schema_version=2)
+    assert [evidence.quote for evidence in stored.mappings[0].resume_evidence] == quotes
+
+
+@pytest.mark.parametrize(
+    ("requirement", "resume_content", "coverage", "quotes", "reason"),
+    [
+        (
+            "需求分析能力",
+            "负责用户反馈梳理、需求定义并输出 PRD",
+            "DIRECT",
+            ["负责用户反馈梳理、需求定义并输出 PRD"],
+            "结论：支持；该事实体现需求梳理、定义和 PRD 产出，可直接支持该要求。",
+        ),
+        (
+            "跨团队项目推进",
+            "协同相关人员完成问题确认、修复跟踪及回归验证",
+            "PARTIAL",
+            ["协同相关人员完成问题确认、修复跟踪及回归验证"],
+            "结论：部分支持 / 待确认；该事实支持协作和问题闭环参与，但未证明端到端项目所有权。",
+        ),
+        (
+            "熟练 SQL",
+            "使用 SQL 完成业务数据统计与分析",
+            "DIRECT",
+            ["使用 SQL 完成业务数据统计与分析"],
+            "结论：支持；该事实直接体现 SQL 在实际数据工作中的使用。",
+        ),
+        (
+            "3年以上B2B销售经验",
+            "负责用户研究、需求评审和产品验收",
+            "GAP",
+            [],
+            "结论：当前无法证明；完整简历中暂未发现销售经历证据。",
+        ),
+        (
+            "2027届",
+            "2025年入学硕士、未写毕业时间",
+            "PARTIAL",
+            ["2025年入学硕士、未写毕业时间"],
+            "结论：部分支持 / 待确认；当前简历显示硕士在读，但没有明确毕业年份，需要用户确认。",
+        ),
+    ],
+    ids=["A-semantic-direct", "B-cross-team-partial", "C-sql-direct", "D-sales-gap", "E-cohort-partial"],
+)
+def test_semantic_fake_provider_cases_keep_grounded_quotes_and_frozen_coverage(
+    requirement: str,
+    resume_content: str,
+    coverage: str,
+    quotes: list[str],
+    reason: str,
+) -> None:
+    requirements = (EvidenceRequirement(RequirementType.MUST_HAVE, requirement),)
+    result = parse_and_ground_evidence_map(
+        _payload([_mapping("MUST_HAVE", requirement, coverage, quotes) | {"reason": reason}]),
+        requirements,
+        resume_content,
+    )
+
+    mapping = result.mappings[0]
+    assert mapping.coverage.value == coverage
+    assert [evidence.quote for evidence in mapping.resume_evidence] == quotes
+    assert mapping.reason == reason
+
+
 @pytest.mark.parametrize(
     "mappings",
     [

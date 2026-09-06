@@ -412,7 +412,7 @@ def test_invalid_result_never_overwrites_and_grounding_downgrades_invalid_eviden
     assert preserved.json() != original
 
 
-def test_grounding_preserves_combined_quotes_for_transparent_partial_date_inference() -> None:
+def test_grounding_keeps_partial_cohort_evidence_without_external_program_length_inference() -> None:
     requirements = (EvidenceRequirement(RequirementType.MUST_HAVE, "2027届"),)
     raw_content = json.dumps(
         {
@@ -422,10 +422,10 @@ def test_grounding_preserves_combined_quotes_for_transparent_partial_date_infere
                     "requirementText": "2027届",
                     "coverage": "PARTIAL",
                     "resumeEvidence": [
-                        {"quote": "2023年9月入学"},
-                        {"quote": "本科在读"},
+                        {"quote": "2025.09—至今"},
+                        {"quote": "硕士在读"},
                     ],
-                    "reason": "2023年入学且为本科；按通常四年学制作出2027届推算，但简历未明确毕业时间。",
+                    "reason": "当前简历显示硕士在读，但未明确提供预计毕业年份，因此只能部分支持，需用户确认。",
                 }
             ]
         },
@@ -435,7 +435,7 @@ def test_grounding_preserves_combined_quotes_for_transparent_partial_date_infere
     result = parse_and_ground_evidence_map(
         raw_content,
         requirements,
-        "教育经历\n2023年9月入学\n本科在读",
+        "教育经历\n2025.09—至今\n硕士在读",
     )
 
     assert result.as_dict() == {
@@ -445,13 +445,14 @@ def test_grounding_preserves_combined_quotes_for_transparent_partial_date_infere
                 "requirementText": "2027届",
                 "coverage": "PARTIAL",
                 "resumeEvidence": [
-                    {"quote": "2023年9月入学"},
-                    {"quote": "本科在读"},
+                    {"quote": "2025.09—至今"},
+                    {"quote": "硕士在读"},
                 ],
-                "reason": "2023年入学且为本科；按通常四年学制作出2027届推算，但简历未明确毕业时间。",
+                "reason": "当前简历显示硕士在读，但未明确提供预计毕业年份，因此只能部分支持，需用户确认。",
             }
         ]
     }
+    assert "通常" not in result.mappings[0].reason
 
 
 def test_jd_reanalysis_marks_map_stale_and_deletions_cascade(
