@@ -12,6 +12,10 @@
 - [ ] Run separately consented real BOSS and Nowcoder semantic acceptance; owner must judge PASS/FAIL.
 - [ ] Stop before Phase 8 and do not announce Phase 7 PASS.
 
+Real acceptance note (2026-09-06): one explicitly confirmed Nowcoder generation attempt returned the
+sanitized unavailable state after approximately the 60-second provider window. No Evidence Map was
+created, no automatic retry was sent, and owner content acceptance remains blocked.
+
 ## Comprehensive Evidence Map amendment — approved 2026-09-06
 
 - [x] RED/GREEN six-group JD criteria, schema 2 persistence, schema 1 read compatibility and migration.
