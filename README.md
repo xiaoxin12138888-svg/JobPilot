@@ -7,7 +7,7 @@ JobPilot 不替代招聘网站，不建设职位数据库，也不代表用户�
 
 ## 当前状态
 
-项目已通过 **Phase 3 — Job & Application Domain Foundation**、**Phase 4 — BOSS Direct Job Capture**、**Phase 5 — Nowcoder Adapter & Shared Capture Contract** 与 **Phase 6 — JD Structured AI Analysis**。**Phase 7 — Resume Version & Evidence Map** 已实现，但真实语义质量验收仍为 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`。当前分支 `phase/8-interview-feedback` 正在收尾 **Phase 8 — Interview Record & Feedback Loop**；自动化和隔离浏览器验收已完成，真实 runtime 数据库验收仍等待最新 API 进程启动。核心能力包括：
+项目已通过 **Phase 3 — Job & Application Domain Foundation**、**Phase 4 — BOSS Direct Job Capture**、**Phase 5 — Nowcoder Adapter & Shared Capture Contract**、**Phase 6 — JD Structured AI Analysis** 与 **Phase 8 — Interview Record & Feedback Loop**。Phase 8 已于 2026-09-07 完成自动化、隔离浏览器、真实 runtime、重启持久化、既有回归和安全验收。**Phase 7 — Resume Version & Evidence Map** 已实现，但真实语义质量验收仍为 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`。核心能力包括：
 
 - React Web：本机 API 状态、岗位库、纯文本简历版本、岗位详情/编辑/删除、投递状态/使用简历记录、面试轮次与题目、自我复盘、Application 结果记录、事实型求职复盘，以及可选 JD Analysis/Evidence Map；
 - Chrome Extension：使用 `activeTab` + `scripting` 的用户主动采集 Popup，无后台进程；唯一 host permission 是 `http://127.0.0.1:8000/*`；

@@ -32,18 +32,30 @@
 - [x] Regress BOSS, Nowcoder, Job, Application, JD AI, Resume and existing Evidence Map behavior.
 - [x] Run privacy/XSS/log/telemetry/remote-call/schema/cascade safety review.
 - [x] Complete code review and simplification with Critical 0 and Required 0.
-- [ ] Use one existing Application to enter one local round, at least three fictional/historical questions,
+- [x] Use one existing Application to enter one local round, at least three fictional/historical questions,
   manual self review and completion; confirm factual Feedback Summary values without database edits.
-- [ ] Restart API/Web and confirm round, questions, review, outcome and feedback persistence.
+- [x] Restart API/Web and confirm round, questions, review, outcome and feedback persistence.
 - [x] Stop before the next phase and wait for project-owner approval.
 
 Isolated browser acceptance note (2026-09-06): with every Provider variable absent, a temporary
 SQLite database and local 8002/5176 stack persisted one fictional Job/Application, one completed round,
 three questions, self review, a user-recorded rejection reason and a linked fictional Resume Version
 across API restart. Feedback counts/groups and 320/768/1024/1440 layouts matched the frozen contract;
-the browser console had no errors or warnings. This does not satisfy the two unchecked real-workspace
-items: the user's 8001 process still serves the pre-Phase-8 Application contract, so this run left the
-live `runtime-data/jobpilot.db` untouched while that stale process owns it.
+the browser console had no errors or warnings. At that time the user's 8001 process still served the
+pre-Phase-8 Application contract, so the isolated run correctly left the live database untouched.
+
+Real-workspace acceptance note (2026-09-07): the stale 8001 API was stopped by exact PID and the
+supported launcher upgraded the existing database from `0007_evidence_map_schema_v2` to
+`0008_interview_feedback`, preserving three Jobs, two Applications, three JD Analyses, one Resume
+Version and three Evidence Maps. The existing Nowcoder Application was reused with no duplicate; one
+de-identified round, three questions, one question edit and all four self-review fields persisted across
+API/Web restart. Round status followed PLANNED -> COMPLETED -> CANCELLED -> COMPLETED while the
+Application remained `planned`. Feedback reported Jobs 3, Applications 2, interviewed Applications 1,
+Interviews 1, Questions 3, Offers 0 and Rejected 0; PRODUCT/AI/PROJECT and GOOD/OK/POOR each counted one.
+Source groups reported BOSS 1/0 and Nowcoder 1/1 for Application/interviewed Application; the unlinked
+Resume Version correctly reported 0/0/0 for Application/interview/Offer. Required-field PATCH null
+returned 422, prior BOSS/Nowcoder/Job/Application/JD Analysis/Resume/Evidence Map records remained
+readable, and privacy/security review remained Critical 0 / Required 0.
 
 ---
 

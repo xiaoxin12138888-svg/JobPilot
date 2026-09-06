@@ -13,16 +13,23 @@ not add LLM, RAG, Agent, telemetry, event tracking, scoring or an analytics fram
 ## Implementation status
 
 Backend, shared contracts, Web Interview/Question/Application outcome flows, factual Feedback Summary
-and responsive styling are implemented in incremental commits through `5c5bc12`. Automated and
-provider-free isolated browser acceptance use an explicit temporary SQLite database and have verified
-one completed round, three fictional questions, self review, outcome/rejection reason, Resume Version
-and source groups, clean console output, four responsive widths and API restart persistence.
+and responsive styling are implemented through `a463613`; supporting documentation is current through
+`066a11b`. Automated and provider-free isolated browser acceptance use an explicit temporary SQLite
+database and verify one completed round, three fictional questions, self review, outcome/rejection
+reason, Resume Version and source groups, clean console output, four responsive widths and API restart
+persistence.
 
-The user's current 8001 process was started before the Phase 8 API contract and still returns the old
-Application response. It created the requested Application but cannot serve current Interview fields.
-This run leaves `runtime-data/jobpilot.db` untouched while that stale process owns it; therefore
-real-workspace acceptance remains blocked until the project owner stops the stale process and starts the
-supported current launcher. This blocker must not be hidden by the isolated acceptance result.
+Final real-workspace acceptance passed on 2026-09-07. The stale 8001 process was identified and stopped
+by exact PID, then the supported current API upgraded `runtime-data/jobpilot.db` from revision
+`0007_evidence_map_schema_v2` to `0008_interview_feedback`. Existing counts remained unchanged: three
+Jobs, two Applications, three JD Analyses, one Resume Version and three Evidence Maps. The acceptance
+reused the existing Nowcoder Application without duplication, created one de-identified round and three
+questions, edited a question, persisted all four self-review fields and exercised
+PLANNED -> COMPLETED -> CANCELLED -> COMPLETED while the Application stayed `planned`.
+
+SQLite-derived Feedback values, restart persistence, required-field PATCH null 422 behavior, existing
+BOSS/Nowcoder/Job/Application/JD Analysis/Resume/Evidence Map behavior and security scans all passed.
+Critical and Required findings remain zero. Phase 8 is PASS; stop before the next phase.
 
 ## Frozen contract
 

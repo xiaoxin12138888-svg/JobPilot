@@ -2,8 +2,8 @@
 
 > 状态：Phase 3 至 Phase 6 已通过，BOSS 与牛客均为 `SUPPORTED — V1`。Phase 7 — Resume
 > Version & Evidence Map 为 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`。Phase 8 — Interview
-> Record & Feedback Loop 已获批并完成实现、自动化与隔离浏览器验收；真实 runtime 验收仍等待
-> 最新 API 进程启动。
+> Record & Feedback Loop 已于 2026-09-07 完成并通过自动化、隔离浏览器、真实 runtime、重启
+> 持久化、既有回归和安全验收。
 
 ## 1. 产品定位
 
@@ -225,5 +225,7 @@ provider-free、privacy/security 自动测试和全部既有回归。浏览器�
 虚构/历史问题、回答自评、手动复盘与 Application 结果，核对 Feedback 分类、表现、来源、简历
 版本和重启持久化，并检查 320/768/1024/1440 与键盘焦点。
 
-Phase 7 的真实语义质量验收保持独立暂停，Phase 8 不得把它改写为 PASS。真实 runtime 进程未加载
-最新 migration/API 时，Phase 8 只能报告 BLOCKED；隔离临时数据库验收不能冒充用户数据验收。
+Phase 7 的真实语义质量验收保持独立暂停，Phase 8 不得把它改写为 PASS。Phase 8 已在加载最新
+migration/API 的真实 runtime 中复用现有 Application 完成一轮三题、编辑、自我复盘、完成/取消
+边界、确定性 Feedback、重启持久化、PATCH null 422、既有功能与安全验收；没有创建重复
+Application，也没有由面试动作隐式改变 Application 状态。

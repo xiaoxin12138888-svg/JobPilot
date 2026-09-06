@@ -2,8 +2,8 @@
 
 > 当前阶段：Phase 6 已于 2026-09-05 完成并通过。Phase 7 — Resume Version & Evidence Map
 > 保持 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`。Phase 8 — Interview Record & Feedback Loop
-> 已获批并完成实现、自动化与隔离浏览器验收；真实 runtime 验收等待最新 API 进程启动。BOSS 与
-> 牛客保持 `SUPPORTED — V1`。
+> 已于 2026-09-07 完成并通过自动化、隔离浏览器、真实 runtime、重启持久化、既有回归和安全验收。
+> BOSS 与牛客保持 `SUPPORTED — V1`。
 
 ## 1. Global gates
 
@@ -93,7 +93,7 @@ BOSS 与牛客语义结果由负责人确认前标记 PASS。
 
 ## 8. Phase 8 — Interview Record & Feedback Loop
 
-状态：Implemented；自动化与隔离浏览器验收完成，真实 runtime 验收 blocked by stale API process。
+状态：PASS（2026-09-07）。
 
 只交付完全本地的 Interview Round/Question、手动回答与自我复盘、Application 结果说明/用户记录的
 淘汰原因，以及请求时从 SQLite 计算的事实 Feedback Summary。面试行为不自动改变 Application，
@@ -104,10 +104,12 @@ AI 评分、建议或因果结论。
 null，不显示 0% 假象或超过 100% 的结果。题目分类、自评、弱项、淘汰原因、来源和简历版本分组
 均为确定性计数。整个 Phase 在所有 `JOBPILOT_LLM_*` 缺失时完整工作，且不读取简历正文。
 
-当前源码、临时 migration/API/Web 重启、浏览器录入一轮三题、手动复盘、Application 结果、
-Feedback 数量与 320/768/1024/1440 布局均已验证。用户正在运行的 8001 仍是旧进程，本轮在其
-占用期间保持真实 `runtime-data/jobpilot.db` 不变；因此只有项目负责人用 supported launcher
-启动最新 API，并在真实 workspace 复核后，Phase 8 才能标记 PASS。
+自动化与隔离验收覆盖源码、临时 migration/API/Web 重启、浏览器录入一轮三题、手动复盘、
+Application 结果、Feedback 数量与 320/768/1024/1440 布局。真实验收将 8001 安全恢复到当前
+API，并以标准 Alembic migration 升级原有 `runtime-data/jobpilot.db`；旧数据数量保持不变。
+验收复用了现有 Nowcoder Application，没有创建重复记录；轮次创建、三题创建与编辑、四项自我
+复盘、完成/取消状态边界、确定性 Feedback、重启持久化、PATCH null 422、既有功能与安全回归均
+通过，Application 状态未被面试操作隐式改变。
 
 ## 9. Later phases
 
@@ -123,5 +125,5 @@ update 或强制境外 AI。未来每个 Adapter 必须分别记录招聘页、E
 
 ## 11. Stop boundary
 
-不得把暂停中的 Phase 7 写成 PASS。不得在真实 runtime/restart 验收 blocker 存在时宣称 Phase 8
-PASS，也不得自动开始下一阶段、实现 AI 面试、策略推荐或智联/实习僧/猎聘/国聘等其他平台。
+不得把暂停中的 Phase 7 写成 PASS，也不得自动开始下一阶段、实现 AI 面试、策略推荐或
+智联/实习僧/猎聘/国聘等其他平台。
