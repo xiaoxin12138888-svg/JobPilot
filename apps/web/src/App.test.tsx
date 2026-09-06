@@ -381,6 +381,89 @@ describe('App', () => {
     expect(apiClient.updateApplication).not.toHaveBeenCalled();
   });
 
+  it('edits a round self review and explicitly marks that round completed', async () => {
+    const job = createJob();
+    const application = createApplication('interviewing');
+    let interview = createInterviewRound();
+    const updateInterview = vi.fn(async (_interviewId: string, input: Partial<InterviewRound>) => {
+      interview = { ...interview, ...input, updatedAt: '2026-09-06T01:00:00Z' };
+      return interview;
+    });
+    const apiClient = createApiClient({
+      getJob: vi.fn().mockResolvedValue(job),
+      listApplications: vi
+        .fn()
+        .mockResolvedValue(page([{ ...application, jobTitle: job.title, company: job.company }])),
+      listInterviews: vi.fn().mockResolvedValue(page([interview])),
+      updateInterview,
+    });
+    window.history.replaceState(null, '', `/?jobId=${job.id}`);
+
+    render(<App apiClient={apiClient} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '编辑与复盘' }));
+    fireEvent.change(screen.getByLabelText('轮次名称 *'), { target: { value: '产品一面' } });
+    fireEvent.change(screen.getByLabelText('做得好的地方'), {
+      target: { value: '结构化说明了需求拆解过程' },
+    });
+    fireEvent.change(screen.getByLabelText('没答好的地方'), {
+      target: { value: '指标定义不够清楚' },
+    });
+    fireEvent.change(screen.getByLabelText('需要补充学习'), {
+      target: { value: '复习北极星指标' },
+    });
+    fireEvent.change(screen.getByLabelText('其他备注'), {
+      target: { value: '下次先确认问题范围' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '保存面试修改' }));
+
+    expect(await screen.findByRole('heading', { name: '产品一面' })).toBeInTheDocument();
+    expect(updateInterview).toHaveBeenCalledWith(
+      interview.id,
+      expect.objectContaining({
+        roundName: '产品一面',
+        wentWell: '结构化说明了需求拆解过程',
+        couldImprove: '指标定义不够清楚',
+        learningNotes: '复习北极星指标',
+        otherNotes: '下次先确认问题范围',
+      }),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '标记完成' }));
+    expect(await screen.findByText('已完成')).toBeInTheDocument();
+    expect(updateInterview).toHaveBeenLastCalledWith(interview.id, { status: 'COMPLETED' });
+    expect(apiClient.updateApplication).not.toHaveBeenCalled();
+  });
+
+  it('requires confirmation before deleting a round and removes it from the view', async () => {
+    const job = createJob();
+    const application = createApplication('interviewing');
+    const interview = createInterviewRound();
+    const deleteInterview = vi.fn().mockResolvedValue(undefined);
+    const apiClient = createApiClient({
+      getJob: vi.fn().mockResolvedValue(job),
+      listApplications: vi
+        .fn()
+        .mockResolvedValue(page([{ ...application, jobTitle: job.title, company: job.company }])),
+      listInterviews: vi.fn().mockResolvedValue(page([interview])),
+      deleteInterview,
+    });
+    const confirmDelete = vi
+      .spyOn(window, 'confirm')
+      .mockReturnValueOnce(false)
+      .mockReturnValueOnce(true);
+    window.history.replaceState(null, '', `/?jobId=${job.id}`);
+
+    render(<App apiClient={apiClient} />);
+    fireEvent.click(await screen.findByRole('button', { name: '删除面试' }));
+    expect(deleteInterview).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: '删除面试' }));
+
+    expect(confirmDelete).toHaveBeenCalledWith('删除该轮面试及其题目记录？');
+    await vi.waitFor(() => expect(deleteInterview).toHaveBeenCalledWith(interview.id));
+    expect(await screen.findByText('还没有面试记录')).toBeInTheDocument();
+  });
+
   it('manages plain-text Resume Versions from the dedicated workspace view', async () => {
     let resumes: ResumeVersion[] = [];
     const createResumeVersion = vi.fn(async (input: { name: string; content: string }) => {
