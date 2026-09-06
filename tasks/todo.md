@@ -1,4 +1,45 @@
-# Phase 7 — Resume Version & Evidence Map Checklist
+# Phase 8 — Interview Record & Feedback Loop Checklist
+
+## Contract and safety
+
+- [x] Receive explicit Phase 8 approval from the latest committed Phase 7 baseline.
+- [x] Keep Phase 7 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`; do not change Evidence Map behavior.
+- [x] Freeze ADR/model/API/statistics/privacy rules and the next-phase stop boundary.
+- [x] Preserve `操作手册.txt`, runtime SQLite data, Provider secrets and all existing user records.
+- [ ] Prove all Phase 8 behavior works with no LLM Provider configuration.
+
+## Backend
+
+- [ ] RED/GREEN InterviewRound validation, create/list/get/update/delete and persistence.
+- [ ] RED/GREEN InterviewQuestion create/update/delete, category/performance and round cascade.
+- [ ] RED/GREEN Application outcome note/rejection reason consistency and deletion cascades.
+- [ ] RED/GREEN deterministic feedback counts, funnel, categories, performance, rejection reasons,
+  Resume Version groups, source groups, empty state and zero denominators.
+- [ ] Verify upgrade/downgrade/upgrade on explicit temporary SQLite databases only.
+
+## Client and Web
+
+- [ ] Extend shared types/api-client with strict Interview and Feedback contracts and no credentials.
+- [ ] Add accessible interview create/edit/complete/delete and self-review UX in Job Detail.
+- [ ] Add question create/edit/delete with category, actual answer, performance and notes.
+- [ ] Add explicit Application outcome detail and clearly label rejection reason as a user record.
+- [ ] Add factual Feedback Summary empty/populated views with no score or recommendation language.
+- [ ] Verify keyboard behavior and 320/768/1024/1440 responsive layouts.
+
+## Validation and acceptance
+
+- [ ] Run all Python/TypeScript tests, lint, format, typecheck, builds and import/startup gates.
+- [ ] Regress BOSS, Nowcoder, Job, Application, JD AI, Resume and existing Evidence Map behavior.
+- [ ] Run privacy/XSS/log/telemetry/remote-call/schema/cascade safety review.
+- [ ] Complete code review and simplification with Critical 0 and Required 0.
+- [ ] Use one existing Application to enter one local round, at least three fictional/historical questions,
+  manual self review and completion; confirm factual Feedback Summary values without database edits.
+- [ ] Restart API/Web and confirm round, questions, review, outcome and feedback persistence.
+- [ ] Stop before the next phase and wait for project-owner approval.
+
+---
+
+# Historical Phase 7 — Resume Version & Evidence Map Checklist
 
 ## Phase 7C semantic evidence refinement — approved 2026-09-06
 

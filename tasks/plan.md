@@ -1,4 +1,80 @@
-# Implementation Plan: Phase 7 — Resume Version & Evidence Map
+# Implementation Plan: Phase 8 — Interview Record & Feedback Loop
+
+> Owner-approved on 2026-09-06. Phase 7 remains `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`;
+> this independent phase must not change its Evidence Map prompt, schema, evaluation or acceptance.
+
+## Objective
+
+Complete the local job-search feedback loop from Application through interview rounds, actual
+questions, manual self review and outcome facts. Compute a deterministic local Feedback Summary
+directly from SQLite. The whole phase must work with every `JOBPILOT_LLM_*` variable absent and must
+not add LLM, RAG, Agent, telemetry, event tracking, scoring or an analytics framework.
+
+## Frozen contract
+
+- `InterviewRound` belongs to one Application and contains a name, `PHONE|VIDEO|ONSITE|OTHER` type,
+  optional schedule, `PLANNED|COMPLETED|CANCELLED` status, interviewer note and four optional manual
+  review fields: what went well, what could improve, learning notes and other notes.
+- `InterviewQuestion` belongs to one round and contains the actual question, one of the seven approved
+  categories, the user's manual answer summary, `GOOD|OK|POOR|NOT_SURE` self-assessment and a note.
+- Application adds nullable `outcomeNote` and `rejectionReason`. `outcomeNote` also covers minimal Offer
+  information; no separate Offer or Outcome state machine is created. A non-null rejection reason is
+  valid only while the effective Application status is `rejected`, and leaving that status clears it.
+- Creating or completing a round never changes Application status. Updating Application status or
+  outcome remains a separate explicit user action.
+- Round deletion cascades questions. Application deletion cascades rounds and questions; Job deletion
+  continues to cascade through Application. All content is untrusted plain text stored only in SQLite.
+- Resource endpoints follow the existing camelCase/error conventions. Application interview lists are
+  paginated and include each round's questions to avoid client N+1 requests; writes remain JSON-only.
+- `GET /api/v1/feedback-summary` performs direct factual queries. It stores no derived rows and calls no
+  external service. Counts cover Jobs, Applications, Applications with at least one InterviewRound,
+  rounds, questions, offers and rejected Applications.
+- Funnel stages are saved Jobs -> Applications -> Applications with a recorded interview -> current
+  Offer Applications. Each rate uses the immediately preceding count as denominator and is `null` when
+  that denominator is zero. Empty feedback never renders a misleading 0% success rate.
+- Category/performance/rejection-reason summaries are counts. Weak categories use deterministic
+  `OK + POOR`, include only positive weak counts and sort by weak count, question count and enum order.
+  Resume-version and source summaries report Application, interviewed-Application and Offer counts
+  without causal conclusions or recommendations.
+
+## Ordered work
+
+1. Freeze ADR-015, this plan/checklist, model/API/statistics/privacy rules and the next-phase stop.
+2. RED/GREEN domain validation, migration, persistence, cascades and Application outcome fields.
+3. RED/GREEN round/question CRUD and deterministic feedback-summary API without Provider configuration.
+4. RED/GREEN shared wire types and credential-free api-client response validation.
+5. RED/GREEN Job Detail interview records, questions, self review and explicit outcome UX.
+6. RED/GREEN factual Feedback Summary view, empty/populated states, responsive and keyboard behavior.
+7. Synchronize canonical docs; run Python/TypeScript/build/migration/security and existing regression gates.
+8. Run one user-visible local acceptance, restart persistence, code review and simplification; stop.
+
+## Checkpoints
+
+- Backend: fresh/head migration, CRUD, cascade, outcome and deterministic statistics tests pass.
+- Client: shared contract/api-client tests reject malformed responses and keep `credentials: omit`.
+- Web: all interaction states pass component tests and 320/768/1024/1440 browser checks.
+- Final: provider-free operation, privacy/security scans and existing BOSS/Nowcoder/Job/Application/JD AI/
+  Resume/Evidence Map regressions pass with Critical 0 and Required 0.
+
+## Risks and mitigations
+
+- Misleading funnel claims: derive interview participation from recorded rounds, publish denominators and
+  return nullable rates rather than treating missing history as 0% success.
+- Sensitive interview text leakage: never log payloads, render only React text nodes and use fictional tests.
+- Cascade data loss: require explicit Web confirmation and verify round/Application/Job cascade paths.
+- Large Job Detail component: keep interview and feedback UI in focused components with typed callbacks.
+
+## Stop conditions
+
+- Do not call an LLM or change the Phase 6/7 prompts, schemas, evaluation data or scoring rules.
+- Do not create Analytics/Event/FeedbackRecord/Insight/Score storage or automatic recommendations.
+- Do not infer Application status from interview actions or infer rejection reasons.
+- Do not claim real acceptance or restart persistence without observing it.
+- Do not begin the next phase without explicit owner approval.
+
+---
+
+# Historical Implementation Plan: Phase 7 — Resume Version & Evidence Map
 
 > Owner-approved on 2026-09-05; comprehensive Evidence Map expansion approved on 2026-09-06.
 > Phase 8 is not authorized.
