@@ -15,6 +15,17 @@ from jobpilot_api.domain.evidence_maps import (
     EvidenceMapRecord,
     ResumeEvidence,
 )
+from jobpilot_api.domain.feedback import (
+    FeedbackSummary,
+    FeedbackTotals,
+    FunnelStage,
+    PerformanceCount,
+    QuestionCategoryCount,
+    RejectionReasonCount,
+    ResumeVersionFeedbackStats,
+    SourceFeedbackStats,
+    WeakCategoryCount,
+)
 from jobpilot_api.domain.interviews import (
     InterviewQuestion,
     InterviewRoundDetail,
@@ -304,6 +315,149 @@ class InterviewRoundListResponse(ApiModel):
     total: int
     limit: int
     offset: int
+
+
+class FeedbackTotalsResponse(ApiModel):
+    saved_jobs: int
+    applications: int
+    interview_applications: int
+    interviews: int
+    questions: int
+    offers: int
+    rejected: int
+
+    @classmethod
+    def from_domain(cls, totals: FeedbackTotals) -> FeedbackTotalsResponse:
+        return cls(**{field: getattr(totals, field) for field in cls.model_fields})
+
+
+class FunnelStageResponse(ApiModel):
+    stage: str
+    count: int
+    conversion_rate: float | None
+
+    @classmethod
+    def from_domain(cls, stage: FunnelStage) -> FunnelStageResponse:
+        return cls(
+            stage=stage.stage.value,
+            count=stage.count,
+            conversion_rate=stage.conversion_rate,
+        )
+
+
+class QuestionCategoryCountResponse(ApiModel):
+    category: QuestionCategory
+    count: int
+
+    @classmethod
+    def from_domain(cls, item: QuestionCategoryCount) -> QuestionCategoryCountResponse:
+        return cls(category=item.category, count=item.count)
+
+
+class PerformanceCountResponse(ApiModel):
+    performance: QuestionPerformance
+    count: int
+
+    @classmethod
+    def from_domain(cls, item: PerformanceCount) -> PerformanceCountResponse:
+        return cls(performance=item.performance, count=item.count)
+
+
+class WeakCategoryCountResponse(ApiModel):
+    category: QuestionCategory
+    question_count: int
+    weak_count: int
+
+    @classmethod
+    def from_domain(cls, item: WeakCategoryCount) -> WeakCategoryCountResponse:
+        return cls(
+            category=item.category,
+            question_count=item.question_count,
+            weak_count=item.weak_count,
+        )
+
+
+class RejectionReasonCountResponse(ApiModel):
+    reason: RejectionReason
+    count: int
+
+    @classmethod
+    def from_domain(cls, item: RejectionReasonCount) -> RejectionReasonCountResponse:
+        return cls(reason=item.reason, count=item.count)
+
+
+class FeedbackGroupStatsResponse(ApiModel):
+    applications: int
+    interview_applications: int
+    offers: int
+
+
+class SourceFeedbackStatsResponse(FeedbackGroupStatsResponse):
+    source: Literal["manual", "boss", "nowcoder"]
+
+    @classmethod
+    def from_domain(cls, item: SourceFeedbackStats) -> SourceFeedbackStatsResponse:
+        return cls(
+            source=item.source,  # type: ignore[arg-type]
+            applications=item.applications,
+            interview_applications=item.interview_applications,
+            offers=item.offers,
+        )
+
+
+class ResumeVersionFeedbackStatsResponse(FeedbackGroupStatsResponse):
+    resume_version_id: str
+    resume_version_name: str
+
+    @classmethod
+    def from_domain(cls, item: ResumeVersionFeedbackStats) -> ResumeVersionFeedbackStatsResponse:
+        return cls(
+            resume_version_id=item.resume_version_id,
+            resume_version_name=item.resume_version_name,
+            applications=item.applications,
+            interview_applications=item.interview_applications,
+            offers=item.offers,
+        )
+
+
+class FeedbackSummaryResponse(ApiModel):
+    has_data: bool
+    totals: FeedbackTotalsResponse
+    funnel: list[FunnelStageResponse]
+    question_categories: list[QuestionCategoryCountResponse]
+    performances: list[PerformanceCountResponse]
+    weak_categories: list[WeakCategoryCountResponse]
+    rejection_reasons: list[RejectionReasonCountResponse]
+    unrecorded_rejection_reasons: int
+    resume_versions: list[ResumeVersionFeedbackStatsResponse]
+    sources: list[SourceFeedbackStatsResponse]
+
+    @classmethod
+    def from_domain(cls, summary: FeedbackSummary) -> FeedbackSummaryResponse:
+        return cls(
+            has_data=summary.has_data,
+            totals=FeedbackTotalsResponse.from_domain(summary.totals),
+            funnel=[FunnelStageResponse.from_domain(item) for item in summary.funnel],
+            question_categories=[
+                QuestionCategoryCountResponse.from_domain(item)
+                for item in summary.question_categories
+            ],
+            performances=[
+                PerformanceCountResponse.from_domain(item) for item in summary.performances
+            ],
+            weak_categories=[
+                WeakCategoryCountResponse.from_domain(item) for item in summary.weak_categories
+            ],
+            rejection_reasons=[
+                RejectionReasonCountResponse.from_domain(item) for item in summary.rejection_reasons
+            ],
+            unrecorded_rejection_reasons=summary.unrecorded_rejection_reasons,
+            resume_versions=[
+                ResumeVersionFeedbackStatsResponse.from_domain(item)
+                for item in summary.resume_versions
+            ],
+            sources=[SourceFeedbackStatsResponse.from_domain(item) for item in summary.sources],
+        )
 
 
 class AnalysisCreateRequest(ApiModel):

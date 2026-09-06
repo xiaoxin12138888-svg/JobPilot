@@ -5,6 +5,7 @@ from typing import Protocol
 
 from jobpilot_api.domain.applications import Application, ApplicationStatus, RejectionReason
 from jobpilot_api.domain.evidence_maps import EvidenceMap, EvidenceMapRecord
+from jobpilot_api.domain.feedback import FeedbackSummary
 from jobpilot_api.domain.interviews import (
     InterviewQuestion,
     InterviewQuestionDraft,
@@ -140,3 +141,7 @@ class InterviewRepository(Protocol):
     ) -> InterviewQuestion | None: ...
 
     def delete_question(self, question_id: str) -> bool: ...
+
+
+class FeedbackSummaryRepository(Protocol):
+    def get_summary(self) -> FeedbackSummary: ...

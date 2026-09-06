@@ -3,6 +3,7 @@ from __future__ import annotations
 from jobpilot_api.application.repositories import (
     ApplicationListEntry,
     ApplicationRepository,
+    FeedbackSummaryRepository,
     InterviewRepository,
     JobListEntry,
     JobRepository,
@@ -16,6 +17,7 @@ from jobpilot_api.domain.applications import (
     validate_status_transition,
 )
 from jobpilot_api.domain.errors import ResourceNotFoundError
+from jobpilot_api.domain.feedback import FeedbackSummary
 from jobpilot_api.domain.interviews import (
     InterviewQuestion,
     InterviewQuestionDraft,
@@ -300,3 +302,11 @@ class InterviewService:
     def delete_question(self, question_id: str) -> None:
         if not self._repository.delete_question(question_id):
             raise ResourceNotFoundError("面试题记录不存在")
+
+
+class FeedbackSummaryService:
+    def __init__(self, repository: FeedbackSummaryRepository) -> None:
+        self._repository = repository
+
+    def get(self) -> FeedbackSummary:
+        return self._repository.get_summary()

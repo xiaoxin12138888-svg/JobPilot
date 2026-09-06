@@ -8,6 +8,7 @@ from jobpilot_api.api.dependencies import (
     get_analysis_service,
     get_application_service,
     get_evidence_map_service,
+    get_feedback_summary_service,
     get_interview_service,
     get_job_service,
     get_resume_version_service,
@@ -20,6 +21,7 @@ from jobpilot_api.api.schemas import (
     ApplicationResponse,
     ApplicationUpdateRequest,
     EvidenceMapGenerateRequest,
+    FeedbackSummaryResponse,
     InterviewQuestionCreateRequest,
     InterviewQuestionResponse,
     InterviewQuestionUpdateRequest,
@@ -44,6 +46,7 @@ from jobpilot_api.application.evidence_maps import EvidenceMapService
 from jobpilot_api.application.jd_analysis import JDAnalysisService
 from jobpilot_api.application.services import (
     ApplicationService,
+    FeedbackSummaryService,
     InterviewService,
     JobService,
     ResumeVersionService,
@@ -56,6 +59,13 @@ from jobpilot_api.domain.resume_versions import ResumeVersionDraft
 router = APIRouter(prefix="/api/v1")
 PageLimit = Annotated[int, Query(ge=1, le=100)]
 PageOffset = Annotated[int, Query(ge=0)]
+
+
+@router.get("/feedback-summary", response_model=FeedbackSummaryResponse)
+def get_feedback_summary(
+    service: Annotated[FeedbackSummaryService, Depends(get_feedback_summary_service)],
+) -> FeedbackSummaryResponse:
+    return FeedbackSummaryResponse.from_domain(service.get())
 
 
 @router.post("/jobs", response_model=JobResponse, status_code=status.HTTP_201_CREATED)

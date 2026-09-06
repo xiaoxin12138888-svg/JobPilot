@@ -4,7 +4,7 @@ import json
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -21,6 +21,13 @@ from jobpilot_api.domain.evidence_maps import (
     EvidenceMap,
     EvidenceMapRecord,
     evidence_map_from_stored_json,
+)
+from jobpilot_api.domain.feedback import (
+    FeedbackGroupStats,
+    FeedbackSummary,
+    FeedbackTotals,
+    ResumeVersionFeedbackStats,
+    build_feedback_summary,
 )
 from jobpilot_api.domain.interviews import (
     InterviewQuestion,
@@ -679,6 +686,211 @@ class SqlAlchemyInterviewRepository:
                 return True
         except OperationalError as error:
             raise _database_error(error) from error
+
+
+class SqlAlchemyFeedbackSummaryRepository:
+    def __init__(self, sessions: sessionmaker[Session]) -> None:
+        self._sessions = sessions
+
+    def get_summary(self) -> FeedbackSummary:
+        try:
+            with self._sessions() as session:
+                totals = FeedbackTotals(
+                    saved_jobs=_count(session, JobModel),
+                    applications=_count(session, ApplicationModel),
+                    interview_applications=(
+                        session.scalar(
+                            select(func.count(func.distinct(InterviewRoundModel.application_id)))
+                        )
+                        or 0
+                    ),
+                    interviews=_count(session, InterviewRoundModel),
+                    questions=_count(session, InterviewQuestionModel),
+                    offers=(
+                        session.scalar(
+                            select(func.count())
+                            .select_from(ApplicationModel)
+                            .where(ApplicationModel.status == ApplicationStatus.OFFER.value)
+                        )
+                        or 0
+                    ),
+                    rejected=(
+                        session.scalar(
+                            select(func.count())
+                            .select_from(ApplicationModel)
+                            .where(ApplicationModel.status == ApplicationStatus.REJECTED.value)
+                        )
+                        or 0
+                    ),
+                )
+                category_counts = {
+                    QuestionCategory(category): count
+                    for category, count in session.execute(
+                        select(InterviewQuestionModel.category, func.count())
+                        .group_by(InterviewQuestionModel.category)
+                        .order_by(InterviewQuestionModel.category)
+                    )
+                }
+                performance_counts = {
+                    QuestionPerformance(performance): count
+                    for performance, count in session.execute(
+                        select(InterviewQuestionModel.performance, func.count())
+                        .group_by(InterviewQuestionModel.performance)
+                        .order_by(InterviewQuestionModel.performance)
+                    )
+                }
+                weak_counts = {
+                    QuestionCategory(category): (question_count, weak_count)
+                    for category, question_count, weak_count in session.execute(
+                        select(
+                            InterviewQuestionModel.category,
+                            func.count(),
+                            func.sum(
+                                case(
+                                    (
+                                        InterviewQuestionModel.performance.in_(
+                                            [
+                                                QuestionPerformance.OK.value,
+                                                QuestionPerformance.POOR.value,
+                                            ]
+                                        ),
+                                        1,
+                                    ),
+                                    else_=0,
+                                )
+                            ),
+                        ).group_by(InterviewQuestionModel.category)
+                    )
+                }
+                rejection_reason_counts = {
+                    RejectionReason(reason): count
+                    for reason, count in session.execute(
+                        select(ApplicationModel.rejection_reason, func.count())
+                        .where(
+                            ApplicationModel.status == ApplicationStatus.REJECTED.value,
+                            ApplicationModel.rejection_reason.is_not(None),
+                        )
+                        .group_by(ApplicationModel.rejection_reason)
+                    )
+                }
+                unrecorded_rejection_reasons = (
+                    session.scalar(
+                        select(func.count())
+                        .select_from(ApplicationModel)
+                        .where(
+                            ApplicationModel.status == ApplicationStatus.REJECTED.value,
+                            ApplicationModel.rejection_reason.is_(None),
+                        )
+                    )
+                    or 0
+                )
+                source_counts = _source_feedback_counts(session)
+                resume_versions = _resume_version_feedback_counts(session)
+        except OperationalError as error:
+            raise _database_error(error) from error
+        return build_feedback_summary(
+            totals=totals,
+            category_counts=category_counts,
+            performance_counts=performance_counts,
+            weak_counts=weak_counts,
+            rejection_reason_counts=rejection_reason_counts,
+            unrecorded_rejection_reasons=unrecorded_rejection_reasons,
+            resume_versions=resume_versions,
+            source_counts=source_counts,
+        )
+
+
+def _source_feedback_counts(session: Session) -> dict[str, FeedbackGroupStats]:
+    rows = session.execute(
+        select(
+            JobModel.source,
+            func.count(func.distinct(ApplicationModel.id)),
+            func.count(
+                func.distinct(
+                    case(
+                        (InterviewRoundModel.id.is_not(None), ApplicationModel.id),
+                        else_=None,
+                    )
+                )
+            ),
+            func.count(
+                func.distinct(
+                    case(
+                        (
+                            ApplicationModel.status == ApplicationStatus.OFFER.value,
+                            ApplicationModel.id,
+                        ),
+                        else_=None,
+                    )
+                )
+            ),
+        )
+        .select_from(JobModel)
+        .outerjoin(ApplicationModel, ApplicationModel.job_id == JobModel.id)
+        .outerjoin(InterviewRoundModel, InterviewRoundModel.application_id == ApplicationModel.id)
+        .group_by(JobModel.source)
+    )
+    return {
+        source: FeedbackGroupStats(
+            applications=applications,
+            interview_applications=interview_applications,
+            offers=offers,
+        )
+        for source, applications, interview_applications, offers in rows
+    }
+
+
+def _resume_version_feedback_counts(
+    session: Session,
+) -> tuple[ResumeVersionFeedbackStats, ...]:
+    rows = session.execute(
+        select(
+            ResumeVersionModel.id,
+            ResumeVersionModel.name,
+            func.count(func.distinct(ApplicationModel.id)),
+            func.count(
+                func.distinct(
+                    case(
+                        (InterviewRoundModel.id.is_not(None), ApplicationModel.id),
+                        else_=None,
+                    )
+                )
+            ),
+            func.count(
+                func.distinct(
+                    case(
+                        (
+                            ApplicationModel.status == ApplicationStatus.OFFER.value,
+                            ApplicationModel.id,
+                        ),
+                        else_=None,
+                    )
+                )
+            ),
+        )
+        .select_from(ResumeVersionModel)
+        .outerjoin(
+            ApplicationModel,
+            ApplicationModel.resume_version_id == ResumeVersionModel.id,
+        )
+        .outerjoin(InterviewRoundModel, InterviewRoundModel.application_id == ApplicationModel.id)
+        .group_by(ResumeVersionModel.id, ResumeVersionModel.name)
+        .order_by(ResumeVersionModel.name, ResumeVersionModel.id)
+    )
+    return tuple(
+        ResumeVersionFeedbackStats(
+            resume_version_id=resume_version_id,
+            resume_version_name=resume_version_name,
+            applications=applications,
+            interview_applications=interview_applications,
+            offers=offers,
+        )
+        for resume_version_id, resume_version_name, applications, interview_applications, offers in rows
+    )
+
+
+def _count(session: Session, model: type[object]) -> int:
+    return session.scalar(select(func.count()).select_from(model)) or 0
 
 
 def _draft_values(draft: JobDraft) -> dict[str, object]:
