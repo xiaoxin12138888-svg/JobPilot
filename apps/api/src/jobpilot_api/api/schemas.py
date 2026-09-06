@@ -222,6 +222,12 @@ class InterviewRoundUpdateRequest(ApiModel):
     def require_a_change(self) -> InterviewRoundUpdateRequest:
         if not self.model_fields_set:
             raise ValueError("at least one field must be provided")
+        required_fields = {"round_name", "interview_type", "status"}
+        if any(
+            field in self.model_fields_set and getattr(self, field) is None
+            for field in required_fields
+        ):
+            raise ValueError("roundName, interviewType and status must not be null")
         return self
 
 
@@ -244,6 +250,12 @@ class InterviewQuestionUpdateRequest(ApiModel):
     def require_a_change(self) -> InterviewQuestionUpdateRequest:
         if not self.model_fields_set:
             raise ValueError("at least one field must be provided")
+        required_fields = {"question", "category", "performance"}
+        if any(
+            field in self.model_fields_set and getattr(self, field) is None
+            for field in required_fields
+        ):
+            raise ValueError("question, category and performance must not be null")
         return self
 
 

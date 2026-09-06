@@ -31,11 +31,11 @@ export function InterviewRoundCard({
     }
   }
 
-  async function complete() {
+  async function changeStatus(status: 'COMPLETED' | 'CANCELLED') {
     setBusy(true);
     setError(undefined);
     try {
-      onUpdate(await apiClient.updateInterview(interview.id, { status: 'COMPLETED' }));
+      onUpdate(await apiClient.updateInterview(interview.id, { status }));
     } catch {
       setError('面试状态更新失败，请稍后重试。');
     } finally {
@@ -79,9 +79,19 @@ export function InterviewRoundCard({
               type="button"
               className="text-button"
               disabled={busy}
-              onClick={() => void complete()}
+              onClick={() => void changeStatus('COMPLETED')}
             >
               标记完成
+            </button>
+          )}
+          {interview.status !== 'CANCELLED' && (
+            <button
+              type="button"
+              className="text-button"
+              disabled={busy}
+              onClick={() => void changeStatus('CANCELLED')}
+            >
+              标记取消
             </button>
           )}
           <button

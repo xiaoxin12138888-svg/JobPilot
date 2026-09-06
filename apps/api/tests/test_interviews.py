@@ -165,6 +165,45 @@ def test_question_requires_an_existing_round_and_valid_frozen_enums(client: Test
     assert invalid.json()["error"]["code"] == "VALIDATION_ERROR"
 
 
+@pytest.mark.parametrize(
+    "changes",
+    [{"roundName": None}, {"interviewType": None}, {"status": None}],
+)
+def test_interview_patch_rejects_null_for_required_fields(
+    client: TestClient, changes: dict[str, None]
+) -> None:
+    application = _create_application(client)
+    interview = _create_interview(client, application["id"])
+
+    response = client.patch(f"/api/v1/interviews/{interview['id']}", json=changes)
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [{"question": None}, {"category": None}, {"performance": None}],
+)
+def test_question_patch_rejects_null_for_required_fields(
+    client: TestClient, changes: dict[str, None]
+) -> None:
+    application = _create_application(client)
+    interview = _create_interview(client, application["id"])
+    question = _create_question(
+        client,
+        interview["id"],
+        question="虚构问题",
+        category="OTHER",
+        performance="NOT_SURE",
+    )
+
+    response = client.patch(f"/api/v1/interview-questions/{question['id']}", json=changes)
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
 def test_application_outcome_note_and_user_recorded_rejection_reason(client: TestClient) -> None:
     application = _create_application(client)
     application_id = application["id"]

@@ -508,6 +508,33 @@ describe('App', () => {
     expect(apiClient.updateApplication).not.toHaveBeenCalled();
   });
 
+  it('explicitly marks a round cancelled without changing the Application', async () => {
+    const job = createJob();
+    const application = createApplication('interviewing');
+    let interview = createInterviewRound();
+    const updateInterview = vi.fn(async (_interviewId: string, input: Partial<InterviewRound>) => {
+      interview = { ...interview, ...input, updatedAt: '2026-09-06T01:00:00Z' };
+      return interview;
+    });
+    const apiClient = createApiClient({
+      getJob: vi.fn().mockResolvedValue(job),
+      listApplications: vi
+        .fn()
+        .mockResolvedValue(page([{ ...application, jobTitle: job.title, company: job.company }])),
+      listInterviews: vi.fn().mockResolvedValue(page([interview])),
+      updateInterview,
+    });
+    window.history.replaceState(null, '', `/?jobId=${job.id}`);
+
+    render(<App apiClient={apiClient} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '标记取消' }));
+
+    expect(await screen.findByText('已取消')).toBeInTheDocument();
+    expect(updateInterview).toHaveBeenCalledWith(interview.id, { status: 'CANCELLED' });
+    expect(apiClient.updateApplication).not.toHaveBeenCalled();
+  });
+
   it('requires confirmation before deleting a round and removes it from the view', async () => {
     const job = createJob();
     const application = createApplication('interviewing');
