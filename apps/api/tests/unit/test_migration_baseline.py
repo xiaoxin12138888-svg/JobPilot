@@ -119,7 +119,7 @@ def test_phase_4_source_migration_preserves_phase_3_data_and_is_reversible(tmp_p
     command.upgrade(config, "head")
     with sqlite3.connect(database_path) as connection:
         version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
-    assert version == ("0006_evidence_map_records",)
+    assert version == ("0007_evidence_map_schema_v2",)
 
 
 def test_source_migration_refuses_to_downgrade_while_boss_jobs_exist(tmp_path: Path) -> None:
@@ -200,7 +200,7 @@ def test_phase_5_source_migration_preserves_existing_data_and_is_reversible(
 
     with sqlite3.connect(database_path) as connection:
         version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
-    assert version == ("0006_evidence_map_records",)
+    assert version == ("0007_evidence_map_schema_v2",)
 
 
 def test_phase_5_source_migration_refuses_downgrade_while_nowcoder_jobs_exist(
@@ -269,7 +269,7 @@ def test_phase_6_analysis_migration_is_reversible_and_cascades(tmp_path: Path) -
     command.upgrade(config, "head")
     with sqlite3.connect(database_path) as connection:
         version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
-    assert version == ("0006_evidence_map_records",)
+    assert version == ("0007_evidence_map_schema_v2",)
 
 
 def test_phase_7_resume_migration_is_reversible_and_preserves_applications(
@@ -404,3 +404,86 @@ def test_phase_7_evidence_map_migration_is_reversible_unique_and_cascades(
             "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'evidence_map_records'"
         ).fetchone()
     assert table is None
+
+
+def test_evidence_map_schema_v2_constraint_and_guarded_downgrade(tmp_path: Path) -> None:
+    database_path = tmp_path / "evidence-schema-v2.db"
+    config = Config("apps/api/alembic.ini")
+    config.set_main_option("sqlalchemy.url", sqlite_database_url(database_path).render_as_string())
+    command.upgrade(config, "head")
+
+    with sqlite3.connect(database_path) as connection:
+        connection.execute("PRAGMA foreign_keys=ON")
+        for index in range(1, 4):
+            connection.execute(
+                """
+                INSERT INTO jobs (id, title, company, source, created_at, updated_at)
+                VALUES (?, '岗位', '公司', 'manual', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """,
+                (f"job-{index}",),
+            )
+            connection.execute(
+                """
+                INSERT INTO resume_versions (id, name, content, created_at, updated_at)
+                VALUES (?, '版本', '虚构简历正文', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """,
+                (f"resume-{index}",),
+            )
+        for index, schema_version in ((1, 1), (2, 2)):
+            connection.execute(
+                """
+                INSERT INTO evidence_map_records (
+                    id, job_id, resume_version_id, schema_version, result_json,
+                    job_analysis_fingerprint, resume_content_fingerprint, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, '{"mappings":[]}', ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """,
+                (
+                    f"map-{index}",
+                    f"job-{index}",
+                    f"resume-{index}",
+                    schema_version,
+                    "a" * 64,
+                    "b" * 64,
+                ),
+            )
+        connection.commit()
+        with pytest.raises(sqlite3.IntegrityError):
+            connection.execute(
+                """
+                INSERT INTO evidence_map_records (
+                    id, job_id, resume_version_id, schema_version, result_json,
+                    job_analysis_fingerprint, resume_content_fingerprint, created_at, updated_at
+                ) VALUES (
+                    'map-3', 'job-3', 'resume-3', 3, '{"mappings":[]}', ?, ?,
+                    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                )
+                """,
+                ("c" * 64, "d" * 64),
+            )
+        connection.rollback()
+
+    with pytest.raises(RuntimeError, match="schema version 2"):
+        command.downgrade(config, "0006_evidence_map_records")
+
+    with sqlite3.connect(database_path) as connection:
+        connection.execute("DELETE FROM evidence_map_records WHERE schema_version = 2")
+        connection.commit()
+    command.downgrade(config, "0006_evidence_map_records")
+
+    with sqlite3.connect(database_path) as connection:
+        with pytest.raises(sqlite3.IntegrityError):
+            connection.execute(
+                "UPDATE evidence_map_records SET schema_version = 2 WHERE id = 'map-1'"
+            )
+        connection.rollback()
+        assert connection.execute(
+            "SELECT schema_version FROM evidence_map_records WHERE id = 'map-1'"
+        ).fetchone() == (1,)
+
+    command.upgrade(config, "head")
+    with sqlite3.connect(database_path) as connection:
+        connection.execute("UPDATE evidence_map_records SET schema_version = 2 WHERE id = 'map-1'")
+        connection.commit()
+        assert connection.execute(
+            "SELECT schema_version FROM evidence_map_records WHERE id = 'map-1'"
+        ).fetchone() == (2,)

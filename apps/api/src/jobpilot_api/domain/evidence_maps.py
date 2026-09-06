@@ -9,10 +9,10 @@ from enum import StrEnum
 from typing import Any
 
 from jobpilot_api.domain.errors import AnalysisInvalidResponseError
-from jobpilot_api.domain.jd_analysis import JDAnalysisRecord
+from jobpilot_api.domain.jd_analysis import MAX_ANALYSIS_ITEMS, JDAnalysisRecord
 
-EVIDENCE_MAP_SCHEMA_VERSION = 1
-MAX_EVIDENCE_MAPPINGS = 200
+EVIDENCE_MAP_SCHEMA_VERSION = 2
+MAX_EVIDENCE_MAPPINGS = MAX_ANALYSIS_ITEMS * 6
 MAX_RESUME_EVIDENCE_ITEMS = 20
 MAX_EVIDENCE_TEXT_LENGTH = 2_000
 GROUNDED_GAP_REASON = "当前简历版本中未发现可证明该要求的有效原文证据。"
@@ -27,6 +27,10 @@ WHITESPACE = re.compile(r"\s+")
 class RequirementType(StrEnum):
     MUST_HAVE = "MUST_HAVE"
     PREFERRED = "PREFERRED"
+    RESPONSIBILITY = "RESPONSIBILITY"
+    SKILL = "SKILL"
+    EXPERIENCE = "EXPERIENCE"
+    EDUCATION = "EDUCATION"
 
 
 class Coverage(StrEnum):
@@ -113,12 +117,29 @@ class EvidenceMapRecord:
 
 
 def requirements_from_analysis(record: JDAnalysisRecord) -> tuple[EvidenceRequirement, ...]:
-    return tuple(
-        EvidenceRequirement(RequirementType.MUST_HAVE, item.text)
-        for item in record.result.must_have_requirements
-    ) + tuple(
-        EvidenceRequirement(RequirementType.PREFERRED, item.text)
-        for item in record.result.preferred_requirements
+    result = record.result
+    return (
+        tuple(
+            EvidenceRequirement(RequirementType.MUST_HAVE, item.text)
+            for item in result.must_have_requirements
+        )
+        + tuple(
+            EvidenceRequirement(RequirementType.PREFERRED, item.text)
+            for item in result.preferred_requirements
+        )
+        + tuple(
+            EvidenceRequirement(RequirementType.RESPONSIBILITY, item.text)
+            for item in result.responsibilities
+        )
+        + tuple(EvidenceRequirement(RequirementType.SKILL, item) for item in result.skills)
+        + tuple(
+            EvidenceRequirement(RequirementType.EXPERIENCE, item.text)
+            for item in result.experience_requirements
+        )
+        + tuple(
+            EvidenceRequirement(RequirementType.EDUCATION, item.text)
+            for item in result.education_requirements
+        )
     )
 
 
@@ -147,14 +168,24 @@ def parse_and_ground_evidence_map(
         raw_content,
         expected_requirements=requirements,
         normalized_resume=_normalize_text(resume_content),
+        allowed_requirement_types=frozenset(RequirementType),
     )
 
 
-def evidence_map_from_stored_json(raw_content: str) -> EvidenceMap:
+def evidence_map_from_stored_json(raw_content: str, *, schema_version: int) -> EvidenceMap:
+    if schema_version == 1:
+        allowed_requirement_types = frozenset(
+            {RequirementType.MUST_HAVE, RequirementType.PREFERRED}
+        )
+    elif schema_version == EVIDENCE_MAP_SCHEMA_VERSION:
+        allowed_requirement_types = frozenset(RequirementType)
+    else:
+        raise _invalid_response()
     return _parse_evidence_map(
         raw_content,
         expected_requirements=None,
         normalized_resume=None,
+        allowed_requirement_types=allowed_requirement_types,
     )
 
 
@@ -163,6 +194,7 @@ def _parse_evidence_map(
     *,
     expected_requirements: tuple[EvidenceRequirement, ...] | None,
     normalized_resume: str | None,
+    allowed_requirement_types: frozenset[RequirementType],
 ) -> EvidenceMap:
     try:
         value = json.loads(raw_content)
@@ -174,7 +206,12 @@ def _parse_evidence_map(
     if not isinstance(raw_mappings, list) or len(raw_mappings) > MAX_EVIDENCE_MAPPINGS:
         raise _invalid_response()
     mappings = tuple(
-        _mapping(raw_mapping, normalized_resume=normalized_resume) for raw_mapping in raw_mappings
+        _mapping(
+            raw_mapping,
+            normalized_resume=normalized_resume,
+            allowed_requirement_types=allowed_requirement_types,
+        )
+        for raw_mapping in raw_mappings
     )
     if expected_requirements is not None:
         actual = tuple(
@@ -185,7 +222,12 @@ def _parse_evidence_map(
     return EvidenceMap(mappings=mappings)
 
 
-def _mapping(raw_mapping: Any, *, normalized_resume: str | None) -> EvidenceMapping:
+def _mapping(
+    raw_mapping: Any,
+    *,
+    normalized_resume: str | None,
+    allowed_requirement_types: frozenset[RequirementType],
+) -> EvidenceMapping:
     if not isinstance(raw_mapping, dict) or frozenset(raw_mapping) != MAPPING_KEYS:
         raise _invalid_response()
     try:
@@ -193,6 +235,8 @@ def _mapping(raw_mapping: Any, *, normalized_resume: str | None) -> EvidenceMapp
         coverage = Coverage(raw_mapping["coverage"])
     except (ValueError, TypeError):
         raise _invalid_response() from None
+    if requirement_type not in allowed_requirement_types:
+        raise _invalid_response()
     requirement_text = _string(raw_mapping["requirementText"])
     reason = _string(raw_mapping["reason"])
     resume_evidence = _resume_evidence(

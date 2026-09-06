@@ -551,7 +551,10 @@ def _evidence_map_record(model: EvidenceMapRecordModel) -> EvidenceMapRecord:
         job_id=model.job_id,
         resume_version_id=model.resume_version_id,
         schema_version=model.schema_version,
-        result=evidence_map_from_stored_json(model.result_json),
+        result=evidence_map_from_stored_json(
+            model.result_json,
+            schema_version=model.schema_version,
+        ),
         job_analysis_fingerprint=model.job_analysis_fingerprint,
         resume_content_fingerprint=model.resume_content_fingerprint,
         created_at=_utc(model.created_at),

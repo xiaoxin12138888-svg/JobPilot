@@ -95,7 +95,7 @@ class EvidenceMapRecordModel(Base):
     __tablename__ = "evidence_map_records"
     __table_args__ = (
         UniqueConstraint("job_id", "resume_version_id", name="uq_evidence_map_records_job_resume"),
-        CheckConstraint("schema_version = 1", name="ck_evidence_map_records_schema_version"),
+        CheckConstraint("schema_version IN (1, 2)", name="ck_evidence_map_records_schema_version"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)

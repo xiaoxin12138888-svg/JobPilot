@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 
 import pytest
 
@@ -10,8 +11,11 @@ from jobpilot_api.domain.evidence_maps import (
     EvidenceMapInput,
     EvidenceRequirement,
     RequirementType,
+    evidence_map_from_stored_json,
     parse_and_ground_evidence_map,
+    requirements_from_analysis,
 )
+from jobpilot_api.domain.jd_analysis import EvidenceItem, JDAnalysis, JDAnalysisRecord
 
 REQUIREMENTS = (
     EvidenceRequirement(RequirementType.MUST_HAVE, "熟练使用 SQL"),
@@ -157,3 +161,50 @@ def test_provider_input_is_minimal_and_both_requirement_and_resume_are_untrusted
     assert analysis_input.fingerprint() == analysis_input.fingerprint()
     assert "description" not in analysis_input.as_provider_data()["job"]
     assert "notes" not in analysis_input.as_provider_data()["job"]
+
+
+def test_requirements_from_analysis_includes_all_six_groups_in_frozen_order() -> None:
+    now = datetime.now(UTC)
+    analysis = JDAnalysisRecord(
+        id="analysis-1",
+        job_id="job-1",
+        schema_version=1,
+        result=JDAnalysis(
+            summary="摘要不属于匹配条件",
+            responsibilities=(EvidenceItem("负责市场调研", "负责市场调研"),),
+            must_have_requirements=(EvidenceItem("2027届", "2027届"),),
+            preferred_requirements=(EvidenceItem("有产品实习经验", None),),
+            skills=("SQL",),
+            experience_requirements=(EvidenceItem("有数据分析项目经验", None),),
+            education_requirements=(EvidenceItem("本科及以上", "本科及以上"),),
+            domain_keywords=("人工智能",),
+            interview_focus=(EvidenceItem("准备竞品分析案例", None),),
+        ),
+        source_fingerprint="a" * 64,
+        created_at=now,
+        updated_at=now,
+    )
+
+    assert [
+        (item.requirement_type.value, item.requirement_text)
+        for item in requirements_from_analysis(analysis)
+    ] == [
+        ("MUST_HAVE", "2027届"),
+        ("PREFERRED", "有产品实习经验"),
+        ("RESPONSIBILITY", "负责市场调研"),
+        ("SKILL", "SQL"),
+        ("EXPERIENCE", "有数据分析项目经验"),
+        ("EDUCATION", "本科及以上"),
+    ]
+
+
+def test_stored_schema_versions_are_backward_compatible_but_type_strict() -> None:
+    responsibility_payload = _payload([_mapping("RESPONSIBILITY", "负责市场调研", "GAP", [])])
+
+    current = evidence_map_from_stored_json(responsibility_payload, schema_version=2)
+    assert current.mappings[0].requirement_type == RequirementType.RESPONSIBILITY
+
+    with pytest.raises(AnalysisInvalidResponseError, match="无法验证"):
+        evidence_map_from_stored_json(responsibility_payload, schema_version=1)
+    with pytest.raises(AnalysisInvalidResponseError, match="无法验证"):
+        evidence_map_from_stored_json(_payload([]), schema_version=3)

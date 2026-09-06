@@ -316,7 +316,14 @@ class ResumeEvidenceResponse(ApiModel):
 
 
 class EvidenceMappingResponse(ApiModel):
-    requirement_type: Literal["MUST_HAVE", "PREFERRED"]
+    requirement_type: Literal[
+        "MUST_HAVE",
+        "PREFERRED",
+        "RESPONSIBILITY",
+        "SKILL",
+        "EXPERIENCE",
+        "EDUCATION",
+    ]
     requirement_text: str
     coverage: Literal["DIRECT", "PARTIAL", "GAP"]
     resume_evidence: list[ResumeEvidenceResponse]

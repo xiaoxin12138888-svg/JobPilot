@@ -31,7 +31,7 @@ VALID_JD_ANALYSIS = json.dumps(
         "preferredRequirements": [
             {"text": "独立负责产品从0到1上线", "evidence": "独立负责产品从0到1上线"}
         ],
-        "skills": ["SQL"],
+        "skills": [],
         "experienceRequirements": [],
         "educationRequirements": [],
         "domainKeywords": [],
@@ -57,6 +57,44 @@ VALID_EVIDENCE_MAP = json.dumps(
                 "resumeEvidence": [{"quote": "参与需求评审和版本验收"}],
                 "reason": "有上线环节经验，但未证明独立负责完整流程。",
             },
+        ]
+    },
+    ensure_ascii=False,
+)
+
+COMPREHENSIVE_JD_ANALYSIS = json.dumps(
+    {
+        "summary": "负责产品与数据工作",
+        "responsibilities": [{"text": "负责市场调研", "evidence": "负责市场调研"}],
+        "mustHaveRequirements": [{"text": "2027届", "evidence": "2027届"}],
+        "preferredRequirements": [{"text": "有产品实习经验", "evidence": None}],
+        "skills": ["SQL"],
+        "experienceRequirements": [{"text": "有数据分析项目经验", "evidence": None}],
+        "educationRequirements": [{"text": "本科及以上", "evidence": "本科及以上"}],
+        "domainKeywords": ["人工智能"],
+        "interviewFocus": [{"text": "准备竞品分析案例", "evidence": None}],
+    },
+    ensure_ascii=False,
+)
+
+COMPREHENSIVE_EVIDENCE_MAP = json.dumps(
+    {
+        "mappings": [
+            {
+                "requirementType": requirement_type,
+                "requirementText": requirement_text,
+                "coverage": "GAP",
+                "resumeEvidence": [],
+                "reason": "结论：当前无法证明；当前简历版本未发现可追溯证据。",
+            }
+            for requirement_type, requirement_text in [
+                ("MUST_HAVE", "2027届"),
+                ("PREFERRED", "有产品实习经验"),
+                ("RESPONSIBILITY", "负责市场调研"),
+                ("SKILL", "SQL"),
+                ("EXPERIENCE", "有数据分析项目经验"),
+                ("EDUCATION", "本科及以上"),
+            ]
         ]
     },
     ensure_ascii=False,
@@ -118,7 +156,7 @@ def test_generate_get_and_minimal_provider_input(
     assert before.json() == {"isConfigured": True, "evidenceMap": None}
     assert created.status_code == 200, created.text
     evidence_map = created.json()["evidenceMap"]
-    assert evidence_map["schemaVersion"] == 1
+    assert evidence_map["schemaVersion"] == 2
     assert evidence_map["resumeVersionId"] == resume["id"]
     assert evidence_map["isStale"] is False
     assert [item["coverage"] for item in evidence_map["result"]["mappings"]] == [
@@ -145,6 +183,85 @@ def test_generate_get_and_minimal_provider_input(
     assert "简单、透明的时间推理" in system_instruction
     assert "最多只能判为 PARTIAL" in system_instruction
     assert "description" not in evidence_input.as_provider_data()["job"]
+
+
+def test_generate_includes_all_six_groups_and_upgrades_existing_v1_record(
+    evidence_context: tuple[TestClient, FakeProvider, Path],
+) -> None:
+    client, provider, database_path = evidence_context
+    provider.jd_response = COMPREHENSIVE_JD_ANALYSIS
+    provider.evidence_response = COMPREHENSIVE_EVIDENCE_MAP
+    job = _create_analyzed_job(client)
+    resume = _create_resume(client)
+    endpoint = f"/api/v1/jobs/{job['id']}/evidence-map"
+
+    legacy_result = json.dumps(
+        {
+            "mappings": [
+                {
+                    "requirementType": "MUST_HAVE",
+                    "requirementText": "2027届",
+                    "coverage": "GAP",
+                    "resumeEvidence": [],
+                    "reason": "当前简历版本未发现证据。",
+                },
+                {
+                    "requirementType": "PREFERRED",
+                    "requirementText": "有产品实习经验",
+                    "coverage": "GAP",
+                    "resumeEvidence": [],
+                    "reason": "当前简历版本未发现证据。",
+                },
+            ]
+        },
+        ensure_ascii=False,
+    )
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """
+            INSERT INTO evidence_map_records (
+                id, job_id, resume_version_id, schema_version, result_json,
+                job_analysis_fingerprint, resume_content_fingerprint, created_at, updated_at
+            ) VALUES (?, ?, ?, 1, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """,
+            ("legacy-map", job["id"], resume["id"], legacy_result, "a" * 64, "b" * 64),
+        )
+        connection.commit()
+
+    legacy = client.get(endpoint, params={"resumeVersionId": resume["id"]})
+    assert legacy.status_code == 200
+    assert legacy.json()["evidenceMap"]["schemaVersion"] == 1
+    assert legacy.json()["evidenceMap"]["isStale"] is True
+
+    regenerated = client.post(
+        endpoint,
+        json={"resumeVersionId": resume["id"], "confirmExternalAi": True},
+    )
+
+    assert regenerated.status_code == 200, regenerated.text
+    evidence_map = regenerated.json()["evidenceMap"]
+    assert evidence_map["id"] == "legacy-map"
+    assert evidence_map["schemaVersion"] == 2
+    assert [mapping["requirementType"] for mapping in evidence_map["result"]["mappings"]] == [
+        "MUST_HAVE",
+        "PREFERRED",
+        "RESPONSIBILITY",
+        "SKILL",
+        "EXPERIENCE",
+        "EDUCATION",
+    ]
+    evidence_input, system_instruction = provider.evidence_calls[-1]
+    assert [
+        item["requirementType"] for item in evidence_input.as_provider_data()["requirements"]
+    ] == [
+        "MUST_HAVE",
+        "PREFERRED",
+        "RESPONSIBILITY",
+        "SKILL",
+        "EXPERIENCE",
+        "EDUCATION",
+    ]
+    assert "每项先明确给出结论" in system_instruction
 
 
 def test_generation_requires_current_analysis_resume_provider_and_explicit_consent(
