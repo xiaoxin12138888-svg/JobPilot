@@ -15,10 +15,12 @@
 - [ ] Stop before Phase 8 and do not announce Phase 7 PASS.
 
 Real acceptance note (2026-09-06): two separately confirmed Nowcoder generation attempts showed the
-same bounded generic Web error. The second, after an API restart with Provider configuration detected,
-completed in 61,509 ms; terminal evidence subsequently confirmed HTTP 502 rather than 503. No Evidence
-Map was created, no automatic retry was sent, and owner content acceptance remains blocked pending a
-fresh run with the new sanitized diagnostic logging.
+same bounded generic Web error. The second completed in 61,509 ms; terminal evidence subsequently
+confirmed HTTP 502 rather than 503. After restarting with sanitized diagnostics, one separately
+confirmed run succeeded with all 25 mappings returned (23 DIRECT, 0 PARTIAL, 2 GAP) and a clean Web
+console. Browser confirmation handling made the 82,897 ms end-to-end observation unsuitable as a pure
+Provider latency measurement. Owner semantic content acceptance remains paused by product decision;
+Phase 7 is not PASS.
 
 ## Comprehensive Evidence Map amendment — approved 2026-09-06
 
