@@ -16,6 +16,7 @@ import { ApplicationPanel } from './ApplicationPanel';
 import { JobForm } from './JobForm';
 import { JDAnalysisPanel } from './JDAnalysisPanel';
 import { EvidenceMapPanel } from './EvidenceMapPanel';
+import { InterviewPanel } from './InterviewPanel';
 
 interface JobDetailProps {
   apiClient: ApiClient;
@@ -145,6 +146,11 @@ export function JobDetail({ apiClient, jobId, onBack, onDeleted }: JobDetailProp
               </div>
             </dl>
           </section>
+          <InterviewPanel
+            key={application?.id ?? 'no-application'}
+            apiClient={apiClient}
+            application={application}
+          />
           <JDAnalysisPanel apiClient={apiClient} job={job} onStateChange={setAnalysisState} />
           <EvidenceMapPanel
             apiClient={apiClient}

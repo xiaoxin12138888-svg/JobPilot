@@ -5,6 +5,8 @@ import type {
   ApiClient,
   Application,
   CreateJobInput,
+  CreateInterviewRoundInput,
+  InterviewRound,
   Job,
   JobAnalysisResponse,
   JobEvidenceMapResponse,
@@ -337,6 +339,48 @@ describe('App', () => {
     });
   });
 
+  it('adds a manual interview round without changing the Application status', async () => {
+    const job = createJob();
+    const application = createApplication('interviewing');
+    let interviews: InterviewRound[] = [];
+    const createInterview = vi.fn(
+      async (_applicationId: string, input: CreateInterviewRoundInput) => {
+        const interview = createInterviewRound(input);
+        interviews = [interview];
+        return interview;
+      },
+    );
+    const apiClient = createApiClient({
+      getJob: vi.fn().mockResolvedValue(job),
+      listApplications: vi
+        .fn()
+        .mockResolvedValue(page([{ ...application, jobTitle: job.title, company: job.company }])),
+      listInterviews: vi.fn(async () => page(interviews)),
+      createInterview,
+    });
+    window.history.replaceState(null, '', `/?jobId=${job.id}`);
+
+    render(<App apiClient={apiClient} />);
+
+    expect(await screen.findByText('还没有面试记录')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '添加面试' }));
+    fireEvent.change(screen.getByLabelText('轮次名称 *'), { target: { value: '一面' } });
+    fireEvent.change(screen.getByLabelText('面试类型'), { target: { value: 'VIDEO' } });
+    fireEvent.change(screen.getByLabelText('计划时间'), {
+      target: { value: '2026-09-08T14:30' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '保存面试' }));
+
+    expect(await screen.findByRole('heading', { name: '一面' })).toBeInTheDocument();
+    expect(createInterview).toHaveBeenCalledWith(application.id, {
+      roundName: '一面',
+      interviewType: 'VIDEO',
+      scheduledAt: new Date('2026-09-08T14:30').toISOString(),
+      interviewerNote: null,
+    });
+    expect(apiClient.updateApplication).not.toHaveBeenCalled();
+  });
+
   it('manages plain-text Resume Versions from the dedicated workspace view', async () => {
     let resumes: ResumeVersion[] = [];
     const createResumeVersion = vi.fn(async (input: { name: string; content: string }) => {
@@ -649,6 +693,15 @@ function createApiClient(overrides: Partial<ApiClient> = {}): ApiClient {
     listApplications: vi.fn().mockResolvedValue(page([])),
     getApplication: vi.fn(),
     updateApplication: vi.fn(),
+    createInterview: vi.fn(),
+    listInterviews: vi.fn().mockResolvedValue(page([])),
+    getInterview: vi.fn(),
+    updateInterview: vi.fn(),
+    deleteInterview: vi.fn(),
+    createInterviewQuestion: vi.fn(),
+    updateInterviewQuestion: vi.fn(),
+    deleteInterviewQuestion: vi.fn(),
+    getFeedbackSummary: vi.fn(),
     getJobAnalysis: vi.fn().mockResolvedValue({ isConfigured: false, analysis: null }),
     analyzeJob: vi.fn(),
     getJobEvidenceMap: vi.fn().mockResolvedValue({ isConfigured: false, evidenceMap: null }),
@@ -698,6 +751,8 @@ function createApplication(status: Application['status']): Application {
     jobId: 'job-1',
     status,
     resumeVersionId: null,
+    outcomeNote: null,
+    rejectionReason: null,
     appliedAt: status === 'applied' ? '2026-09-03T00:01:00Z' : null,
     createdAt: '2026-09-03T00:00:00Z',
     updatedAt: '2026-09-03T00:01:00Z',
@@ -712,6 +767,28 @@ function createResume(overrides: Partial<ResumeVersion> = {}): ResumeVersion {
     applicationCount: 0,
     createdAt: '2026-09-05T00:00:00Z',
     updatedAt: '2026-09-05T00:00:00Z',
+    ...overrides,
+  };
+}
+
+function createInterviewRound(
+  overrides: Partial<InterviewRound> | CreateInterviewRoundInput = {},
+): InterviewRound {
+  return {
+    id: 'interview-1',
+    applicationId: 'application-1',
+    roundName: '一面',
+    interviewType: 'VIDEO',
+    scheduledAt: '2026-09-08T06:30:00Z',
+    status: 'PLANNED',
+    interviewerNote: null,
+    wentWell: null,
+    couldImprove: null,
+    learningNotes: null,
+    otherNotes: null,
+    questions: [],
+    createdAt: '2026-09-06T00:00:00Z',
+    updatedAt: '2026-09-06T00:00:00Z',
     ...overrides,
   };
 }
