@@ -159,8 +159,10 @@ export interface JobAnalysisResponse {
   analysis: JDAnalysisRecord | null;
 }
 
-export type EvidenceRequirementType = 'MUST_HAVE' | 'PREFERRED';
+export type EvidenceRequirementType =
+  'MUST_HAVE' | 'PREFERRED' | 'RESPONSIBILITY' | 'SKILL' | 'EXPERIENCE' | 'EDUCATION';
 export type EvidenceCoverage = 'DIRECT' | 'PARTIAL' | 'GAP';
+export type EvidenceMapSchemaVersion = 1 | 2;
 
 export interface ResumeEvidence {
   quote: string;
@@ -182,7 +184,7 @@ export interface EvidenceMapRecord {
   id: string;
   jobId: string;
   resumeVersionId: string;
-  schemaVersion: 1;
+  schemaVersion: EvidenceMapSchemaVersion;
   result: EvidenceMap;
   isStale: boolean;
   createdAt: string;

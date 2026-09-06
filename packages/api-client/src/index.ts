@@ -34,6 +34,7 @@ export type {
   EvidenceItem,
   EvidenceMap,
   EvidenceMapRecord,
+  EvidenceMapSchemaVersion,
   EvidenceMapping,
   EvidenceRequirementType,
   JDAnalysis,
@@ -440,8 +441,8 @@ function requireJobEvidenceMap(value: unknown): JobEvidenceMapResponse {
 }
 
 function isEvidenceMapRecord(value: unknown): boolean {
-  return (
-    isRecordWithKeys(value, [
+  if (
+    !isRecordWithKeys(value, [
       'id',
       'jobId',
       'resumeVersionId',
@@ -450,21 +451,27 @@ function isEvidenceMapRecord(value: unknown): boolean {
       'isStale',
       'createdAt',
       'updatedAt',
-    ]) &&
+    ]) ||
+    (value.schemaVersion !== 1 && value.schemaVersion !== 2)
+  ) {
+    return false;
+  }
+  return (
     typeof value.id === 'string' &&
     typeof value.jobId === 'string' &&
     typeof value.resumeVersionId === 'string' &&
-    value.schemaVersion === 1 &&
     isRecordWithKeys(value.result, ['mappings']) &&
     Array.isArray(value.result.mappings) &&
-    value.result.mappings.every(isEvidenceMapping) &&
+    value.result.mappings.every((mapping) =>
+      isEvidenceMapping(mapping, value.schemaVersion as 1 | 2),
+    ) &&
     typeof value.isStale === 'boolean' &&
     isDateString(value.createdAt) &&
     isDateString(value.updatedAt)
   );
 }
 
-function isEvidenceMapping(value: unknown): boolean {
+function isEvidenceMapping(value: unknown, schemaVersion: 1 | 2): boolean {
   return (
     isRecordWithKeys(value, [
       'requirementType',
@@ -473,7 +480,7 @@ function isEvidenceMapping(value: unknown): boolean {
       'resumeEvidence',
       'reason',
     ]) &&
-    (value.requirementType === 'MUST_HAVE' || value.requirementType === 'PREFERRED') &&
+    isEvidenceRequirementType(value.requirementType, schemaVersion) &&
     typeof value.requirementText === 'string' &&
     (value.coverage === 'DIRECT' || value.coverage === 'PARTIAL' || value.coverage === 'GAP') &&
     Array.isArray(value.resumeEvidence) &&
@@ -481,6 +488,17 @@ function isEvidenceMapping(value: unknown): boolean {
       (item) => isRecordWithKeys(item, ['quote']) && typeof item.quote === 'string',
     ) &&
     typeof value.reason === 'string'
+  );
+}
+
+function isEvidenceRequirementType(value: unknown, schemaVersion: 1 | 2): boolean {
+  if (value === 'MUST_HAVE' || value === 'PREFERRED') return true;
+  return (
+    schemaVersion === 2 &&
+    (value === 'RESPONSIBILITY' ||
+      value === 'SKILL' ||
+      value === 'EXPERIENCE' ||
+      value === 'EDUCATION')
   );
 }
 

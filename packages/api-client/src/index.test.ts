@@ -436,6 +436,14 @@ describe('createApiClient', () => {
     });
   });
 
+  it('keeps a legacy schema 1 Evidence Map readable', async () => {
+    const payload = createEvidenceMapPayload(1, 'MUST_HAVE');
+    const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(payload));
+    const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
+
+    await expect(client.getJobEvidenceMap('job-1', 'resume-1')).resolves.toEqual(payload);
+  });
+
   it.each([
     { ...createEvidenceMapPayload(), score: 98 },
     {
@@ -461,6 +469,34 @@ describe('createApiClient', () => {
             {
               ...createEvidenceMapPayload().evidenceMap.result.mappings[0],
               resumeEvidence: [{ quote: 42 }],
+            },
+          ],
+        },
+      },
+    },
+    {
+      isConfigured: true,
+      evidenceMap: {
+        ...createEvidenceMapPayload(1, 'MUST_HAVE').evidenceMap,
+        result: createEvidenceMapPayload(2, 'RESPONSIBILITY').evidenceMap.result,
+      },
+    },
+    {
+      isConfigured: true,
+      evidenceMap: {
+        ...createEvidenceMapPayload().evidenceMap,
+        schemaVersion: 3,
+      },
+    },
+    {
+      isConfigured: true,
+      evidenceMap: {
+        ...createEvidenceMapPayload().evidenceMap,
+        result: {
+          mappings: [
+            {
+              ...createEvidenceMapPayload().evidenceMap.result.mappings[0],
+              requirementType: 'UNKNOWN',
             },
           ],
         },
@@ -543,19 +579,28 @@ function createResumePayload() {
   };
 }
 
-function createEvidenceMapPayload() {
+function createEvidenceMapPayload(
+  schemaVersion: 1 | 2 = 2,
+  requirementType:
+    | 'MUST_HAVE'
+    | 'PREFERRED'
+    | 'RESPONSIBILITY'
+    | 'SKILL'
+    | 'EXPERIENCE'
+    | 'EDUCATION' = 'RESPONSIBILITY',
+) {
   return {
     isConfigured: true,
     evidenceMap: {
       id: 'map-1',
       jobId: 'job-1',
       resumeVersionId: 'resume-1',
-      schemaVersion: 1,
+      schemaVersion,
       result: {
         mappings: [
           {
-            requirementType: 'MUST_HAVE',
-            requirementText: '熟练使用 SQL',
+            requirementType,
+            requirementText: '负责市场调研与产品分析',
             coverage: 'DIRECT',
             resumeEvidence: [{ quote: '使用 SQL 完成业务数据统计' }],
             reason: '简历原文直接说明 SQL 实践。',
