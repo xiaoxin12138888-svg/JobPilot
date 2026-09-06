@@ -5,7 +5,9 @@ import type {
   ApiClient,
   Application,
   CreateJobInput,
+  CreateInterviewQuestionInput,
   CreateInterviewRoundInput,
+  InterviewQuestion,
   InterviewRound,
   Job,
   JobAnalysisResponse,
@@ -464,6 +466,92 @@ describe('App', () => {
     expect(await screen.findByText('还没有面试记录')).toBeInTheDocument();
   });
 
+  it('adds, edits and deletes an actual interview question with manual performance', async () => {
+    const job = createJob();
+    const application = createApplication('interviewing');
+    let interview = createInterviewRound();
+    const createInterviewQuestion = vi.fn(
+      async (_interviewId: string, input: CreateInterviewQuestionInput) => {
+        const question = createQuestion(input);
+        interview = { ...interview, questions: [question] };
+        return question;
+      },
+    );
+    const updateInterviewQuestion = vi.fn(
+      async (_questionId: string, input: CreateInterviewQuestionInput) => {
+        const question = { ...interview.questions[0]!, ...input };
+        interview = { ...interview, questions: [question] };
+        return question;
+      },
+    );
+    const deleteInterviewQuestion = vi.fn(async () => {
+      interview = { ...interview, questions: [] };
+    });
+    const apiClient = createApiClient({
+      getJob: vi.fn().mockResolvedValue(job),
+      listApplications: vi
+        .fn()
+        .mockResolvedValue(page([{ ...application, jobTitle: job.title, company: job.company }])),
+      listInterviews: vi.fn().mockResolvedValue(page([interview])),
+      createInterviewQuestion,
+      updateInterviewQuestion,
+      deleteInterviewQuestion,
+    });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    window.history.replaceState(null, '', `/?jobId=${job.id}`);
+
+    render(<App apiClient={apiClient} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '添加问题' }));
+    fireEvent.change(screen.getByLabelText('问题 *'), {
+      target: { value: '如何确定产品的北极星指标？' },
+    });
+    fireEvent.change(screen.getByLabelText('分类'), { target: { value: 'PRODUCT' } });
+    fireEvent.change(screen.getByLabelText('我的回答'), {
+      target: { value: '先说明用户价值，再拆解可观测行为。' },
+    });
+    fireEvent.change(screen.getByLabelText('表现'), { target: { value: 'POOR' } });
+    fireEvent.change(screen.getByLabelText('题目备注'), {
+      target: { value: '没有给出反例。' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '保存题目' }));
+
+    expect(
+      await screen.findByRole('heading', { name: '如何确定产品的北极星指标？' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('答得不好')).toBeInTheDocument();
+    expect(createInterviewQuestion).toHaveBeenCalledWith(interview.id, {
+      question: '如何确定产品的北极星指标？',
+      category: 'PRODUCT',
+      answerSummary: '先说明用户价值，再拆解可观测行为。',
+      performance: 'POOR',
+      note: '没有给出反例。',
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '编辑题目' }));
+    fireEvent.change(screen.getByLabelText('表现'), { target: { value: 'GOOD' } });
+    fireEvent.change(screen.getByLabelText('我的回答'), {
+      target: { value: '补充目标、用户价值、行为与反例验证。' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '保存题目修改' }));
+
+    await vi.waitFor(() =>
+      expect(updateInterviewQuestion).toHaveBeenCalledWith(
+        'question-1',
+        expect.objectContaining({
+          performance: 'GOOD',
+          answerSummary: '补充目标、用户价值、行为与反例验证。',
+        }),
+      ),
+    );
+    const deleteButton = await screen.findByRole('button', { name: '删除题目' });
+    expect(screen.getByText('答得较好')).toBeInTheDocument();
+
+    fireEvent.click(deleteButton);
+    await vi.waitFor(() => expect(deleteInterviewQuestion).toHaveBeenCalledWith('question-1'));
+    expect(await screen.findByText('还没有记录题目')).toBeInTheDocument();
+  });
+
   it('manages plain-text Resume Versions from the dedicated workspace view', async () => {
     let resumes: ResumeVersion[] = [];
     const createResumeVersion = vi.fn(async (input: { name: string; content: string }) => {
@@ -870,6 +958,23 @@ function createInterviewRound(
     learningNotes: null,
     otherNotes: null,
     questions: [],
+    createdAt: '2026-09-06T00:00:00Z',
+    updatedAt: '2026-09-06T00:00:00Z',
+    ...overrides,
+  };
+}
+
+function createQuestion(
+  overrides: Partial<InterviewQuestion> | CreateInterviewQuestionInput = {},
+): InterviewQuestion {
+  return {
+    id: 'question-1',
+    interviewRoundId: 'interview-1',
+    question: '如何确定产品的北极星指标？',
+    category: 'PRODUCT',
+    answerSummary: null,
+    performance: 'NOT_SURE',
+    note: null,
     createdAt: '2026-09-06T00:00:00Z',
     updatedAt: '2026-09-06T00:00:00Z',
     ...overrides,

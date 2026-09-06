@@ -4,6 +4,7 @@ import { INTERVIEW_STATUS_LABELS, INTERVIEW_TYPE_LABELS } from '@jobpilot/api-cl
 import type { ApiClient, CreateInterviewRoundInput, InterviewRound } from '@jobpilot/api-client';
 
 import { InterviewRoundForm } from './InterviewRoundForm';
+import { InterviewQuestions } from './InterviewQuestions';
 
 export function InterviewRoundCard({
   apiClient,
@@ -102,6 +103,12 @@ export function InterviewRoundCard({
         />
       )}
       {!editing && <ReviewSummary interview={interview} />}
+      <InterviewQuestions
+        apiClient={apiClient}
+        interviewId={interview.id}
+        questions={interview.questions}
+        onChange={(questions) => onUpdate({ ...interview, questions })}
+      />
       {error && (
         <p className="form-error" role="alert">
           {error}
