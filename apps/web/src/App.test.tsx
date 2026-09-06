@@ -7,6 +7,7 @@ import type {
   CreateJobInput,
   CreateInterviewQuestionInput,
   CreateInterviewRoundInput,
+  FeedbackSummary,
   InterviewQuestion,
   InterviewRound,
   Job,
@@ -622,6 +623,114 @@ describe('App', () => {
     expect(await screen.findByText('还没有记录题目')).toBeInTheDocument();
   });
 
+  it('shows a feedback loading state while local facts are being read', async () => {
+    const apiClient = createApiClient({
+      getFeedbackSummary: vi.fn(() => new Promise<FeedbackSummary>(() => undefined)),
+    });
+    window.history.replaceState(null, '', '/?view=feedback');
+
+    render(<App apiClient={apiClient} />);
+
+    expect(await screen.findByText('正在读取求职复盘…')).toHaveAttribute('role', 'status');
+  });
+
+  it('retries a sanitized feedback load error', async () => {
+    const empty = createFeedbackSummary({
+      hasData: false,
+      totals: {
+        savedJobs: 1,
+        applications: 0,
+        interviewApplications: 0,
+        interviews: 0,
+        questions: 0,
+        offers: 0,
+        rejected: 0,
+      },
+      funnel: [
+        { stage: 'SAVED_JOBS', count: 1, conversionRate: null },
+        { stage: 'APPLICATIONS', count: 0, conversionRate: 0 },
+        { stage: 'INTERVIEW_APPLICATIONS', count: 0, conversionRate: null },
+        { stage: 'OFFERS', count: 0, conversionRate: null },
+      ],
+    });
+    const getFeedbackSummary = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('raw sqlite detail'))
+      .mockResolvedValueOnce(empty);
+    const apiClient = createApiClient({ getFeedbackSummary });
+    window.history.replaceState(null, '', '/?view=feedback');
+
+    render(<App apiClient={apiClient} />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('求职复盘暂时无法读取。');
+    expect(screen.queryByText('raw sqlite detail')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '重试' }));
+    expect(
+      await screen.findByText('完成投递和面试记录后，这里会形成你的求职复盘。'),
+    ).toBeInTheDocument();
+    expect(getFeedbackSummary).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows an unambiguous feedback empty state without a zero-percent success claim', async () => {
+    const summary = createFeedbackSummary({
+      hasData: false,
+      totals: {
+        savedJobs: 1,
+        applications: 0,
+        interviewApplications: 0,
+        interviews: 0,
+        questions: 0,
+        offers: 0,
+        rejected: 0,
+      },
+      funnel: [
+        { stage: 'SAVED_JOBS', count: 1, conversionRate: null },
+        { stage: 'APPLICATIONS', count: 0, conversionRate: 0 },
+        { stage: 'INTERVIEW_APPLICATIONS', count: 0, conversionRate: null },
+        { stage: 'OFFERS', count: 0, conversionRate: null },
+      ],
+    });
+    const apiClient = createApiClient({
+      getFeedbackSummary: vi.fn().mockResolvedValue(summary),
+    });
+    window.history.replaceState(null, '', '/?view=feedback');
+
+    render(<App apiClient={apiClient} />);
+
+    expect(await screen.findByRole('heading', { name: '求职复盘' })).toBeInTheDocument();
+    expect(
+      await screen.findByText('完成投递和面试记录后，这里会形成你的求职复盘。'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/0%|成功率/)).toBeNull();
+  });
+
+  it('renders deterministic factual feedback without AI conclusions or recommendations', async () => {
+    const apiClient = createApiClient({
+      getFeedbackSummary: vi.fn().mockResolvedValue(createFeedbackSummary()),
+    });
+    window.history.replaceState(null, '', '/?view=feedback');
+
+    render(<App apiClient={apiClient} />);
+
+    const feedback = await screen.findByRole('region', { name: '求职复盘' });
+    expect(within(feedback).getByRole('article', { name: '已保存岗位' })).toHaveTextContent('5');
+    expect(within(feedback).getByRole('article', { name: '已投递岗位' })).toHaveTextContent('4');
+    expect(within(feedback).getByRole('article', { name: '面试岗位' })).toHaveTextContent('3');
+    expect(within(feedback).getByRole('article', { name: 'Offer' })).toHaveTextContent('1');
+    expect(within(feedback).getByText('80%')).toBeInTheDocument();
+    expect(within(feedback).getByText('75%')).toBeInTheDocument();
+    expect(within(feedback).getByText('33%')).toBeInTheDocument();
+    expect(within(feedback).getByText('产品：4')).toBeInTheDocument();
+    expect(within(feedback).getByText('一般：2')).toBeInTheDocument();
+    expect(
+      within(feedback).getByText('产品：4 道记录，其中 3 道为“一般/答得不好”'),
+    ).toBeInTheDocument();
+    expect(within(feedback).getByText('经验匹配：1')).toBeInTheDocument();
+    expect(within(feedback).getByRole('row', { name: '产品版 V1 2 2 1' })).toBeInTheDocument();
+    expect(within(feedback).getByRole('row', { name: '手动录入 2 2 0' })).toBeInTheDocument();
+    expect(within(feedback).queryByText(/系统判定|AI认为|推荐平台/)).toBeNull();
+  });
+
   it('manages plain-text Resume Versions from the dedicated workspace view', async () => {
     let resumes: ResumeVersion[] = [];
     const createResumeVersion = vi.fn(async (input: { name: string; content: string }) => {
@@ -1047,6 +1156,51 @@ function createQuestion(
     note: null,
     createdAt: '2026-09-06T00:00:00Z',
     updatedAt: '2026-09-06T00:00:00Z',
+    ...overrides,
+  };
+}
+
+function createFeedbackSummary(overrides: Partial<FeedbackSummary> = {}): FeedbackSummary {
+  return {
+    hasData: true,
+    totals: {
+      savedJobs: 5,
+      applications: 4,
+      interviewApplications: 3,
+      interviews: 4,
+      questions: 4,
+      offers: 1,
+      rejected: 2,
+    },
+    funnel: [
+      { stage: 'SAVED_JOBS', count: 5, conversionRate: null },
+      { stage: 'APPLICATIONS', count: 4, conversionRate: 0.8 },
+      { stage: 'INTERVIEW_APPLICATIONS', count: 3, conversionRate: 0.75 },
+      { stage: 'OFFERS', count: 1, conversionRate: 1 / 3 },
+    ],
+    questionCategories: [
+      { category: 'PRODUCT', count: 4 },
+      { category: 'PROJECT', count: 0 },
+    ],
+    performances: [
+      { performance: 'GOOD', count: 1 },
+      { performance: 'OK', count: 2 },
+      { performance: 'POOR', count: 1 },
+      { performance: 'NOT_SURE', count: 0 },
+    ],
+    weakCategories: [{ category: 'PRODUCT', questionCount: 4, weakCount: 3 }],
+    rejectionReasons: [{ reason: 'EXPERIENCE', count: 1 }],
+    unrecordedRejectionReasons: 1,
+    resumeVersions: [
+      {
+        resumeVersionId: 'resume-1',
+        resumeVersionName: '产品版 V1',
+        applications: 2,
+        interviewApplications: 2,
+        offers: 1,
+      },
+    ],
+    sources: [{ source: 'manual', applications: 2, interviewApplications: 2, offers: 0 }],
     ...overrides,
   };
 }

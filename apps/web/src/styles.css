@@ -952,12 +952,125 @@ dd {
   margin: 0;
 }
 
+.feedback-content {
+  display: grid;
+  gap: 1rem;
+}
+.feedback-totals {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+.feedback-total,
+.feedback-section {
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  background: white;
+}
+.feedback-total {
+  display: grid;
+  gap: 0.3rem;
+  padding: 1rem;
+}
+.feedback-total span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.feedback-total strong {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 2rem;
+}
+.feedback-section {
+  min-width: 0;
+  padding: 1.25rem;
+}
+.feedback-section h2 {
+  margin: 0 0 1rem;
+  font-size: 1.05rem;
+}
+.feedback-section .muted {
+  margin: 0;
+}
+.feedback-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.feedback-funnel {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.feedback-funnel li {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.8rem 1rem;
+  border-left: 1px solid var(--border);
+}
+.feedback-funnel li:first-child {
+  border-left: 0;
+}
+.feedback-funnel span,
+.feedback-funnel small {
+  color: var(--muted);
+}
+.feedback-funnel strong {
+  font-size: 1.4rem;
+}
+.feedback-funnel small {
+  font-weight: 700;
+}
+.feedback-note,
+.feedback-boundary {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+.feedback-note {
+  margin: 1rem 0 0;
+}
+.feedback-count-list {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding-left: 1.2rem;
+  line-height: 1.55;
+}
+.feedback-table-wrap {
+  overflow-x: auto;
+}
+.feedback-table {
+  width: 100%;
+  min-width: 30rem;
+  border-collapse: collapse;
+}
+.feedback-table th,
+.feedback-table td {
+  padding: 0.7rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+.feedback-table thead th {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.feedback-boundary {
+  margin: 0.25rem 0 0;
+}
+
 @media (max-width: 64rem) {
   .job-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .detail-layout {
     grid-template-columns: minmax(0, 1fr) 18rem;
+  }
+  .feedback-totals {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 @media (max-width: 48rem) {
@@ -993,6 +1106,10 @@ dd {
   }
   .evidence-priority-grid {
     grid-template-columns: 1fr;
+  }
+  .feedback-totals,
+  .feedback-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 @media (max-width: 38rem) {
@@ -1045,6 +1162,19 @@ dd {
   .resume-actions .button,
   .resume-actions .text-button {
     width: 100%;
+  }
+  .feedback-totals,
+  .feedback-grid,
+  .feedback-funnel {
+    grid-template-columns: 1fr;
+  }
+  .feedback-funnel li,
+  .feedback-funnel li:first-child {
+    border-top: 1px solid var(--border);
+    border-left: 0;
+  }
+  .feedback-funnel li:first-child {
+    border-top: 0;
   }
   .resume-editor textarea {
     min-height: 20rem;

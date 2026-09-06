@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 import type { ApiClient, Job } from '@jobpilot/api-client';
 
+import { FeedbackSummaryPage } from './components/FeedbackSummaryPage';
 import { JobDetail } from './components/JobDetail';
 import { JobForm } from './components/JobForm';
 import { JobLibrary } from './components/JobLibrary';
@@ -18,6 +19,7 @@ type View =
   | { name: 'library' }
   | { name: 'create' }
   | { name: 'resumes' }
+  | { name: 'feedback' }
   | { name: 'detail'; jobId: string };
 
 interface AppProps {
@@ -45,7 +47,9 @@ function Workspace({ apiClient }: AppProps) {
           ? '?view=create'
           : nextView.name === 'resumes'
             ? '?view=resumes'
-            : '';
+            : nextView.name === 'feedback'
+              ? '?view=feedback'
+              : '';
     window.history.replaceState(null, '', `${window.location.pathname}${query}`);
   }
 
@@ -81,6 +85,13 @@ function Workspace({ apiClient }: AppProps) {
       </AppFrame>
     );
   }
+  if (view.name === 'feedback') {
+    return (
+      <AppFrame active="feedback" onNavigate={navigate}>
+        <FeedbackSummaryPage apiClient={apiClient} />
+      </AppFrame>
+    );
+  }
   return (
     <AppFrame active="jobs" onNavigate={navigate}>
       <JobLibrary
@@ -98,6 +109,7 @@ function initialViewFromLocation(): View {
   if (jobId && jobId.length <= 36) return { name: 'detail', jobId };
   if (params.get('view') === 'create') return { name: 'create' };
   if (params.get('view') === 'resumes') return { name: 'resumes' };
+  if (params.get('view') === 'feedback') return { name: 'feedback' };
   return { name: 'library' };
 }
 
@@ -107,7 +119,7 @@ function AppFrame({
   onNavigate,
 }: {
   children: React.ReactNode;
-  active: 'jobs' | 'resumes';
+  active: 'jobs' | 'resumes' | 'feedback';
   onNavigate(view: View): void;
 }) {
   return (
@@ -132,6 +144,13 @@ function AppFrame({
               onClick={() => onNavigate({ name: 'resumes' })}
             >
               简历版本
+            </button>
+            <button
+              type="button"
+              aria-current={active === 'feedback' ? 'page' : undefined}
+              onClick={() => onNavigate({ name: 'feedback' })}
+            >
+              求职复盘
             </button>
           </nav>
           <span className="local-badge">仅保存在本机</span>
