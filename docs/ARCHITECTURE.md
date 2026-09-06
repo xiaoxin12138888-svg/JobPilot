@@ -102,7 +102,9 @@ JD 服务仅构造 title/company/description/location/salaryText 输入。Eviden
 Resume content；摘要、领域关键词和面试重点不属于匹配条件。
 系统提示与不可信 JD/Resume JSON 分离。Provider content 经过 parse、strict schema、normalize、
 requirement identity/order check 与 Resume quote exact-substring check 后才 upsert；无有效 quote 的
-DIRECT/PARTIAL 降级 GAP。Key、provider envelope、raw malformed response、原始招聘页 HTML、
+DIRECT/PARTIAL 降级 GAP。Evidence Prompt 先理解 requirement，再扫描完整 Resume；可从不同
+section 组合一至三条 grounded quotes 做语义判断，但不得通过外部常识补全任何用户事实或从入学
+时间推导未写出的毕业年份。Key、provider envelope、raw malformed response、原始招聘页 HTML、
 完整 JD、notes、Application、其他 Job/Resume 和本地文件不跨越 Evidence 边界。
 
 ## 7. Local-first 与后续边界

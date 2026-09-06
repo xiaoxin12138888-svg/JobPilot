@@ -63,7 +63,9 @@
   stale JD requirements，不发送原始 HTML、完整 JD、notes、Application、其他 Job/Resume 或文件。
 - Evidence requirement 必须保持当前 JD Analysis 六类条件的类型、文本和顺序；旧 schema 1 只读
   兼容，新生成使用 schema 2。quote 必须能在空白规范化后回溯到所选 Resume，DIRECT/PARTIAL
-  无有效 quote 时降级 GAP。禁止匹配/ATS/Offer 分数。
+  每项最多组合三条跨 section 的真实原文，无有效 quote 时降级 GAP。允许语义支持，不要求关键
+  词相同；但不允许使用外部常识补全或升级简历未写的能力、年限、学历、毕业年份或项目事实。
+  禁止匹配/ATS/Offer 分数。
 
 ## 5. P0 no-proxy rule
 

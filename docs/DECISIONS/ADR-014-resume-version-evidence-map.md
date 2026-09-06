@@ -35,12 +35,14 @@ Phase 6 已把用户保存的 JD 转换为严格、可追溯的结构化要求�
    `experienceRequirements` 与 `educationRequirements`。摘要、领域关键词和面试重点不属于匹配
    条件。Provider 不能新增、删除、合并、改写或改变类型；缺失或 stale 分析必须拒绝生成，并
    保留已有记录。
-7. Provider quote 经 whitespace normalization 后必须是所选 `ResumeVersion.content` 的子串。
-   无效 quote 删除；DIRECT/PARTIAL 最终没有有效 quote 时确定性降级为 GAP。GAP 只表示当前简历
-   未找到证据，不表示用户没有能力。coverage 按多段 grounded facts 的语义关系综合判断，不要求
-   关键词逐字相等；明确事实无需假设即可完整成立时为 DIRECT，需要假设或证据不完整时为
-   PARTIAL。允许简单、透明的日期推理；教育入学时间、明确学历层次与通常学制可支持毕业届别
-   推算，但没有明确毕业/结束时间时最多为 PARTIAL，reason 必须披露所用事实、假设和结论。
+7. Provider 必须先理解 requirement 的实际含义，再扫描完整 `ResumeVersion.content`；Evidence
+   可以来自不同 section，新生成的 DIRECT/PARTIAL 每项只允许一至三条 quote。每条 quote 经
+   whitespace normalization 后必须是所选正文的连续子串。无效 quote 删除；DIRECT/PARTIAL 最终
+   没有有效 quote 时确定性降级为 GAP。coverage 按多个 grounded facts 的语义关系综合判断，不
+   要求关键词逐字相等：事实组合后无需补充用户事实即可完整证明为 DIRECT；明显相关但缺少关键
+   组成部分或需用户确认为 PARTIAL；扫描完整简历仍无合理支持事实才为 GAP。语义判断不得补全或
+   升级简历未写的能力、年限、学历、毕业年份、项目规模等用户事实。仅有入学时间和在读状态，未
+   明确毕业年份、预计毕业时间或培养年限时，届别最多为 PARTIAL，且不得推导目标毕业年份。
 8. 对 Provider 的输入仅包含 Job title、可选 company、当前 JD Analysis 的上述六类条件，以及
    用户明确选择的一个 Resume content；不发送摘要、领域关键词、面试重点、原始招聘页 HTML、
    完整 JD、notes、Application、其他 Job/Resume、浏览数据或本地文件。JD requirement 与 Resume

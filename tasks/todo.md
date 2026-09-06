@@ -2,13 +2,13 @@
 
 ## Phase 7C semantic evidence refinement — approved 2026-09-06
 
-- [ ] RED/GREEN prompt contract for complete-Resume semantic search, non-lexical wording and 1–3
+- [x] RED/GREEN prompt contract for complete-Resume semantic search, non-lexical wording and 1–3
   combined grounded quotes.
-- [ ] RED/GREEN semantic cases A–E with B frozen as PARTIAL and the 2027 cohort case forbidding
+- [x] RED/GREEN semantic cases A–E with B frozen as PARTIAL and the 2027 cohort case forbidding
   customary-program-length inference.
-- [ ] Replace the Evidence Map prompt without changing Schema, Provider, timeout, persistence or UI.
-- [ ] Synchronize canonical docs and pass all Python/TypeScript/build/security gates.
-- [ ] Complete review/simplification with Critical 0 and Required 0.
+- [x] Replace the Evidence Map prompt without changing Schema, Provider, timeout, persistence or UI.
+- [x] Synchronize canonical docs and pass all Python/TypeScript/build/security gates.
+- [x] Complete review/simplification with Critical 0 and Required 0.
 - [ ] Run separately consented real BOSS and Nowcoder semantic acceptance; owner must judge PASS/FAIL.
 - [ ] Stop before Phase 8 and do not announce Phase 7 PASS.
 
@@ -50,8 +50,8 @@
 - [x] Regress BOSS/Nowcoder capture, Job/Application, JD Analysis, SQLite and no-proxy core.
 - [x] Run privacy, secret, raw-response, injection, XSS, remote-runtime and no-score scans.
 - [x] Resolve code-review Critical/Required findings and complete simplification review.
-- [x] RED/GREEN owner feedback: use semantic multi-quote evidence and bounded date inference instead
-  of literal keyword equality, while keeping every quote grounded and inferred cohorts PARTIAL.
+- [x] RED/GREEN owner feedback: use whole-Resume semantic multi-quote evidence instead of literal
+  keyword equality, while keeping every quote grounded and forbidding external cohort inference.
 - [ ] Run user-assisted real BOSS + Nowcoder evidence acceptance with explicit external-AI consent.
 - [x] Verify Application Resume association and Resume/Evidence persistence after API/Web restart.
 - [ ] Record only real latency and owner-reviewed PASS/FAIL; synchronize docs and stop before Phase 8.

@@ -71,7 +71,7 @@ evidence grounding、单条 SQLite 持久化、stale/reanalysis 与 Job Detail �
 
 ## 7. Phase 7 — Resume Version & Evidence Map
 
-状态：Active（本地实现与自动化完成；真实人工验收待完成）。
+状态：Active（Phase 7C 语义证据修正已实现；真实 BOSS/牛客人工验收待完成）。
 
 只交付本地纯文本 Resume Version、Application 显式记录本次实际使用版本，以及当前 JD
 requirements 到所选 Resume 原文的 Evidence Map。新生成的 schema 2 综合硬性要求、加分项、
@@ -79,6 +79,11 @@ requirements 到所选 Resume 原文的 Evidence Map。新生成的 schema 2 综
 quote 必须 grounded，每项先显示明确结论，总览只做确定性计数、待确认项和主要证据缺口。真实
 简历仅在用户当次 UI 确认后发送到 Phase 6 的同一可选 Provider；失败不影响本地 CRUD、
 Application、已存分析或最后一个有效 Evidence。
+
+Phase 7C 冻结 Semantic Match, Grounded Evidence：Prompt 必须理解条件含义并扫描完整简历，允许
+从不同 section 组合一至三条真实原文，不因措辞不同判 GAP；同时禁止用外部常识补全未写的能力、
+年限、学历、毕业年份或项目事实。真实人工验收发现旧结果过度字面化，因此 Phase 7 不能在新的
+BOSS 与牛客语义结果由负责人确认前标记 PASS。
 
 不做文件解析/OCR、简历生成/整份改写、分数/推荐、RAG/embedding/vector DB、Agent、模拟面试、
 自动投递或新招聘平台。只有真实 BOSS/牛客 Evidence 质量、Application 关联与重启持久化均由

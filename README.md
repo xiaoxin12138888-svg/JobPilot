@@ -14,7 +14,7 @@ JobPilot 不替代招聘网站，不建设职位数据库，也不代表用户�
 - SQLite、SQLAlchemy 与 Alembic：launcher 启动前自动升级 `runtime-data/jobpilot.db`，业务表为 `jobs`、`applications`、`jd_analysis_records`、`resume_versions` 与 `evidence_map_records`；
 - `packages/shared-types` 与 `packages/api-client`：提供 camelCase 业务契约、credential-free 请求和不可信响应校验。
 
-Phase 4 已交付 BOSS 直聘当前岗位页采集；Phase 5 在同一确认编辑与本地保存链路上新增牛客岗位详情页。两个 Adapter 都只读取用户当前打开页面的必要可见文本。Phase 6 不改 Extension，只允许 Web 在用户点击后把单个已保存 Job 的最小 JD 字段经 FastAPI 发送给显式配置的 Provider。Phase 7 增加本地纯文本 Resume Version、Application 显式使用版本和 Evidence Map；新生成结果会综合当前非 stale JD Analysis 的硬性要求、加分项、职责、技能、经验与学历六类条件。只有用户在当次操作中确认后，所选简历正文才会与这些条件一起发往同一个可选 Provider。不开 AI 时本地核心照常工作。
+Phase 4 已交付 BOSS 直聘当前岗位页采集；Phase 5 在同一确认编辑与本地保存链路上新增牛客岗位详情页。两个 Adapter 都只读取用户当前打开页面的必要可见文本。Phase 6 不改 Extension，只允许 Web 在用户点击后把单个已保存 Job 的最小 JD 字段经 FastAPI 发送给显式配置的 Provider。Phase 7 增加本地纯文本 Resume Version、Application 显式使用版本和 Evidence Map；新生成结果会综合当前非 stale JD Analysis 的硬性要求、加分项、职责、技能、经验与学历六类条件，并从完整简历中寻找一至三段可追溯的语义证据，而非要求关键词相同。语义判断不能补全简历未写的能力、年限、学历、毕业年份或其他用户事实。只有用户在当次操作中确认后，所选简历正文才会与这些条件一起发往同一个可选 Provider。不开 AI 时本地核心照常工作。
 
 ## 本地优先意味着什么
 

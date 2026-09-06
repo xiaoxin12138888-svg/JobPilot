@@ -218,6 +218,14 @@ JD Analysis 缺失、stale 或其他前置条件非法为 422；Provider 未配�
 面试重点不进入 mappings。Web 根据 coverage 确定性生成逐项明确结论、全图计数、待确认项与
 主要证据缺口；API 不返回分数、匹配率、推荐或 Offer 概率。
 
+新生成的 DIRECT/PARTIAL 每项含一至三条 quote，可组合完整 Resume Version 中不同 section 的
+真实连续原文；措辞不必与 requirement 相同。DIRECT 表示这些事实组合后无需补充用户事实即可
+完整证明要求；PARTIAL 表示存在明显相关事实，但仍缺少关键组成部分或需要用户确认；只有扫描
+完整简历仍无合理支持事实时才使用 GAP。Provider 不得利用外部知识补全能力等级、工作年限、
+学历、毕业年份、项目规模或其他未写事实。仅有入学时间和在读状态、没有明确毕业年份、预计毕业
+时间或培养年限时，届别最多为 PARTIAL，且不得推导目标毕业年份。quote 的精确 grounding 和
+旧存量记录的有界读取兼容保持不变。
+
 ## 8. Errors
 
 所有公开错误保持：
