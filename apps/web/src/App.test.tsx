@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type {
@@ -551,16 +551,37 @@ describe('App', () => {
     });
     fireEvent.click(await screen.findByRole('button', { name: '生成证据映射' }));
 
-    expect(screen.getByRole('button', { name: '正在匹配岗位要求与简历证据…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '正在综合分析岗位条件与简历证据…' })).toBeDisabled();
     expect(window.confirm).toHaveBeenCalledWith(
-      '本次分析会将当前选择的简历正文与岗位要求发送至你配置的 AI 服务，用于证据匹配。是否继续？',
+      '本次分析会将当前选择的简历正文与岗位的六类结构化条件发送至你配置的 AI 服务，用于综合证据判断。是否继续？',
     );
 
     await act(async () => resolveGeneration?.(generated));
-    expect(await screen.findByText('直接证据 1')).toBeInTheDocument();
-    expect(screen.getByText('部分证据 1')).toBeInTheDocument();
-    expect(screen.getByText('暂未发现证据 1')).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        '共分析 6 项：支持 2 项，部分支持 / 待确认 2 项，当前无法证明 2 项。',
+      ),
+    ).toBeInTheDocument();
+    const evidenceRegion = screen.getByRole('region', { name: '简历综合证据分析' });
+    for (const heading of ['硬性要求', '加分项', '岗位职责', '技能', '经验', '学历']) {
+      expect(within(evidenceRegion).getByRole('heading', { name: heading })).toBeInTheDocument();
+    }
+    expect(within(evidenceRegion).getAllByText('结论：支持')).toHaveLength(2);
+    expect(within(evidenceRegion).getAllByText('结论：部分支持 / 待确认')).toHaveLength(2);
+    expect(within(evidenceRegion).getAllByText('结论：当前无法证明')).toHaveLength(2);
+    expect(within(evidenceRegion).getByRole('heading', { name: '待确认事项' })).toBeInTheDocument();
+    expect(
+      within(evidenceRegion).getByRole('heading', { name: '主要证据缺口' }),
+    ).toBeInTheDocument();
     expect(screen.getByText('使用 SQL 完成业务数据统计')).toBeInTheDocument();
+    const firstMapping = within(evidenceRegion).getByRole('article', {
+      name: '岗位条件：能够分析需求',
+    });
+    const detailHeadings = within(firstMapping).getAllByRole('heading', { level: 5 });
+    expect(detailHeadings.map((heading) => heading.textContent)).toEqual([
+      '判断依据',
+      '简历原文证据',
+    ]);
     expect(screen.queryByText(/%|匹配率|Offer 概率/)).toBeNull();
   });
 
@@ -731,7 +752,7 @@ function createEvidenceMapResponse(): JobEvidenceMapResponse {
       id: 'map-1',
       jobId: 'job-1',
       resumeVersionId: 'resume-1',
-      schemaVersion: 1,
+      schemaVersion: 2,
       result: {
         mappings: [
           {
@@ -742,18 +763,39 @@ function createEvidenceMapResponse(): JobEvidenceMapResponse {
             reason: '简历原文提供了直接证据。',
           },
           {
-            requirementType: 'MUST_HAVE',
-            requirementText: '跨团队推进',
-            coverage: 'GAP',
-            resumeEvidence: [],
-            reason: '当前简历版本中未发现可证明该要求的内容。',
-          },
-          {
             requirementType: 'PREFERRED',
             requirementText: '完整上线经验',
             coverage: 'PARTIAL',
             resumeEvidence: [{ quote: '参与需求评审和版本验收' }],
             reason: '有相关环节经验，但未完整证明。',
+          },
+          {
+            requirementType: 'RESPONSIBILITY',
+            requirementText: '负责市场调研',
+            coverage: 'DIRECT',
+            resumeEvidence: [{ quote: '完成用户与竞品调研' }],
+            reason: '简历原文直接说明了调研职责。',
+          },
+          {
+            requirementType: 'SKILL',
+            requirementText: 'Python',
+            coverage: 'PARTIAL',
+            resumeEvidence: [{ quote: '使用 Python 清洗业务数据' }],
+            reason: '存在实际使用记录，但未证明岗位要求的熟练程度。',
+          },
+          {
+            requirementType: 'EXPERIENCE',
+            requirementText: '三年产品经验',
+            coverage: 'GAP',
+            resumeEvidence: [],
+            reason: '当前简历版本中未发现可证明年限的内容。',
+          },
+          {
+            requirementType: 'EDUCATION',
+            requirementText: '本科及以上',
+            coverage: 'GAP',
+            resumeEvidence: [],
+            reason: '当前简历版本中未发现明确学历内容。',
           },
         ],
       },

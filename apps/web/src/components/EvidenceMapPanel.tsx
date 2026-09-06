@@ -68,7 +68,7 @@ export function EvidenceMapPanel({
   async function generate() {
     if (!selectedResumeId || !requestKey) return;
     const confirmed = window.confirm(
-      '本次分析会将当前选择的简历正文与岗位要求发送至你配置的 AI 服务，用于证据匹配。是否继续？',
+      '本次分析会将当前选择的简历正文与岗位的六类结构化条件发送至你配置的 AI 服务，用于综合证据判断。是否继续？',
     );
     if (!confirmed) return;
     setGenerating(true);
@@ -102,7 +102,7 @@ export function EvidenceMapPanel({
       <div className="analysis-header">
         <div>
           <p className="eyebrow">RESUME EVIDENCE</p>
-          <h2 id="evidence-map-title">简历证据匹配</h2>
+          <h2 id="evidence-map-title">简历综合证据分析</h2>
         </div>
         {selectedResumeId && analysis && !analysis.isStale && state?.isConfigured && (
           <button
@@ -111,7 +111,7 @@ export function EvidenceMapPanel({
             disabled={generating || loading}
             onClick={() => void generate()}
           >
-            {generating ? '正在匹配岗位要求与简历证据…' : actionLabel}
+            {generating ? '正在综合分析岗位条件与简历证据…' : actionLabel}
           </button>
         )}
       </div>
@@ -160,7 +160,7 @@ export function EvidenceMapPanel({
       ) : !analysis ? (
         <div className="analysis-empty">
           <strong>请先完成岗位 AI 分析。</strong>
-          <p>Evidence Map 只使用当前结构化分析中的硬性要求和加分项。</p>
+          <p>Evidence Map 使用当前结构化分析中的硬性要求、加分项、职责、技能、经验与学历条件。</p>
         </div>
       ) : analysis.isStale ? (
         <p className="analysis-stale" role="status">
@@ -196,7 +196,7 @@ export function EvidenceMapPanel({
           {!evidenceMap && state?.isConfigured && (
             <div className="analysis-empty">
               <strong>尚未生成证据映射</strong>
-              <p>只有你点击并确认后，当前简历正文与岗位要求才会发送到已配置的 AI 服务。</p>
+              <p>只有你点击并确认后，当前简历正文与六类岗位条件才会发送到已配置的 AI 服务。</p>
             </div>
           )}
           {evidenceMap && (
