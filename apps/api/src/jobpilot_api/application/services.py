@@ -3,6 +3,7 @@ from __future__ import annotations
 from jobpilot_api.application.repositories import (
     ApplicationListEntry,
     ApplicationRepository,
+    AutofillProfileRepository,
     FeedbackSummaryRepository,
     InterviewRepository,
     JobListEntry,
@@ -16,6 +17,7 @@ from jobpilot_api.domain.applications import (
     normalize_application_outcome,
     validate_status_transition,
 )
+from jobpilot_api.domain.autofill_profiles import AutofillProfile, AutofillProfileDraft
 from jobpilot_api.domain.errors import ResourceNotFoundError
 from jobpilot_api.domain.feedback import FeedbackSummary
 from jobpilot_api.domain.interviews import (
@@ -219,6 +221,17 @@ class ResumeVersionService:
 
     def list(self, *, limit: int, offset: int) -> tuple[list[ResumeVersion], int]:
         return self._repository.list(limit=limit, offset=offset)
+
+
+class AutofillProfileService:
+    def __init__(self, repository: AutofillProfileRepository) -> None:
+        self._repository = repository
+
+    def get(self) -> AutofillProfile | None:
+        return self._repository.get()
+
+    def replace(self, draft: AutofillProfileDraft) -> AutofillProfile:
+        return self._repository.upsert(draft)
 
 
 class InterviewService:

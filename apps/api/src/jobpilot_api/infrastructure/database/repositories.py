@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from jobpilot_api.application.repositories import ApplicationListEntry, JobListEntry
 from jobpilot_api.domain.applications import Application, ApplicationStatus, RejectionReason
+from jobpilot_api.domain.autofill_profiles import AutofillProfile, AutofillProfileDraft
 from jobpilot_api.domain.errors import (
     ApplicationAlreadyExistsError,
     DatabaseBusyError,
@@ -50,6 +51,7 @@ from jobpilot_api.domain.jobs import Job, JobDraft
 from jobpilot_api.domain.resume_versions import ResumeVersion, ResumeVersionDraft
 from jobpilot_api.infrastructure.database.models import (
     ApplicationModel,
+    AutofillProfileModel,
     EvidenceMapRecordModel,
     InterviewQuestionModel,
     InterviewRoundModel,
@@ -448,6 +450,43 @@ class SqlAlchemyResumeVersionRepository:
                 )
         except OperationalError as error:
             raise _database_error(error) from error
+
+
+class SqlAlchemyAutofillProfileRepository:
+    _PROFILE_ID = 1
+
+    def __init__(self, sessions: sessionmaker[Session]) -> None:
+        self._sessions = sessions
+
+    def get(self) -> AutofillProfile | None:
+        try:
+            with self._sessions() as session:
+                model = session.get(AutofillProfileModel, self._PROFILE_ID)
+                return _autofill_profile(model) if model is not None else None
+        except OperationalError as error:
+            raise _database_error(error) from error
+
+    def upsert(self, draft: AutofillProfileDraft) -> AutofillProfile:
+        now = datetime.now(UTC)
+        values = _autofill_profile_draft_values(draft)
+        try:
+            with self._sessions.begin() as session:
+                model = session.get(AutofillProfileModel, self._PROFILE_ID)
+                if model is None:
+                    model = AutofillProfileModel(
+                        id=self._PROFILE_ID,
+                        **values,
+                        created_at=now,
+                        updated_at=now,
+                    )
+                    session.add(model)
+                else:
+                    for name, value in values.items():
+                        setattr(model, name, value)
+                    model.updated_at = now
+        except OperationalError as error:
+            raise _database_error(error) from error
+        return _autofill_profile(model)
 
 
 class SqlAlchemyEvidenceMapRepository:
@@ -931,6 +970,54 @@ def _question_draft_values(draft: InterviewQuestionDraft) -> dict[str, object]:
     }
 
 
+def _autofill_profile_draft_values(draft: AutofillProfileDraft) -> dict[str, str]:
+    return {
+        "personal_json": _canonical_json(
+            {
+                "name": draft.personal.name,
+                "phone": draft.personal.phone,
+                "email": draft.personal.email,
+                "currentCity": draft.personal.current_city,
+            }
+        ),
+        "education_json": _canonical_json(
+            [
+                {
+                    "school": item.school,
+                    "major": item.major,
+                    "degree": item.degree,
+                    "start": item.start,
+                    "end": item.end,
+                }
+                for item in draft.education
+            ]
+        ),
+        "experience_json": _canonical_json(
+            [
+                {
+                    "company": item.company,
+                    "position": item.position,
+                    "start": item.start,
+                    "end": item.end,
+                    "description": item.description,
+                }
+                for item in draft.experience
+            ]
+        ),
+        "links_json": _canonical_json(
+            {
+                "github": draft.links.github,
+                "portfolio": draft.links.portfolio,
+                "homepage": draft.links.homepage,
+            }
+        ),
+    }
+
+
+def _canonical_json(value: object) -> str:
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+
+
 def _job(model: JobModel) -> Job:
     return Job(
         id=model.id,
@@ -1002,6 +1089,23 @@ def _resume_version(model: ResumeVersionModel, *, application_count: int) -> Res
         name=model.name,
         content=model.content,
         application_count=application_count,
+        created_at=_utc(model.created_at),
+        updated_at=_utc(model.updated_at),
+    )
+
+
+def _autofill_profile(model: AutofillProfileModel) -> AutofillProfile:
+    draft = AutofillProfileDraft.create(
+        personal=json.loads(model.personal_json),
+        education=json.loads(model.education_json),
+        experience=json.loads(model.experience_json),
+        links=json.loads(model.links_json),
+    )
+    return AutofillProfile(
+        personal=draft.personal,
+        education=draft.education,
+        experience=draft.experience,
+        links=draft.links,
         created_at=_utc(model.created_at),
         updated_at=_utc(model.updated_at),
     )

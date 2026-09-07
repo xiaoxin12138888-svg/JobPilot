@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Query, Response, status
 from jobpilot_api.api.dependencies import (
     get_analysis_service,
     get_application_service,
+    get_autofill_profile_service,
     get_evidence_map_service,
     get_feedback_summary_service,
     get_interview_service,
@@ -20,6 +21,8 @@ from jobpilot_api.api.schemas import (
     ApplicationListResponse,
     ApplicationResponse,
     ApplicationUpdateRequest,
+    AutofillProfilePutRequest,
+    AutofillProfileResponse,
     EvidenceMapGenerateRequest,
     FeedbackSummaryResponse,
     InterviewQuestionCreateRequest,
@@ -46,12 +49,14 @@ from jobpilot_api.application.evidence_maps import EvidenceMapService
 from jobpilot_api.application.jd_analysis import JDAnalysisService
 from jobpilot_api.application.services import (
     ApplicationService,
+    AutofillProfileService,
     FeedbackSummaryService,
     InterviewService,
     JobService,
     ResumeVersionService,
 )
 from jobpilot_api.domain.applications import ApplicationStatus
+from jobpilot_api.domain.autofill_profiles import AutofillProfileDraft
 from jobpilot_api.domain.interviews import InterviewQuestionDraft, InterviewRoundDraft
 from jobpilot_api.domain.jobs import JobDraft
 from jobpilot_api.domain.resume_versions import ResumeVersionDraft
@@ -66,6 +71,22 @@ def get_feedback_summary(
     service: Annotated[FeedbackSummaryService, Depends(get_feedback_summary_service)],
 ) -> FeedbackSummaryResponse:
     return FeedbackSummaryResponse.from_domain(service.get())
+
+
+@router.get("/autofill-profile", response_model=AutofillProfileResponse)
+def get_autofill_profile(
+    service: Annotated[AutofillProfileService, Depends(get_autofill_profile_service)],
+) -> AutofillProfileResponse:
+    return AutofillProfileResponse.from_domain(service.get())
+
+
+@router.put("/autofill-profile", response_model=AutofillProfileResponse)
+def replace_autofill_profile(
+    request: AutofillProfilePutRequest,
+    service: Annotated[AutofillProfileService, Depends(get_autofill_profile_service)],
+) -> AutofillProfileResponse:
+    draft = AutofillProfileDraft.create(**request.model_dump())
+    return AutofillProfileResponse.from_domain(service.replace(draft))
 
 
 @router.post("/jobs", response_model=JobResponse, status_code=status.HTTP_201_CREATED)

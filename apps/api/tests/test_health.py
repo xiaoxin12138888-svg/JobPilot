@@ -30,6 +30,7 @@ def test_openapi_exposes_only_health_and_approved_business_routes() -> None:
         "/api/v1/applications",
         "/api/v1/applications/{application_id}",
         "/api/v1/applications/{application_id}/interviews",
+        "/api/v1/autofill-profile",
         "/api/v1/interviews/{interview_id}",
         "/api/v1/interviews/{interview_id}/questions",
         "/api/v1/interview-questions/{question_id}",

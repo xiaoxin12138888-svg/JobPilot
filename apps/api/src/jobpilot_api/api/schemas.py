@@ -9,6 +9,7 @@ from jobpilot_api.application.evidence_maps import EvidenceMapState
 from jobpilot_api.application.jd_analysis import JDAnalysisState
 from jobpilot_api.application.repositories import ApplicationListEntry, JobListEntry
 from jobpilot_api.domain.applications import Application, ApplicationStatus, RejectionReason
+from jobpilot_api.domain.autofill_profiles import AutofillProfile
 from jobpilot_api.domain.evidence_maps import (
     EvidenceMap,
     EvidenceMapping,
@@ -606,6 +607,101 @@ class ResumeVersionListResponse(ApiModel):
     total: int
     limit: int
     offset: int
+
+
+class PersonalDetailsPayload(ApiModel):
+    name: str | None = None
+    phone: str | None = None
+    email: str | None = None
+    current_city: str | None = None
+
+
+class EducationEntryPayload(ApiModel):
+    school: str | None = None
+    major: str | None = None
+    degree: str | None = None
+    start: str | None = None
+    end: str | None = None
+
+
+class ExperienceEntryPayload(ApiModel):
+    company: str | None = None
+    position: str | None = None
+    start: str | None = None
+    end: str | None = None
+    description: str | None = None
+
+
+class ProfileLinksPayload(ApiModel):
+    github: str | None = None
+    portfolio: str | None = None
+    homepage: str | None = None
+
+
+class AutofillProfilePutRequest(ApiModel):
+    personal: PersonalDetailsPayload
+    education: list[EducationEntryPayload] = Field(max_length=20)
+    experience: list[ExperienceEntryPayload] = Field(max_length=20)
+    links: ProfileLinksPayload
+
+
+class AutofillProfileDataResponse(ApiModel):
+    personal: PersonalDetailsPayload
+    education: list[EducationEntryPayload]
+    experience: list[ExperienceEntryPayload]
+    links: ProfileLinksPayload
+    created_at: datetime
+    updated_at: datetime
+
+    @classmethod
+    def from_domain(cls, profile: AutofillProfile) -> AutofillProfileDataResponse:
+        return cls(
+            personal=PersonalDetailsPayload(
+                name=profile.personal.name,
+                phone=profile.personal.phone,
+                email=profile.personal.email,
+                current_city=profile.personal.current_city,
+            ),
+            education=[
+                EducationEntryPayload(
+                    school=item.school,
+                    major=item.major,
+                    degree=item.degree,
+                    start=item.start,
+                    end=item.end,
+                )
+                for item in profile.education
+            ],
+            experience=[
+                ExperienceEntryPayload(
+                    company=item.company,
+                    position=item.position,
+                    start=item.start,
+                    end=item.end,
+                    description=item.description,
+                )
+                for item in profile.experience
+            ],
+            links=ProfileLinksPayload(
+                github=profile.links.github,
+                portfolio=profile.links.portfolio,
+                homepage=profile.links.homepage,
+            ),
+            created_at=profile.created_at,
+            updated_at=profile.updated_at,
+        )
+
+
+class AutofillProfileResponse(ApiModel):
+    profile: AutofillProfileDataResponse | None
+
+    @classmethod
+    def from_domain(cls, profile: AutofillProfile | None) -> AutofillProfileResponse:
+        return cls(
+            profile=(
+                AutofillProfileDataResponse.from_domain(profile) if profile is not None else None
+            )
+        )
 
 
 class EvidenceMapGenerateRequest(ApiModel):

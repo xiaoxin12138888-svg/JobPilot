@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from jobpilot_api.domain.applications import Application, ApplicationStatus, RejectionReason
+from jobpilot_api.domain.autofill_profiles import AutofillProfile, AutofillProfileDraft
 from jobpilot_api.domain.evidence_maps import EvidenceMap, EvidenceMapRecord
 from jobpilot_api.domain.feedback import FeedbackSummary
 from jobpilot_api.domain.interviews import (
@@ -100,6 +101,12 @@ class ResumeVersionRepository(Protocol):
     def delete(self, resume_version_id: str) -> bool: ...
 
     def list(self, *, limit: int, offset: int) -> tuple[list[ResumeVersion], int]: ...
+
+
+class AutofillProfileRepository(Protocol):
+    def get(self) -> AutofillProfile | None: ...
+
+    def upsert(self, draft: AutofillProfileDraft) -> AutofillProfile: ...
 
 
 class EvidenceMapRepository(Protocol):

@@ -10,7 +10,7 @@ from jobpilot_api.infrastructure.database.engine import sqlite_database_url
 from jobpilot_api.infrastructure.database.models import Base
 
 
-def test_model_metadata_and_migration_history_contain_phase_8_interview_tables() -> None:
+def test_model_metadata_and_migration_history_contain_current_tables() -> None:
     config = Config("apps/api/alembic.ini")
     script = ScriptDirectory.from_config(config)
 
@@ -22,6 +22,7 @@ def test_model_metadata_and_migration_history_contain_phase_8_interview_tables()
         "evidence_map_records",
         "interview_rounds",
         "interview_questions",
+        "autofill_profiles",
     }
     assert len(script.get_heads()) == 1
 
@@ -212,7 +213,7 @@ def test_phase_4_source_migration_preserves_phase_3_data_and_is_reversible(tmp_p
     command.upgrade(config, "head")
     with sqlite3.connect(database_path) as connection:
         version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
-    assert version == ("0008_interview_feedback",)
+    assert version == ("0009_autofill_profile",)
 
 
 def test_source_migration_refuses_to_downgrade_while_boss_jobs_exist(tmp_path: Path) -> None:
@@ -293,7 +294,7 @@ def test_phase_5_source_migration_preserves_existing_data_and_is_reversible(
 
     with sqlite3.connect(database_path) as connection:
         version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
-    assert version == ("0008_interview_feedback",)
+    assert version == ("0009_autofill_profile",)
 
 
 def test_phase_5_source_migration_refuses_downgrade_while_nowcoder_jobs_exist(
@@ -362,7 +363,7 @@ def test_phase_6_analysis_migration_is_reversible_and_cascades(tmp_path: Path) -
     command.upgrade(config, "head")
     with sqlite3.connect(database_path) as connection:
         version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
-    assert version == ("0008_interview_feedback",)
+    assert version == ("0009_autofill_profile",)
 
 
 def test_phase_7_resume_migration_is_reversible_and_preserves_applications(
