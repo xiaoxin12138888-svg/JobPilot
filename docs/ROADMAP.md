@@ -5,6 +5,7 @@
 > 已于 2026-09-07 完成并通过自动化、隔离浏览器、真实 runtime、重启持久化、既有回归和安全验收。
 > Phase 9 — Profile Vault & Safe Job Form Autofill 已于 2026-09-07 完成实现、自动化验证和真实
 > 中国移动校招表单人工验收并标记 PASS。BOSS 与牛客保持 `SUPPORTED — V1`。
+> Phase 10 — Local Resume Import 已获批准并处于实现中；真实 DOCX/PDF 人工验收前不得标记 PASS。
 
 ## 1. Global gates
 
@@ -130,22 +131,39 @@ API、form.submit/requestSubmit、Submit/Continue，也不创建或更新 Applic
 自动实现、单元/组件/安全产物门、本地 fixture 浏览器验证和全部仓库回归已完成。真实中国移动
 校招表单检测 37 个字段（READY 1、REVIEW_REQUIRED 2、MANUAL 26、UNMAPPED 8），仅选择并成功
 填写 1 个姓名字段；attempts/success/failure 为 1/1/0，`Submit triggered: NO`。负责人确认映射、
-建议值、页面结果和无意外动作，Phase 9 标记 PASS；不得自动进入 Phase 10。
+建议值、页面结果和无意外动作，Phase 9 标记 PASS。Phase 10 随后由负责人另行明确批准，不改变
+当时的 Phase 9 验收事实。
 
-## 10. Later phases
+## 10. Phase 10 — Local Resume Import
+
+状态：`IMPLEMENTATION IN PROGRESS`（2026-09-07）。
+
+只交付用户选择的 10 MiB 内文字型 PDF/DOCX → 本地 Parse → 可编辑 Preview → 显式 Confirm →
+Resume Version / selected-only Profile merge。Parse 不保存、不使用 filename；原文件不保留。PDF
+无文字/加密和 DOCX ZIP/XML 风险稳定拒绝，不使用 OCR、LLM 或远端 parser。
+
+Profile 冲突显示 Current vs Imported，scalar 逐字段选、数组逐条追加；deterministic equality 只
+提示可能重复。Resume + Profile 使用一个 SQLite transaction，失败回滚。Extension、Job、
+Application、Evidence Map 和 Phase 9 Autofill 保持不变。
+
+自动化和隔离浏览器完成后，必须由负责人分别检查一份脱敏 DOCX/PDF 的原文顺序、section、
+候选字段，以及真实保存/合并/重启结果。此前只能报告
+`USER ACTION REQUIRED — REAL RESUME IMPORT ACCEPTANCE`。
+
+## 11. Later phases
 
 AI 面试、模拟面试、Personal Knowledge Base、其余招聘平台、策略建议与发布加固必须由负责人
 另行明确批准。远程能力必须显式启用、可替换、可降级，不能成为本地
 Job/Application/Resume/Interview 核心依赖。
 
-## 11. P0 no-proxy gate
+## 12. P0 no-proxy gate
 
 installed runtime 不访问远程身份、公共 CDN、远程字体/脚本、GitHub runtime/raw、telemetry、
 update 或强制境外 AI。未来每个 Adapter 必须分别记录招聘页、Extension、识别、解析、
 确认保存和岗位库的真实关闭代理结果；任一核心步骤依赖代理就不能标为支持。
 
-## 12. Stop boundary
+## 13. Stop boundary
 
-不得把暂停中的 Phase 7 写成 PASS，也不得自动开始 Phase 10、实现 AI Autofill、简历文件导入、
-AI 面试、策略推荐或
+不得把暂停中的 Phase 7 写成 PASS，也不得自动开始 Phase 11、实现 AI Autofill、OCR/AI Resume
+Parser、Resume Builder/Tailoring、AI 面试、策略推荐或
 智联/实习僧/猎聘/国聘等其他平台。

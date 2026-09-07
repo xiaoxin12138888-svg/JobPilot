@@ -4,6 +4,7 @@
 > `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`。Phase 8 在同一本地 SQLite 边界增加 Interview
 > Record 与请求时计算的事实 Feedback Summary。Phase 9 的 Profile Vault 与安全 Autofill 已完成
 > 实现、自动化验证及真实 ATS 人工验收并标记 PASS；Phase 8/9 均不依赖 Provider。
+> Phase 10 本地 PDF/DOCX Parse → Preview → Confirm contract 已由 ADR-017 批准并处于实现中。
 
 ## 1. 运行时
 
@@ -17,6 +18,7 @@ flowchart LR
     S[(runtime-data/jobpilot.db\nJob / Application / Resume / Interview / Profile)]
     R[原招聘平台]
     P[显式配置的 LLM Provider]
+    F[用户选择的本地 PDF / DOCX]
 
     U --> W
     U --> E
@@ -28,6 +30,7 @@ flowchart LR
     A -. 仅用户确认所选简历外发且已配置 .-> P
     R -. 当前可见 DOM 只读解析 .-> E
     E -. 用户确认后填写\n永不 Submit .-> R
+    F -. 仅用户选择\n不保存原文件 .-> W
     W -. 仅打开 source_url .-> R
 ```
 
@@ -45,7 +48,7 @@ apps/web                 岗位库、简历版本、求职资料、投递/面试
 apps/extension           BOSS/牛客采集，以及 Scanner/Resolver/Preview/Safe Fill Popup
 apps/api/domain          Job/Application/Resume/Profile/Interview/Feedback/Analysis/Evidence 值与规则
 apps/api/application     use-case service、专用 repository port 与 JD/Evidence Provider ports
-apps/api/infrastructure  SQLAlchemy/SQLite/Alembic 与一个 OpenAI-compatible adapter
+apps/api/infrastructure  SQLAlchemy/SQLite/Alembic、受限 PDF/DOCX extractor 与一个 AI adapter
 apps/api/api             FastAPI schema、router、安全和错误映射
 packages/shared-types    camelCase transport 类型与状态中文
 packages/api-client      loopback-only、credential-free、响应校验
@@ -70,6 +73,10 @@ Alembic revision `0001_job_application` 创建 `jobs` 和 `applications`；`0002
 JD Analysis 和 Evidence；Round 删除级联 Question。被 Application 引用的 Resume 通过 RESTRICT
 和 service guard 保留，未引用 Resume 删除时级联其 Evidence。自动化测试必须显式传入临时数据库
 路径。
+
+Phase 10 不新增表：无状态 parse preview 只返回 Web，confirm 在同一 transaction 中按需插入一个
+`resume_versions` row 并 patch-like upsert singleton `autofill_profiles`；未选择的 Profile scalar 和
+全部既有数组行保持不变。
 
 ## 4. API 与 localhost 写入边界
 
@@ -145,7 +152,18 @@ storage；没有常驻 content script、后台、招聘 host permission、LLM、
 Scan、Fill、Submit 是三个独立动作。Executor 不包含任何 submit/requestSubmit/Submit/Continue
 调用，也不创建或更新 Application；最终提交始终由用户在招聘页面执行。
 
-## 9. Local-first 与后续边界
+## 9. Resume Import boundary
+
+Web 用户主动选择一个文件后，通过 api-client 把最多 10 MiB 的 multipart 只发往 loopback Parse
+endpoint。API 在内存中验证 extension/MIME/magic，PDF 与 DOCX extractor 分别执行页数、文本、
+ZIP/XML 等资源安全检查，再把按序 block 交给无 LLM 的 deterministic structure parser。文件名和
+正文不写日志，原始文件不落库、不保留；Extension 不参与。
+
+Web 只用 text node/textarea 展示 preview，并加载当前 Profile 做 Current vs Imported 选择。Confirm
+只接收用户选择的 scalar updates 和 row additions；repository 在一个 transaction 中重新读取当前
+Profile，再创建可选 Resume Version 与更新 Profile。Parse、Preview、取消均不修改 SQLite。
+
+## 10. Local-first 与后续边界
 
 installed core runtime 不依赖远程身份、CDN、字体/脚本、telemetry、update、对象存储或 AI。
 Extension 只使用 `activeTab` 与 `scripting`；没有 background、常驻 content script、`tabs`

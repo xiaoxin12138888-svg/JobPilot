@@ -12,7 +12,8 @@
 4. **One fact source**：未来持久业务状态由本机 API/domain 与 SQLite 定义。
 5. **User trigger and confirmation**：招聘页面读取必须由用户主动触发并在保存前确认；真实简历
    发往可选 Provider 前必须在当次 Web 操作中明确告知并确认；表单 Scan、Fill 与 Submit 必须
-   分离，只有用户确认的字段可以 Fill，Submit 永远由用户执行。
+   分离，只有用户确认的字段可以 Fill，Submit 永远由用户执行；本地简历导入必须保持
+   `Parse != Save`，只有最终确认才可写 Resume/Profile。
 6. **No remote core dependency**：已安装核心不依赖境外服务、CDN、远程代码、telemetry 或 update API。
 7. **Simple architecture first**：只实现当前已批准、已有消费者的最小边界。
 
@@ -27,6 +28,8 @@
   全图总览只做确定性计数、待确认项和主要证据缺口。
 - Interview 问题、回答、复盘和 Application 结果只按纯文本渲染；面试操作不得隐式推进投递状态。
 - Feedback 只呈现本地事实计数、nullable 漏斗率和分组，不输出评分、建议或因果结论。
+- Resume Import 只渲染不可信纯文本；Parse/Preview 不保存，Current vs Imported 与逐项选择必须
+  在 Confirm 前可见，phone/email 默认遮罩。
 
 ### Extension
 
@@ -49,6 +52,8 @@
 - 业务规则进入 domain/application，持久化进入 repository adapter；
 - supported launcher 在服务启动前升级 SQLite migration；`/health` 请求不查询数据库；
 - 写接口强制 loopback Host、安全 Origin/Fetch Metadata 与 JSON boundary；CORS 不替代本机进程认证。
+- Resume Parse 是唯一 Web-only multipart 例外且不持久化；Confirm 仍为 JSON-only，并用一个
+  transaction 写可选 Resume Version 与 selected-only Profile patch。
 
 ### Shared packages
 
@@ -83,6 +88,8 @@
   后一阶段不超过前一阶段时计算。原始计数不截断、不推断缺失记录，派生统计不持久化。
 - AutofillProfile 默认不收集证件、银行卡、婚姻、民族、政治面貌等低价值敏感事实；Profile 不进
   日志、Git、测试真实数据、Extension storage 或远端。Autofill 完整链路不得调用 LLM。
+- Resume 文件名、文件正文和解析候选不进入日志/Git/Extension/Provider。原文件不永久保存；
+  PDF/DOCX parser 必须验证格式并限制文件、页数、文本、ZIP/XML 与耗时资源。
 
 ## 5. P0 no-proxy rule
 
@@ -129,6 +136,7 @@
 - loopback/CORS、secret、remote-runtime、manifest/CSP 和 tracked-artifact 扫描通过；
 - browser/runtime 无法验证时明确报告 BLOCKED，不虚构 PASS；
 - 全部 `JOBPILOT_LLM_*` 缺失时 Interview、Feedback、Profile 与 Autofill 仍完整可用；
+- 全部 `JOBPILOT_LLM_*` 缺失时 Resume Import 仍完整可用；
 - `code-review-and-quality` 为 Critical 0 / Required 0；
 - `code-simplification` 后无确认的死代码；
 - 文档与实现一致，工作树按任务要求交付。

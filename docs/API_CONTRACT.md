@@ -1,8 +1,8 @@
 # JobPilot API Contract
 
 > 状态：`GET /health`、Job/Application、BOSS/牛客 capture、Job Analysis、Resume Version、
-> Evidence Map、Interview、Feedback Summary 与 Autofill Profile contract 已由 ADR-016 冻结。JSON 字段使用
-> camelCase。
+> Evidence Map、Interview、Feedback Summary、Autofill Profile 与 Local Resume Import contract 已由
+> ADR-017 冻结。JSON 字段使用 camelCase。
 
 ## 1. Runtime boundary
 
@@ -20,6 +20,10 @@ JobPilot Extension 只可写入 `POST /api/v1/jobs`，并要求精确 Origin
 唯一例外读路径是 `GET /api/v1/autofill-profile`：精确 JobPilot Extension Origin、
 `Sec-Fetch-Site: none` 与 loopback Host 的组合可读；其他 Extension、普通跨站网页或非 loopback
 target 均为 403。Profile PUT 不向 Extension 开放。
+
+`POST /api/v1/resume-imports/parse` 是唯一 multipart 例外：它不持久化数据，只接受精确合法 Web
+Origin、非 cross-site Fetch Metadata 和 loopback Host。其他 POST/PUT/PATCH（包括 import confirm）
+继续只接受 `application/json`。
 
 ## 2. Health
 
@@ -402,7 +406,79 @@ JD Analysis 缺失、stale 或其他前置条件非法为 422；Provider 未配�
 Extension Origin。接口不提供 list/delete/history/sync，不接收 `userId`、Resume 文件或 Provider
 配置。
 
-## 11. Errors
+## 11. Resume Import endpoints
+
+### `POST /api/v1/resume-imports/parse`
+
+请求为 `multipart/form-data`，只接受一个名为 `file` 的 part。只支持声明 MIME、extension 和
+magic/package structure 一致的 `.pdf` 与 `.docx`，上限 10 MiB。成功返回 200：
+
+```json
+{
+  "fileType": "DOCX",
+  "extractedText": "基本信息\n示例候选人\n...",
+  "blocks": [
+    {"kind": "HEADING", "text": "基本信息"},
+    {"kind": "TEXT", "text": "示例候选人"},
+    {"kind": "TABLE_ROW", "text": "示例大学 | 信息管理 | 本科 | 2022.09-2026.06"}
+  ],
+  "sections": [
+    {"type": "BASIC", "heading": "基本信息", "text": "示例候选人"},
+    {"type": "EDUCATION", "heading": "教育经历", "text": "示例大学 ..."}
+  ],
+  "profileCandidates": {
+    "personal": {"name": "示例候选人", "phone": null, "email": "candidate@example.invalid", "currentCity": null},
+    "education": [],
+    "experience": [],
+    "links": {"github": null, "portfolio": null, "homepage": null}
+  },
+  "warnings": [
+    {"code": "TABLE_ORDER_REVIEW", "message": "检测到表格内容，请在导入前检查阅读顺序。"}
+  ],
+  "metrics": {
+    "fileSizeBytes": 12345,
+    "pageCount": null,
+    "parseLatencyMs": 18,
+    "extractedCharacterCount": 560
+  }
+}
+```
+
+`fileType` 为 `PDF|DOCX`；block kind 为 `TEXT|TABLE_ROW|HEADING`；section type 为
+`BASIC|EDUCATION|EXPERIENCE|PROJECT|SKILLS|CERTIFICATES|AWARDS|OTHER`。warnings 是有界
+JobPilot-owned code/message，不包含 parser traceback 或文件内容。Parse 不创建数据库行，不保存
+原始文件/文件名，不调用 Provider 或远端服务。
+
+### `POST /api/v1/resume-imports/confirm`
+
+请求为 JSON。`resumeVersion` 与 `profileImport` 至少一项非 null：
+
+```json
+{
+  "resumeVersion": {
+    "name": "导入简历 2026-09-07",
+    "content": "用户在预览中检查和编辑后的纯文本"
+  },
+  "profileImport": {
+    "personal": {"email": "candidate@example.invalid"},
+    "education": [
+      {"school": "示例大学", "major": "信息管理", "degree": "本科", "start": "2022-09", "end": "2026-06"}
+    ],
+    "experience": [],
+    "links": {}
+  }
+}
+```
+
+`personal`/`links` 中省略的 scalar 和现有 education/experience 全部保留；数组只追加请求明确提交
+的行。请求不能用 null 清空 Profile 字段。两项同时提交时，在一个 SQLite transaction 中创建新
+Resume Version 并更新 singleton Profile；任一失败全部回滚。成功响应字段为
+`resumeVersion: ResumeVersion|null` 与 `profile: AutofillProfile|null`；未选择的 target 为 null。
+
+Confirm 不接受 filename/parse token，不修改已有 Resume Version、Job、Application 或 Evidence
+Map。
+
+## 12. Errors
 
 所有公开错误保持：
 
@@ -430,6 +506,14 @@ Job，便于 Extension 打开本机详情；其他错误保持原有三字段 en
 - 503：SQLite 暂时 locked/busy，或 `AI_NOT_CONFIGURED` / `AI_PROVIDER_UNAVAILABLE`；
 - 403/415：localhost Profile 读/写与通用 mutation 安全边界；
 - 500：统一未知错误，不返回 exception、SQL 或 traceback。
+
+Resume Import 另有：
+
+- 413 `RESUME_FILE_TOO_LARGE`；
+- 415 `UNSUPPORTED_RESUME_FILE_TYPE`；
+- 422 `RESUME_FILE_SIGNATURE_MISMATCH`、`RESUME_PDF_ENCRYPTED`、
+  `RESUME_PDF_NO_TEXT`、`RESUME_PDF_INVALID`、`RESUME_DOCX_INVALID`、
+  `RESUME_TEXT_TOO_LARGE`、`RESUME_PARSE_TIMEOUT`。
 
 响应均带 `X-Request-Id`，其值与 error envelope 一致。
 AI 错误只使用 JobPilot 文案，不返回 Key、Provider URL、raw response、HTTP body 或 traceback。

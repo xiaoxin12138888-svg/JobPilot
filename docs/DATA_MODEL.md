@@ -6,6 +6,7 @@
 > `0007_evidence_map_schema_v2` 允许旧 schema 1 与当前 schema 2 共存；
 > `0008_interview_feedback` 增加本地面试记录与 Application 结果字段；
 > `0009_autofill_profile` 增加 single-user 当前求职资料。
+> Phase 10 Local Resume Import 复用 `resume_versions` 与 `autofill_profiles`，不新增表或 migration。
 
 ## 1. Storage rules
 
@@ -171,7 +172,16 @@ education、最多 20 条 experience 与 links 字段，并由 domain 在写入�
 URL 和非空验证。它与 Resume Version、Application、Job 没有 FK，不从 Resume 自动导入，也不会
 因 Autofill 创建/推进 Application。Extension 不持久化副本。
 
-## 10. Application state machine
+## 10. Phase 10 atomic import
+
+Parse preview 不进入数据库。Confirm 可在一个 transaction 内新增一个 `resume_versions` row，并按
+用户明确选择的 scalar/row patch singleton `autofill_profiles`。未选择的 scalar 与全部既有数组行
+保留；数组只追加所选 imported rows。任一 validation/SQLite 错误回滚整个 transaction。
+
+原文件、filename、parse token、warning、section/candidate payload 和 performance metrics 均不
+持久化。Phase 10 不修改现有 Resume Version、Application、Job 或 Evidence Map row。
+
+## 11. Application state machine
 
 显式允许表（同状态更新为 no-op）：
 
@@ -187,7 +197,7 @@ URL 和非空验证。它与 Resume Version、Application、Job 没有 FK，不�
 
 任何目标为 applied 的流转都要求显式确认。不创建 event sourcing 或 audit table。
 
-## 11. Deletion and deferred models
+## 12. Deletion and deferred models
 
 Web 明确确认后真实删除 Job，SQLite 级联其 Application、Interview Round/Question、JD analysis
 与 Evidence Map；当前无 archive/restore。删除 Interview Round 级联其 Question。被 Application

@@ -1,4 +1,118 @@
-# Implementation Plan: Phase 9 — Profile Vault & Safe Job Form Autofill
+# Implementation Plan: Phase 10 — Local PDF / DOCX Resume Import
+
+> Owner-approved on 2026-09-07 from clean Phase 9 commit `0189314`. Phase 7 remains
+> `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`; this phase must not change Evidence Map or Phase 9
+> Autofill behavior. The untracked `操作手册.txt` is protected and must not be read or committed.
+
+## Objective
+
+Let a user select one local text-based PDF or DOCX, extract and deterministically structure it on the
+loopback API, review and edit the preview in the Web, then explicitly create a Resume Version, update
+selected Autofill Profile facts, or do both atomically. `Parse != Save`; the installed flow requires no
+LLM, OCR, remote service or original-file persistence.
+
+## Architecture decisions
+
+- ADR-017 owns the 10 MiB limit, parser/resource/privacy boundaries, stateless preview, patch-like
+  Profile import and one-transaction Confirm command.
+- `POST /api/v1/resume-imports/parse` is the only reviewed multipart exception. It is Web-only,
+  loopback-only and non-persistent; every other mutation remains JSON-only.
+- Document extraction is split into focused PDF/DOCX infrastructure parsers. Deterministic section and
+  candidate parsing is a pure domain module; uncertain facts remain editable raw text.
+- `POST /api/v1/resume-imports/confirm` accepts only explicitly selected updates/additions. The repository
+  loads current Profile state inside the same transaction, preserves unselected values/rows and creates
+  the optional Resume Version atomically.
+- No migration or ResumeImport table is needed. Preview state lives only in Web memory; original files are
+  never persisted.
+
+## Ordered slices
+
+### Slice 1: Contract and dependency gate
+
+- Freeze ADR-017, API/error/resource limits, third-party parser choices and this plan/checklist.
+- Verify tracked-clean Phase 9 base, create `phase/10-resume-import`, and preserve protected local files.
+- Add only compatible, maintained PDF/DOCX/multipart dependencies after license review.
+
+Verification: docs/checklist consistency, lockfile update, dependency metadata/license audit.
+
+### Slice 2: Document extraction and structure parsing
+
+- RED/GREEN PDF selectable-text, multi-page/order, encrypted/no-text and page/text/time limits.
+- RED/GREEN DOCX paragraph/table/mixed order, corrupt/package/ZIP/XML/external-content safety.
+- RED/GREEN exact-heading sections, false-heading prevention, phone/email, conservative name,
+  education/experience candidates and raw-text fallback.
+
+Verification: focused pure/parser tests pass with fictional in-memory fixtures.
+
+### Slice 3: Parse API and browser boundary
+
+- RED/GREEN multipart parse endpoint, 10 MiB streaming read bound, extension/MIME/magic checks and stable
+  sanitized errors.
+- Prove parsing changes no Resume/Profile/Job/Application/Evidence rows, logs no content/name and makes no
+  remote request.
+- Return strict preview payload and non-sensitive metrics without storing an import session.
+
+Verification: API/security tests plus existing JSON-only/Origin/Extension regressions.
+
+### Slice 4: Atomic Confirm
+
+- RED/GREEN explicit Resume-only, Profile-only and combined commands.
+- Preserve current scalar values unless selected; append only selected rows; never delete existing rows.
+- Prove combined rollback with a forced database failure and restart persistence on temporary SQLite.
+
+Verification: domain/repository/API transaction tests.
+
+### Slice 5: Shared contract and Web flow
+
+- RED/GREEN shared types and api-client multipart/JSON transports with strict untrusted-response checks,
+  no credentials, no redirects and bounded local timeout.
+- RED/GREEN simple choose → local parse → editable preview → target selection → confirm → done UI.
+- Show Current vs Imported, masked phone/email, explicit reveal/edit, duplicate hints, warnings and safe
+  cancellation; render all file content as plain text.
+
+Verification: client/component tests, keyboard/accessibility and responsive states.
+
+### Slice 6: Final gates and human acceptance
+
+- Run full Python/TypeScript/lint/format/typecheck/build/import/security/migration regressions with LLM
+  configuration absent and temporary SQLite only.
+- Run isolated browser parse/preview/confirm/no-auto-save/restart checks with fictional files; record only
+  non-sensitive latency/size/page/character metrics.
+- Complete five-axis review and simplification, synchronize canonical/technical/dependency/bad-case docs,
+  then request owner testing with one de-identified real DOCX and PDF.
+
+Verification: Critical 0 / Required 0. Until separate real DOCX/PDF/Save/Profile checks are confirmed,
+report `USER ACTION REQUIRED — REAL RESUME IMPORT ACCEPTANCE` and do not mark Phase 10 PASS.
+
+## Checkpoints
+
+- Parser checkpoint: both formats and resource/security failures are deterministic and no OCR/remote call
+  exists.
+- Persistence checkpoint: parse writes nothing; confirm preserves unselected data and combined writes roll
+  back together.
+- UI checkpoint: every candidate and target is reviewable/editable; no button before final confirmation
+  mutates SQLite.
+- Final checkpoint: all automated/browser/security gates pass and real acceptance remains human-owned.
+
+## Risks and mitigations
+
+- Parser abuse: 10 MiB input, format signatures, PDF page/text/time limits and DOCX ZIP/XML preflight.
+- Wrong structure: exact heading aliases, conservative facts and raw-text fallback instead of inference.
+- Existing-data loss: patch-like selected fields, append-only selected rows and one DB transaction.
+- Privacy leak: no filename/content logs, no original-file storage, plain-text DOM and no remote runtime.
+- Scope expansion: no OCR/AI/parser framework/import table/Resume builder/tailoring/Extension upload.
+
+## Stop conditions
+
+- Never read `操作手册.txt`, live runtime SQLite, Provider secrets or unselected files.
+- Never copy OpenResume or add GPL/AGPL dependencies; stop and report if license review fails.
+- Never infer missing education duration/degree, overwrite unselected Profile facts, or persist a parse result.
+- Never alter Phase 7 semantics, Phase 9 Autofill, Extension permissions or no-submit behavior.
+- Never declare real DOCX/PDF content quality PASS automatically, and never begin Phase 11 without approval.
+
+---
+
+# Historical Implementation Plan: Phase 9 — Profile Vault & Safe Job Form Autofill
 
 > Owner-approved on 2026-09-07 from clean Phase 8 commit `eb3c9e8`. Phase 7 remains
 > `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`; this phase must not change Evidence Map behavior.

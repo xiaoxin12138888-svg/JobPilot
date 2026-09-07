@@ -5,6 +5,7 @@
 > Record & Feedback Loop 已于 2026-09-07 完成并通过自动化、隔离浏览器、真实 runtime、重启
 > 持久化、既有回归和安全验收。Phase 9 — Profile Vault & Safe Job Form Autofill 已于
 > 2026-09-07 完成自动化、安全门禁与真实中国移动校招表单人工验收，状态为 PASS。
+> Phase 10 — Local Resume Import 已获批准并处于实现中；真实 DOCX/PDF 验收前不得标记 PASS。
 
 ## 1. 产品定位
 
@@ -72,6 +73,16 @@ Web 维护本机 AutofillProfile -> 用户打开招聘申请表 -> 点击 Extens
 `Scan != Fill != Submit` 是 P0 边界。扫描不读取字段当前值、不修改页面；填写只处理 Preview 中
 被用户确认的非敏感字段；JobPilot 永不自动 Submit、Continue、勾选协议、上传文件或改变
 Application。
+
+Phase 10 增加完全本地的已有简历导入流程：
+
+```text
+用户选择 PDF/DOCX -> loopback API 解析但不保存 -> Web 可编辑 Preview
+-> 用户选择创建 Resume Version / 更新 Profile / 两者 -> 确认后原子写入
+```
+
+文件、提取文本和候选结构均是不可信私密数据。V1 不做 OCR/LLM/远端解析，不保存原始文件；
+Profile 只应用用户明确选择的值和新增行，未选择的现有数据必须保留。
 
 ## 3. Job
 
@@ -157,9 +168,10 @@ Web 必须覆盖未配置、未分析、分析中、成功、失败和 stale。E
 
 ## 8. Resume Version
 
-Resume Version 是保存在本机 SQLite 的独立纯文本版本，字段只有名称、正文和本地时间；不读取
-PDF/DOCX/图片，不提供 OCR、富文本、模板、版本树、自动生成或整份改写。用户可新建、查看、
-编辑/重命名和复制。若任何 Application 正在引用该版本，删除返回稳定
+Resume Version 是保存在本机 SQLite 的独立纯文本版本，字段只有名称、正文和本地时间。除
+Phase 10 明确批准的本地 PDF/DOCX Parse → Preview → Confirm 入口外，不读取文件；不提供 OCR、
+富文本、模板、版本树、自动生成或整份改写。用户可新建、查看、编辑/重命名和复制。若任何
+Application 正在引用该版本，删除返回稳定
 `RESUME_VERSION_IN_USE`；未引用版本可删除并级联对应 Evidence Map。
 
 简历正文按不可信纯文本处理，不写日志、Extension、telemetry、Git、文档或真实测试 fixture。
@@ -230,7 +242,18 @@ setter 和 focus/input/change/blur；native select、month/date 与 combobox 只
 填写。实现不调用框架私有状态、`form.submit()`、`requestSubmit()`、Submit/Continue 按钮，也不
 创建或更新 Application。真实 ATS 验收已确认只填写 Preview 中选择的字段且不提交。
 
-## 13. 本地与 no-proxy 边界
+## 13. Local Resume Import
+
+只支持 10 MiB 内的文字型 PDF 和 DOCX。Parse 是 Web-only loopback multipart command，不持久化
+任何数据；解析结果、候选 section/Profile 与 warnings 在 Web 内存中供用户检查和编辑。PDF
+加密/无文字、损坏 DOCX、MIME/magic 不匹配与资源限制使用稳定脱敏错误，不做 OCR fallback。
+
+Confirm 保持 JSON-only，至少选择 Resume Version 或 Profile。Profile scalar 逐字段选择，教育/
+经历逐条选择并只追加；Current vs Imported 冲突和 deterministic duplicate hint 必须在 Preview
+展示。Resume + Profile 通过一个 SQLite transaction 写入，失败全部回滚。导入不修改 Job、
+Application、Evidence Map、Extension 或现有 Resume Version。
+
+## 14. 本地与 no-proxy 边界
 
 - Web、Extension 与 API 只通过精确 loopback 通信；
 - installed runtime 不依赖账号、云服务、CDN、远程字体/脚本、telemetry、update 或境外 AI；
@@ -248,13 +271,13 @@ setter 和 focus/input/change/blur；native select、month/date 与 combobox 只
 - 简历默认只在本机 SQLite；任何 Evidence Map 外发都要求用户在当次 Web 操作中确认。
 - Autofill 不调用 LLM 或远程 parser；Profile 只从精确 loopback API 读取并保留在当次 Popup 内存。
 
-## 14. Phase 9 非目标
+## 15. Phase 9 非目标
 
 PDF/DOCX/图片/OCR、自动上传简历、从 Resume 自动导入 Profile、开放题生成、AI 字段识别、
 Resume Tailoring、通用 ATS Engine、平台专用 Autofill Adapter、自动 Submit/Continue/协议同意、
 验证码绕过、批量投递、新招聘平台、云同步、账号、认证和多用户均不属于 Phase 9。
 
-## 15. 成功标准
+## 16. 成功标准
 
 Phase 8 必须通过 Interview/Application/Feedback schema、CRUD、cascade、统计、API/UI、
 provider-free、privacy/security 自动测试和全部既有回归。浏览器验收必须录入至少一轮、三道
@@ -271,4 +294,4 @@ Phase 9 只有在 Profile 持久化、Scanner/Resolver/Preview/Executor、Provid
 才能标记 PASS。2026-09-07 在中国移动校招表单检测 37 个字段（READY 1、REVIEW_REQUIRED 2、
 MANUAL 26、UNMAPPED 8），仅选择并成功填写 1 个姓名字段；attempts/success/failure 为 1/1/0，
 未触发 Submit/Continue、协议或上传，项目负责人确认页面结果正确。Phase 9 标记 PASS，并停止在
-Phase 10 之前。
+未经批准的下一阶段之前；Phase 10 随后已由负责人另行明确批准。

@@ -1,4 +1,55 @@
-# Phase 9 — Profile Vault & Safe Job Form Autofill Checklist
+# Phase 10 — Local PDF / DOCX Resume Import Checklist
+
+## Contract and dependency gate
+
+- [x] Receive explicit Phase 10 approval from clean Phase 9 commit `0189314` and create
+  `phase/10-resume-import`.
+- [x] Read canonical docs, ADRs, technical docs and owning Resume/Profile/API/Web implementation.
+- [x] Freeze ADR-017, Parse/Preview/Confirm/privacy/resource limits and the Phase 11 stop boundary.
+- [x] Keep Phase 7 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`; preserve Phase 9 Autofill behavior.
+- [x] Preserve untracked `操作手册.txt`, runtime SQLite, Provider secrets and existing user data.
+- [ ] Add locked parser dependencies only after compatible-license review.
+
+## Document extraction and structure parsing
+
+- [ ] RED/GREEN selectable-text/multi-page PDF, line order, encrypted/no-text and resource limits.
+- [ ] RED/GREEN DOCX paragraph/table/mixed order and corrupt/ZIP/XML/external-content safety.
+- [ ] RED/GREEN exact section headings, false-heading prevention, phone/email and conservative name.
+- [ ] RED/GREEN partial education/experience candidates, projects/skills and raw-text fallback.
+
+## Parse and atomic confirm APIs
+
+- [ ] RED/GREEN Web-only multipart Parse with extension/MIME/magic/10 MiB checks and stable errors.
+- [ ] Prove Parse writes no business data, stores no original file, logs no filename/content and calls no
+  remote service.
+- [ ] RED/GREEN Resume-only, Profile-only and combined Confirm with at least one selected target.
+- [ ] RED/GREEN selected scalar updates, append-only selected rows and no silent overwrite/deletion.
+- [ ] RED/GREEN combined transaction rollback and temporary-database restart persistence.
+
+## Shared client and Web
+
+- [ ] RED/GREEN shared preview/confirm types and strict api-client validation for untrusted responses.
+- [ ] RED/GREEN credential-free, redirect-rejecting multipart upload with bounded local timeout.
+- [ ] RED/GREEN choose/parse/preview/target/confirm/done states and unsupported/oversize/parser errors.
+- [ ] Make Resume name/text and Profile candidates editable; mask contacts by default.
+- [ ] Show Current vs Imported and deterministic possible-duplicate hints; require explicit selections.
+- [ ] Render all imported content as text and cover keyboard/responsive/loading/error/cancel states.
+
+## Validation and acceptance
+
+- [ ] Run all Python/TypeScript/lint/format/typecheck/build/API/migration gates with temporary SQLite and no
+  LLM configuration.
+- [ ] Regress BOSS, Nowcoder, Job, Application, JD AI, Resume, Evidence Map, Interview, Feedback, Profile
+  Vault and Safe Autofill.
+- [ ] Run parser/license/privacy/ZIP/XML/MIME/log/remote/original-file/Extension artifact security checks.
+- [ ] Complete isolated browser parse → preview → confirm → restart acceptance with fictional files.
+- [ ] Complete five-axis review/simplification with Critical 0 and Required 0; synchronize docs and commits.
+- [ ] Request separate owner review of one de-identified real DOCX and PDF plus real save/profile merge.
+- [ ] Stop at `USER ACTION REQUIRED — REAL RESUME IMPORT ACCEPTANCE`; do not start Phase 11.
+
+---
+
+# Historical Phase 9 — Profile Vault & Safe Job Form Autofill Checklist
 
 ## Contract and safety
 

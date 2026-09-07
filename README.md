@@ -7,7 +7,7 @@ JobPilot 不替代招聘网站，不建设职位数据库，也不代表用户�
 
 ## 当前状态
 
-项目已通过 **Phase 3 — Job & Application Domain Foundation**、**Phase 4 — BOSS Direct Job Capture**、**Phase 5 — Nowcoder Adapter & Shared Capture Contract**、**Phase 6 — JD Structured AI Analysis**、**Phase 8 — Interview Record & Feedback Loop** 与 **Phase 9 — Profile Vault & Safe Job Form Autofill**。Phase 9 已在真实中国移动校招表单完成 Scan → Preview → Confirm → Fill → 人工检查，填写 1/1 个确认字段且未触发 Submit/Continue。**Phase 7 — Resume Version & Evidence Map** 已实现，但真实语义质量验收仍为 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`。核心能力包括：
+项目已通过 **Phase 3 — Job & Application Domain Foundation**、**Phase 4 — BOSS Direct Job Capture**、**Phase 5 — Nowcoder Adapter & Shared Capture Contract**、**Phase 6 — JD Structured AI Analysis**、**Phase 8 — Interview Record & Feedback Loop** 与 **Phase 9 — Profile Vault & Safe Job Form Autofill**。Phase 9 已在真实中国移动校招表单完成 Scan → Preview → Confirm → Fill → 人工检查，填写 1/1 个确认字段且未触发 Submit/Continue。**Phase 10 — Local Resume Import** 已获批准并处于实现中，目标是本机 PDF/DOCX → Parse → Review → 明确确认后创建 Resume Version/更新 Profile；解析本身不保存。**Phase 7 — Resume Version & Evidence Map** 已实现，但真实语义质量验收仍为 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`。核心能力包括：
 
 - React Web：本机 API 状态、岗位库、纯文本简历版本、本地求职资料、岗位详情/编辑/删除、投递状态/使用简历记录、面试轮次与题目、自我复盘、Application 结果记录、事实型求职复盘，以及可选 JD Analysis/Evidence Map；
 - Chrome Extension：使用 `activeTab` + `scripting` 的用户主动 Popup，支持 BOSS/牛客岗位采集与当前申请表的 Scan → Preview → Confirm → Fill；无后台进程，唯一 host permission 是 `http://127.0.0.1:8000/*`；
@@ -176,9 +176,10 @@ pnpm run api:import:check
 - [面试记录](docs/technical/INTERVIEW_RECORD.md)
 - [事实反馈闭环](docs/technical/FEEDBACK_LOOP.md)
 - [求职资料与安全自动填写](docs/technical/AUTOFILL.md)
+- [本地 PDF / DOCX 简历导入](docs/technical/RESUME_IMPORT.md)
 - [自动填写第三方研究与许可](docs/technical/THIRD_PARTY_AUTOFILL_RESEARCH.md)
 - [JD 分析评测状态](docs/evaluation/JD_ANALYSIS_RESULTS.md)
 - [自动填写 Bad Cases](docs/evaluation/AUTOFILL_BAD_CASES.md)
 - [架构决策记录](docs/DECISIONS/README.md)
 
-本地产品边界由 [ADR-008](docs/DECISIONS/ADR-008-local-first-single-user-no-authentication.md) 固定，SQLite 存储由 [ADR-009](docs/DECISIONS/ADR-009-local-sqlite-storage.md) 固定，BOSS/牛客共享采集合同由 [ADR-012](docs/DECISIONS/ADR-012-nowcoder-shared-capture-contract.md) 固定，可选 JD 分析由 [ADR-013](docs/DECISIONS/ADR-013-jd-structured-ai-analysis.md) 固定，Resume Version 与 grounded Evidence Map 由 [ADR-014](docs/DECISIONS/ADR-014-resume-version-evidence-map.md) 固定，本地面试记录与事实反馈由 [ADR-015](docs/DECISIONS/ADR-015-interview-record-feedback-loop.md) 固定，Profile Vault 与安全表单自动填写由 [ADR-016](docs/DECISIONS/ADR-016-profile-vault-safe-autofill.md) 固定。被移除的历史认证实现和 ADR 可从 annotated tag `pre-local-first-cleanup` 恢复；它们不是当前产品文档。
+本地产品边界由 [ADR-008](docs/DECISIONS/ADR-008-local-first-single-user-no-authentication.md) 固定，SQLite 存储由 [ADR-009](docs/DECISIONS/ADR-009-local-sqlite-storage.md) 固定，BOSS/牛客共享采集合同由 [ADR-012](docs/DECISIONS/ADR-012-nowcoder-shared-capture-contract.md) 固定，可选 JD 分析由 [ADR-013](docs/DECISIONS/ADR-013-jd-structured-ai-analysis.md) 固定，Resume Version 与 grounded Evidence Map 由 [ADR-014](docs/DECISIONS/ADR-014-resume-version-evidence-map.md) 固定，本地面试记录与事实反馈由 [ADR-015](docs/DECISIONS/ADR-015-interview-record-feedback-loop.md) 固定，Profile Vault 与安全表单自动填写由 [ADR-016](docs/DECISIONS/ADR-016-profile-vault-safe-autofill.md) 固定，本地 PDF/DOCX 导入由 [ADR-017](docs/DECISIONS/ADR-017-local-resume-import.md) 固定。被移除的历史认证实现和 ADR 可从 annotated tag `pre-local-first-cleanup` 恢复；它们不是当前产品文档。
