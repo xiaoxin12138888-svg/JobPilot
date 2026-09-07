@@ -7,6 +7,8 @@ import type {
 
 export function scanApplicationForm(): FormScanResult {
   const maxHintLength = 160;
+  const maxFieldCount = 250;
+  const maxOptionCount = 200;
   const ignoredInputTypes = new Set(['hidden', 'submit', 'button', 'reset', 'image', 'password']);
 
   const normalizedText = (value: string | null | undefined): string =>
@@ -115,10 +117,12 @@ export function scanApplicationForm(): FormScanResult {
 
   const fieldOptions = (element: Element): FormFieldOption[] => {
     if (element instanceof HTMLSelectElement) {
-      return Array.from(element.options).map((option) => ({
-        label: normalizedText(option.label || option.textContent),
-        value: option.value,
-      }));
+      return Array.from(element.options)
+        .slice(0, maxOptionCount)
+        .map((option) => ({
+          label: normalizedText(option.label || option.textContent),
+          value: normalizedText(option.value),
+        }));
     }
     if (element.getAttribute('role') !== 'combobox') return [];
     const optionRoots = (element.getAttribute('aria-controls') ?? '')
@@ -126,15 +130,16 @@ export function scanApplicationForm(): FormScanResult {
       .filter(Boolean)
       .map((id) => document.getElementById(id))
       .filter((root): root is HTMLElement => root !== null);
-    return optionRoots.flatMap((root) =>
-      Array.from(root.querySelectorAll('[role="option"]')).map((option) => {
+    return optionRoots
+      .flatMap((root) => Array.from(root.querySelectorAll('[role="option"]')))
+      .slice(0, maxOptionCount)
+      .map((option) => {
         const label = normalizedText(option.getAttribute('aria-label') || option.textContent);
         return {
           label,
           value: normalizedText(option.getAttribute('data-value')) || label,
         };
-      }),
-    );
+      });
   };
 
   const uniqueAttributeValue = (attribute: 'id' | 'name', value: string): boolean =>
@@ -157,9 +162,11 @@ export function scanApplicationForm(): FormScanResult {
   };
 
   const fieldRef = (element: Element): string => {
-    const id = normalizedText(element.getAttribute('id'));
+    const id = (element.getAttribute('id') ?? '').trim();
+    if (id.length > maxHintLength) return `path:${domPath(element)}`;
     if (id && uniqueAttributeValue('id', id)) return `id:${id}`;
-    const name = normalizedText(element.getAttribute('name'));
+    const name = (element.getAttribute('name') ?? '').trim();
+    if (name.length > maxHintLength) return `path:${domPath(element)}`;
     if (name && uniqueAttributeValue('name', name)) return `name:${name}`;
     return `path:${domPath(element)}`;
   };
@@ -170,6 +177,7 @@ export function scanApplicationForm(): FormScanResult {
   const fields: FormFieldDescriptor[] = [];
 
   for (const element of candidates) {
+    if (fields.length >= maxFieldCount) break;
     if (element instanceof HTMLInputElement && ignoredInputTypes.has(element.type)) continue;
     if (
       (element instanceof HTMLInputElement ||
