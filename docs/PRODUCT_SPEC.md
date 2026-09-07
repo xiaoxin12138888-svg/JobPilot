@@ -5,7 +5,8 @@
 > Record & Feedback Loop 已于 2026-09-07 完成并通过自动化、隔离浏览器、真实 runtime、重启
 > 持久化、既有回归和安全验收。Phase 9 — Profile Vault & Safe Job Form Autofill 已于
 > 2026-09-07 完成自动化、安全门禁与真实中国移动校招表单人工验收，状态为 PASS。
-> Phase 10 — Local Resume Import 已获批准并处于实现中；真实 DOCX/PDF 验收前不得标记 PASS。
+> Phase 10 — Local Resume Import 已完成实现、自动化门禁与虚构文件隔离浏览器验收；真实 DOCX/PDF
+> 内容与合并验收仍由项目负责人完成，在此之前不得标记 PASS。
 
 ## 1. 产品定位
 
@@ -244,6 +245,8 @@ setter 和 focus/input/change/blur；native select、month/date 与 combobox 只
 
 ## 13. Local Resume Import
 
+状态：`IMPLEMENTED — REAL RESUME ACCEPTANCE REQUIRED`。
+
 只支持 10 MiB 内的文字型 PDF 和 DOCX。Parse 是 Web-only loopback multipart command，不持久化
 任何数据；解析结果、候选 section/Profile 与 warnings 在 Web 内存中供用户检查和编辑。PDF
 加密/无文字、损坏 DOCX、MIME/magic 不匹配与资源限制使用稳定脱敏错误，不做 OCR fallback。
@@ -295,3 +298,8 @@ Phase 9 只有在 Profile 持久化、Scanner/Resolver/Preview/Executor、Provid
 MANUAL 26、UNMAPPED 8），仅选择并成功填写 1 个姓名字段；attempts/success/failure 为 1/1/0，
 未触发 Submit/Continue、协议或上传，项目负责人确认页面结果正确。Phase 9 标记 PASS，并停止在
 未经批准的下一阶段之前；Phase 10 随后已由负责人另行明确批准。
+
+Phase 10 的 parser、Preview、selected-only merge、原子 Confirm、隐私/安全边界和既有回归已通过
+自动化，并用虚构 PDF/DOCX 完成取消不保存、确认写入、重启持久化、重复提示、恶意文本纯文本
+渲染与 320/768/1024/1440 响应式检查。最终 PASS 仍要求负责人分别检查一份脱敏真实 DOCX/PDF
+的原文顺序、section、Profile 候选，以及一次真实 Resume 保存和少量 Profile 合并。

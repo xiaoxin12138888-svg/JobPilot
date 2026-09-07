@@ -6,7 +6,8 @@
 > `0007_evidence_map_schema_v2` 允许旧 schema 1 与当前 schema 2 共存；
 > `0008_interview_feedback` 增加本地面试记录与 Application 结果字段；
 > `0009_autofill_profile` 增加 single-user 当前求职资料。
-> Phase 10 Local Resume Import 复用 `resume_versions` 与 `autofill_profiles`，不新增表或 migration。
+> Phase 10 Local Resume Import 已完成实现和自动化，复用 `resume_versions` 与
+> `autofill_profiles`，不新增表或 migration；真实简历人工验收仍待完成。
 
 ## 1. Storage rules
 

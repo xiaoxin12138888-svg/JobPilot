@@ -5,7 +5,8 @@
 > 已于 2026-09-07 完成并通过自动化、隔离浏览器、真实 runtime、重启持久化、既有回归和安全验收。
 > Phase 9 — Profile Vault & Safe Job Form Autofill 已于 2026-09-07 完成实现、自动化验证和真实
 > 中国移动校招表单人工验收并标记 PASS。BOSS 与牛客保持 `SUPPORTED — V1`。
-> Phase 10 — Local Resume Import 已获批准并处于实现中；真实 DOCX/PDF 人工验收前不得标记 PASS。
+> Phase 10 — Local Resume Import 已完成实现、自动化门禁和虚构文件隔离浏览器验收，等待真实
+> DOCX/PDF 人工内容与合并验收；此前不得标记 PASS。
 
 ## 1. Global gates
 
@@ -136,7 +137,7 @@ API、form.submit/requestSubmit、Submit/Continue，也不创建或更新 Applic
 
 ## 10. Phase 10 — Local Resume Import
 
-状态：`IMPLEMENTATION IN PROGRESS`（2026-09-07）。
+状态：`IMPLEMENTED — REAL RESUME ACCEPTANCE REQUIRED`（2026-09-07）。
 
 只交付用户选择的 10 MiB 内文字型 PDF/DOCX → 本地 Parse → 可编辑 Preview → 显式 Confirm →
 Resume Version / selected-only Profile merge。Parse 不保存、不使用 filename；原文件不保留。PDF
@@ -146,8 +147,8 @@ Profile 冲突显示 Current vs Imported，scalar 逐字段选、数组逐条追
 提示可能重复。Resume + Profile 使用一个 SQLite transaction，失败回滚。Extension、Job、
 Application、Evidence Map 和 Phase 9 Autofill 保持不变。
 
-自动化和隔离浏览器完成后，必须由负责人分别检查一份脱敏 DOCX/PDF 的原文顺序、section、
-候选字段，以及真实保存/合并/重启结果。此前只能报告
+全量自动化与虚构文件隔离浏览器链路已完成；仍必须由负责人分别检查一份脱敏 DOCX/PDF 的原文
+顺序、section、候选字段，以及真实保存/合并/重启结果。此前只能报告
 `USER ACTION REQUIRED — REAL RESUME IMPORT ACCEPTANCE`。
 
 ## 11. Later phases

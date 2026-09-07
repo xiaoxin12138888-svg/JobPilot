@@ -2,7 +2,8 @@
 
 > 状态：`GET /health`、Job/Application、BOSS/牛客 capture、Job Analysis、Resume Version、
 > Evidence Map、Interview、Feedback Summary、Autofill Profile 与 Local Resume Import contract 已由
-> ADR-017 冻结。JSON 字段使用 camelCase。
+> ADR-017 冻结。Resume Import 实现和自动化已完成，等待真实简历人工验收。JSON 字段使用
+> camelCase。
 
 ## 1. Runtime boundary
 
@@ -23,7 +24,8 @@ target 均为 403。Profile PUT 不向 Extension 开放。
 
 `POST /api/v1/resume-imports/parse` 是唯一 multipart 例外：它不持久化数据，只接受精确合法 Web
 Origin、非 cross-site Fetch Metadata 和 loopback Host。其他 POST/PUT/PATCH（包括 import confirm）
-继续只接受 `application/json`。
+继续只接受 `application/json`。Parse 还要求有界 `Content-Length`，并在 multipart 解析前拒绝超过
+10 MiB 文件上限加 64 KiB 协议开销的请求；文件读取后继续执行精确 10 MiB 二次校验。
 
 ## 2. Health
 
@@ -411,7 +413,8 @@ Extension Origin。接口不提供 list/delete/history/sync，不接收 `userId`
 ### `POST /api/v1/resume-imports/parse`
 
 请求为 `multipart/form-data`，只接受一个名为 `file` 的 part。只支持声明 MIME、extension 和
-magic/package structure 一致的 `.pdf` 与 `.docx`，上限 10 MiB。成功返回 200：
+magic/package structure 一致的 `.pdf` 与 `.docx`，文件上限 10 MiB；缺失/畸形/超过安全边界的
+`Content-Length` 在 form parsing 前拒绝。成功返回 200：
 
 ```json
 {

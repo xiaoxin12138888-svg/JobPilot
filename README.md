@@ -7,11 +7,11 @@ JobPilot 不替代招聘网站，不建设职位数据库，也不代表用户�
 
 ## 当前状态
 
-项目已通过 **Phase 3 — Job & Application Domain Foundation**、**Phase 4 — BOSS Direct Job Capture**、**Phase 5 — Nowcoder Adapter & Shared Capture Contract**、**Phase 6 — JD Structured AI Analysis**、**Phase 8 — Interview Record & Feedback Loop** 与 **Phase 9 — Profile Vault & Safe Job Form Autofill**。Phase 9 已在真实中国移动校招表单完成 Scan → Preview → Confirm → Fill → 人工检查，填写 1/1 个确认字段且未触发 Submit/Continue。**Phase 10 — Local Resume Import** 已获批准并处于实现中，目标是本机 PDF/DOCX → Parse → Review → 明确确认后创建 Resume Version/更新 Profile；解析本身不保存。**Phase 7 — Resume Version & Evidence Map** 已实现，但真实语义质量验收仍为 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`。核心能力包括：
+项目已通过 **Phase 3 — Job & Application Domain Foundation**、**Phase 4 — BOSS Direct Job Capture**、**Phase 5 — Nowcoder Adapter & Shared Capture Contract**、**Phase 6 — JD Structured AI Analysis**、**Phase 8 — Interview Record & Feedback Loop** 与 **Phase 9 — Profile Vault & Safe Job Form Autofill**。Phase 9 已在真实中国移动校招表单完成 Scan → Preview → Confirm → Fill → 人工检查，填写 1/1 个确认字段且未触发 Submit/Continue。**Phase 10 — Local Resume Import** 已完成实现、自动化门禁和虚构文件隔离浏览器验收，当前等待项目负责人使用脱敏真实 DOCX/PDF 完成人工内容与合并验收，因此尚未标记 PASS。**Phase 7 — Resume Version & Evidence Map** 已实现，但真实语义质量验收仍为 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`。核心能力包括：
 
-- React Web：本机 API 状态、岗位库、纯文本简历版本、本地求职资料、岗位详情/编辑/删除、投递状态/使用简历记录、面试轮次与题目、自我复盘、Application 结果记录、事实型求职复盘，以及可选 JD Analysis/Evidence Map；
+- React Web：本机 API 状态、岗位库、纯文本简历版本、本地 PDF/DOCX 导入预览、本地求职资料、岗位详情/编辑/删除、投递状态/使用简历记录、面试轮次与题目、自我复盘、Application 结果记录、事实型求职复盘，以及可选 JD Analysis/Evidence Map；
 - Chrome Extension：使用 `activeTab` + `scripting` 的用户主动 Popup，支持 BOSS/牛客岗位采集与当前申请表的 Scan → Preview → Confirm → Fill；无后台进程，唯一 host permission 是 `http://127.0.0.1:8000/*`；
-- FastAPI：公开 `GET /health`、Job/Application/Resume Version、Autofill Profile、Interview 与事实型 Feedback Summary，以及每个 Job 的可选分析/Evidence Map API，默认绑定 `127.0.0.1`；
+- FastAPI：公开 `GET /health`、Job/Application/Resume Version、Autofill Profile、Web-only Resume Import、Interview 与事实型 Feedback Summary，以及每个 Job 的可选分析/Evidence Map API，默认绑定 `127.0.0.1`；
 - SQLite、SQLAlchemy 与 Alembic：launcher 启动前自动升级 `runtime-data/jobpilot.db`，业务表另含 single-user singleton `autofill_profiles`；
 - `packages/shared-types` 与 `packages/api-client`：提供 camelCase 业务契约、credential-free 请求和不可信响应校验。
 
@@ -27,6 +27,12 @@ Phase 9 同样不调用 LLM：用户在 Web 的“求职资料”中维护最小
 模糊候选设为“需确认”，敏感、文件、单选/复选、缺值和未知字段分别保持手动或未识别。只有用户
 在 Preview 中确认并点击“填写已确认字段”后才写入页面；JobPilot 永不点击 Submit/Continue，
 也不创建或推进 Application。Profile 和 Fill Plan 只存在于本机 SQLite 与当次 Popup 内存。
+
+Phase 10 在无 LLM 配置下工作：用户选择 10 MiB 内的文字型 PDF 或 DOCX 后，文件只发送到本机
+loopback API，先生成可编辑的纯文本、section 与 Profile 候选预览。Parse 不保存；只有用户明确
+选择创建 Resume Version、更新部分 Profile 或两者并点击确认后才以单一事务写入。原文件和文件名
+不持久化，不执行 OCR、宏、外部链接或远程解析。自动化和虚构文件浏览器链路已完成，真实简历内容
+质量仍等待负责人确认。
 
 ## 本地优先意味着什么
 

@@ -1,5 +1,8 @@
 # JobPilot 工程原则
 
+> 当前 Phase 10 Local Resume Import 已完成实现、自动化门禁与虚构文件隔离浏览器验证，等待真实
+> 简历人工验收；Phase 7 保持 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`，Phase 11 未开始。
+
 ## 1. Scope
 
 本文约束 Web、Chrome Extension、FastAPI、共享 packages、数据库工具、测试、文档和未来业务模块。偏离长期边界前必须新增或更新 ADR。
@@ -52,7 +55,8 @@
 - 业务规则进入 domain/application，持久化进入 repository adapter；
 - supported launcher 在服务启动前升级 SQLite migration；`/health` 请求不查询数据库；
 - 写接口强制 loopback Host、安全 Origin/Fetch Metadata 与 JSON boundary；CORS 不替代本机进程认证。
-- Resume Parse 是唯一 Web-only multipart 例外且不持久化；Confirm 仍为 JSON-only，并用一个
+- Resume Parse 是唯一 Web-only multipart 例外且不持久化；请求体在 multipart 解析前受有界
+  Content-Length 保护，文件读取后再执行精确上限校验；Confirm 仍为 JSON-only，并用一个
   transaction 写可选 Resume Version 与 selected-only Profile patch。
 
 ### Shared packages

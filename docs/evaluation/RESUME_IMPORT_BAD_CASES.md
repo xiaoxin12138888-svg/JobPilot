@@ -1,7 +1,7 @@
 # Resume Import Bad Cases
 
-> 状态：Phase 10 实现中。这里只记录真实脱敏验收事实；synthetic fixtures 与推测不计为真实
-> Bad Case。
+> 状态：实现、自动化与虚构文件隔离浏览器验收已完成，等待真实简历人工验收。这里只记录真实
+> 脱敏验收事实；synthetic fixtures 与推测不计为真实 Bad Case。
 
 ## Severity
 

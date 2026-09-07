@@ -4,7 +4,8 @@
 > `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`。Phase 8 在同一本地 SQLite 边界增加 Interview
 > Record 与请求时计算的事实 Feedback Summary。Phase 9 的 Profile Vault 与安全 Autofill 已完成
 > 实现、自动化验证及真实 ATS 人工验收并标记 PASS；Phase 8/9 均不依赖 Provider。
-> Phase 10 本地 PDF/DOCX Parse → Preview → Confirm contract 已由 ADR-017 批准并处于实现中。
+> Phase 10 本地 PDF/DOCX Parse → Preview → Confirm 已完成实现、自动化门禁与虚构文件隔离浏览器
+> 验证；真实简历内容和合并验收仍等待项目负责人，尚未标记 PASS。
 
 ## 1. 运行时
 
@@ -84,6 +85,8 @@ Phase 10 不新增表：无状态 parse preview 只返回 Web，confirm 在同�
 - CORS 只允许精确配置的 Web origin、无 credentials、无 wildcard/regex；
 - 写请求 Host 必须是 loopback；
 - 浏览器 cross-site Origin 或 `Sec-Fetch-Site: cross-site` 写入被拒绝；
+- Resume Parse 要求一个有界 `Content-Length`，在 multipart/form parsing 前拒绝超过 10 MiB 文件
+  加 64 KiB 协议开销的请求；解析后仍对文件内容执行精确 10 MiB 二次校验；
 - Manifest 公开公钥把 JobPilot Extension 固定为 `lgchonbleblfegkckndaaandoaekmgjf`；扩展只可
   写入 `POST /api/v1/jobs`，并要求该精确 Origin 与 `Sec-Fetch-Site: none`，且不加入 CORS；
 - `GET /api/v1/autofill-profile` 对同一精确 Extension Origin 开放只读，并继续要求 loopback Host

@@ -25,6 +25,14 @@ LLM, OCR, remote service or original-file persistence.
 - No migration or ResumeImport table is needed. Preview state lives only in Web memory; original files are
   never persisted.
 
+## Implementation status
+
+PDF/DOCX extraction、deterministic structure parser、Web-only Parse、atomic Confirm、strict shared
+client 与可编辑 Web preview 已完成。全量结果为 Python 256、API client 65、Extension 112、Web
+55 tests 全部 PASS；locked offline installs、ESLint/Prettier/Ruff、typecheck、Web/Extension build、
+artifact security、API import、migration cycle 与静态安全扫描均通过。虚构 PDF/DOCX 隔离浏览器
+验收完成；真实 DOCX/PDF 内容质量继续由项目负责人验收，不能由自动化结果替代。
+
 ## Ordered slices
 
 ### Slice 1: Contract and dependency gate

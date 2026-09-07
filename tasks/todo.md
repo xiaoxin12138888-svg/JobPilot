@@ -8,44 +8,50 @@
 - [x] Freeze ADR-017, Parse/Preview/Confirm/privacy/resource limits and the Phase 11 stop boundary.
 - [x] Keep Phase 7 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`; preserve Phase 9 Autofill behavior.
 - [x] Preserve untracked `操作手册.txt`, runtime SQLite, Provider secrets and existing user data.
-- [ ] Add locked parser dependencies only after compatible-license review.
+- [x] Add locked parser dependencies only after compatible-license review.
 
 ## Document extraction and structure parsing
 
-- [ ] RED/GREEN selectable-text/multi-page PDF, line order, encrypted/no-text and resource limits.
-- [ ] RED/GREEN DOCX paragraph/table/mixed order and corrupt/ZIP/XML/external-content safety.
-- [ ] RED/GREEN exact section headings, false-heading prevention, phone/email and conservative name.
-- [ ] RED/GREEN partial education/experience candidates, projects/skills and raw-text fallback.
+- [x] RED/GREEN selectable-text/multi-page PDF, line order, encrypted/no-text and resource limits.
+- [x] RED/GREEN DOCX paragraph/table/mixed order and corrupt/ZIP/XML/external-content safety.
+- [x] RED/GREEN exact section headings, false-heading prevention, phone/email and conservative name.
+- [x] RED/GREEN partial education/experience candidates, projects/skills and raw-text fallback.
 
 ## Parse and atomic confirm APIs
 
-- [ ] RED/GREEN Web-only multipart Parse with extension/MIME/magic/10 MiB checks and stable errors.
-- [ ] Prove Parse writes no business data, stores no original file, logs no filename/content and calls no
+- [x] RED/GREEN Web-only multipart Parse with extension/MIME/magic/10 MiB checks and stable errors.
+- [x] Prove Parse writes no business data, stores no original file, logs no filename/content and calls no
   remote service.
-- [ ] RED/GREEN Resume-only, Profile-only and combined Confirm with at least one selected target.
-- [ ] RED/GREEN selected scalar updates, append-only selected rows and no silent overwrite/deletion.
-- [ ] RED/GREEN combined transaction rollback and temporary-database restart persistence.
+- [x] RED/GREEN Resume-only, Profile-only and combined Confirm with at least one selected target.
+- [x] RED/GREEN selected scalar updates, append-only selected rows and no silent overwrite/deletion.
+- [x] RED/GREEN combined transaction rollback and temporary-database restart persistence.
 
 ## Shared client and Web
 
-- [ ] RED/GREEN shared preview/confirm types and strict api-client validation for untrusted responses.
-- [ ] RED/GREEN credential-free, redirect-rejecting multipart upload with bounded local timeout.
-- [ ] RED/GREEN choose/parse/preview/target/confirm/done states and unsupported/oversize/parser errors.
-- [ ] Make Resume name/text and Profile candidates editable; mask contacts by default.
-- [ ] Show Current vs Imported and deterministic possible-duplicate hints; require explicit selections.
-- [ ] Render all imported content as text and cover keyboard/responsive/loading/error/cancel states.
+- [x] RED/GREEN shared preview/confirm types and strict api-client validation for untrusted responses.
+- [x] RED/GREEN credential-free, redirect-rejecting multipart upload with bounded local timeout.
+- [x] RED/GREEN choose/parse/preview/target/confirm/done states and unsupported/oversize/parser errors.
+- [x] Make Resume name/text and Profile candidates editable; mask contacts by default.
+- [x] Show Current vs Imported and deterministic possible-duplicate hints; require explicit selections.
+- [x] Render all imported content as text and cover keyboard/responsive/loading/error/cancel states.
 
 ## Validation and acceptance
 
-- [ ] Run all Python/TypeScript/lint/format/typecheck/build/API/migration gates with temporary SQLite and no
+- [x] Run all Python/TypeScript/lint/format/typecheck/build/API/migration gates with temporary SQLite and no
   LLM configuration.
-- [ ] Regress BOSS, Nowcoder, Job, Application, JD AI, Resume, Evidence Map, Interview, Feedback, Profile
+- [x] Regress BOSS, Nowcoder, Job, Application, JD AI, Resume, Evidence Map, Interview, Feedback, Profile
   Vault and Safe Autofill.
-- [ ] Run parser/license/privacy/ZIP/XML/MIME/log/remote/original-file/Extension artifact security checks.
-- [ ] Complete isolated browser parse → preview → confirm → restart acceptance with fictional files.
-- [ ] Complete five-axis review/simplification with Critical 0 and Required 0; synchronize docs and commits.
-- [ ] Request separate owner review of one de-identified real DOCX and PDF plus real save/profile merge.
-- [ ] Stop at `USER ACTION REQUIRED — REAL RESUME IMPORT ACCEPTANCE`; do not start Phase 11.
+- [x] Run parser/license/privacy/ZIP/XML/MIME/log/remote/original-file/Extension artifact security checks.
+- [x] Complete isolated browser parse → preview → confirm → restart acceptance with fictional files.
+- [x] Complete five-axis review/simplification with Critical 0 and Required 0; synchronize docs and commits.
+- [ ] Obtain separate owner acceptance of one de-identified real DOCX and PDF plus real save/profile merge.
+- [x] Stop at `USER ACTION REQUIRED — REAL RESUME IMPORT ACCEPTANCE`; do not start Phase 11.
+
+Fictional isolated-browser evidence (2026-09-07): PDF 1,208 bytes / 2 pages / 228 characters / 0 ms;
+DOCX 37,037 bytes / 189 characters / 31 ms first parse and 16 ms after restart. Parse-cancel wrote no
+Resume/Profile; selected DOCX Confirm persisted Resume/Profile across restart; duplicate rows defaulted
+unselected; hostile HTML-looking text remained text; unsupported type, responsive widths and clean console
+all passed. This is technical fixture evidence only and does not replace the unchecked real-file gate.
 
 ---
 
