@@ -3,7 +3,7 @@
 > 状态：ADR-008 至 ADR-016 Accepted。Phase 7 为
 > `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`。Phase 8 在同一本地 SQLite 边界增加 Interview
 > Record 与请求时计算的事实 Feedback Summary。Phase 9 的 Profile Vault 与安全 Autofill 已完成
-> 实现和自动化验证，真实 ATS 人工验收仍待完成；Phase 8/9 均不依赖 Provider。
+> 实现、自动化验证及真实 ATS 人工验收并标记 PASS；Phase 8/9 均不依赖 Provider。
 
 ## 1. 运行时
 

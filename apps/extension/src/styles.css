@@ -16,7 +16,7 @@
 }
 
 body {
-  width: min(24rem, 100vw);
+  width: 24rem;
   min-height: 12rem;
   margin: 0;
 }

@@ -214,6 +214,54 @@ describe('Popup safe autofill workflow', () => {
     await waitFor(() => expect(root.dataset.state).toBe('autofill-preview'));
     fireEvent.click(screen.getByRole('button', { name: '填写已确认字段' }));
     await waitFor(() => expect(root.dataset.state).toBe('autofill-page-changed'));
-    expect(screen.getByText('页面表单已变化，请重新扫描。')).toBeVisible();
+    expect(screen.getByText('标签页或页面地址已变化，请重新扫描。')).toBeVisible();
+  });
+
+  it('distinguishes a rerendered field from a changed tab or URL without exposing values', async () => {
+    const root = renderPopupRoot();
+    const autofill = autofillDependencies({
+      fillCurrentForm: vi.fn().mockResolvedValue({
+        status: 'PAGE_CHANGED',
+        attempted: 1,
+        filled: 0,
+        failures: [{ fieldRef: 'id:name', code: 'STALE_FIELD' }],
+      }),
+    });
+    await initializePopup({
+      getHealth: vi.fn().mockResolvedValue({ status: 'ok', service: 'jobpilot-api' }),
+      autofill,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '扫描当前表单' }));
+    await waitFor(() => expect(root.dataset.state).toBe('autofill-preview'));
+    fireEvent.click(screen.getByRole('button', { name: '填写已确认字段' }));
+    await waitFor(() => expect(root.dataset.state).toBe('autofill-page-changed'));
+
+    expect(screen.getByText('目标字段结构已变化，请重新扫描。')).toBeVisible();
+    expect(document.body.textContent).not.toContain('id:name');
+  });
+
+  it('distinguishes a missing target ref without exposing the ref or value', async () => {
+    const root = renderPopupRoot();
+    const autofill = autofillDependencies({
+      fillCurrentForm: vi.fn().mockResolvedValue({
+        status: 'PAGE_CHANGED',
+        attempted: 1,
+        filled: 0,
+        failures: [{ fieldRef: 'id:name', code: 'MISSING_REF' }],
+      }),
+    });
+    await initializePopup({
+      getHealth: vi.fn().mockResolvedValue({ status: 'ok', service: 'jobpilot-api' }),
+      autofill,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '扫描当前表单' }));
+    await waitFor(() => expect(root.dataset.state).toBe('autofill-preview'));
+    fireEvent.click(screen.getByRole('button', { name: '填写已确认字段' }));
+    await waitFor(() => expect(root.dataset.state).toBe('autofill-page-changed'));
+
+    expect(screen.getByText('目标字段暂时不可用，请重新扫描。')).toBeVisible();
+    expect(document.body.textContent).not.toContain('id:name');
   });
 });

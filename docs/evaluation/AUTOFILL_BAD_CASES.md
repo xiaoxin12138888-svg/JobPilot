@@ -1,7 +1,7 @@
 # Autofill Bad Cases
 
-> 状态：真实 ATS 验收待进行。本文只记录真实观察，不把 synthetic fixture 或推测写成真实 Bad
-> Case；当前没有可报告的真实 BC。
+> 状态：真实 ATS 验收完成。本文只记录真实观察，不把 synthetic fixture 或推测写成真实 Bad
+> Case。
 
 ## 优先级
 
@@ -27,4 +27,18 @@
 
 ## Real Bad Cases
 
-尚无。完成真实表单的 Scan/Preview/Fill（不 Submit）并获得项目负责人确认后，在此追加事实记录。
+### AF-BC-001：唯一主引用稳定但辅助标识变化导致安全误拒绝
+
+| 字段 | 内容 |
+| --- | --- |
+| BC ID | `AF-BC-001` |
+| Platform | 中国移动校招表单 |
+| Field label | 姓名 |
+| Control type | text input |
+| Expected canonical key | `name` |
+| Actual result | Preview 映射正确，但 Fill 被错误报告为字段结构变化；未写入其他字段，未 Submit |
+| Status | P2 |
+| Observed problem | 页面保留唯一主 ref 与 text 类型，但框架改写辅助字段标识后，旧签名校验持续拒绝填写 |
+| Root cause | Executor 在已有唯一 id/name 主引用之外仍要求另一个辅助 id/name 完全不变，动态表单因此产生 false stale |
+| Fix | 唯一 id/name 作为主身份；仍严格核对 URL、唯一性、kind/type，并为重渲染提供所有字段共享的最长 1 秒恢复预算 |
+| Regression result | PASS；真实 attempts/success/failure 1/1/0，`Submit triggered: NO` |

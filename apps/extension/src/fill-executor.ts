@@ -36,6 +36,8 @@ export async function fillApplicationForm(
   request: FillExecutionRequest,
 ): Promise<FillExecutionResult> {
   type FillableControl = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+  const fieldRerenderPollMs = 50;
+  let fieldRerenderPollsRemaining = 20;
 
   const normalize = (value: string): string =>
     value
@@ -98,17 +100,36 @@ export async function fillApplicationForm(
     return 'TEXT';
   };
 
-  const matchesSignature = (element: Element, field: FormFieldDescriptor): boolean =>
-    liveKind(element) === field.kind &&
-    (element instanceof HTMLInputElement ? element.type : null) === field.type &&
-    (element.getAttribute('name')?.trim() || null) === field.name &&
-    (element.getAttribute('id')?.trim() || null) === field.id &&
-    (element.hasAttribute('required') || element.getAttribute('aria-required') === 'true') ===
-      field.required &&
-    (element.getAttribute('placeholder')?.replace(/\s+/g, ' ').trim() || null) ===
-      field.placeholder &&
-    (element.getAttribute('autocomplete')?.replace(/\s+/g, ' ').trim() || null) ===
-      field.autocomplete;
+  const normalizedAttribute = (element: Element, name: string): string | null =>
+    element.getAttribute(name)?.replace(/\s+/g, ' ').trim() || null;
+
+  const matchesSignature = (element: Element, field: FormFieldDescriptor): boolean => {
+    if (
+      liveKind(element) !== field.kind ||
+      (element instanceof HTMLInputElement ? element.type : null) !== field.type
+    ) {
+      return false;
+    }
+
+    const refKind = field.ref.slice(0, field.ref.indexOf(':'));
+    const liveName = normalizedAttribute(element, 'name');
+    const liveId = normalizedAttribute(element, 'id');
+    if (refKind === 'id') {
+      return liveId === field.id;
+    }
+    if (refKind === 'name') {
+      return liveName === field.name;
+    }
+
+    return (
+      liveName === field.name &&
+      liveId === field.id &&
+      (element.hasAttribute('required') || element.getAttribute('aria-required') === 'true') ===
+        field.required &&
+      normalizedAttribute(element, 'placeholder') === field.placeholder &&
+      normalizedAttribute(element, 'autocomplete') === field.autocomplete
+    );
+  };
 
   const verificationPattern =
     /验证码|图形验证|captcha|verification[\s_-]*code|one[\s_-]*time[\s_-]*password|\botp\b/i;
@@ -220,9 +241,19 @@ export async function fillApplicationForm(
   };
 
   const fillOne = async (instruction: FillInstruction): Promise<FillFailureCode | null> => {
-    const element = resolveRef(instruction.field.ref);
+    let element = resolveRef(instruction.field.ref);
+    while (
+      (element === null || !matchesSignature(element, instruction.field)) &&
+      fieldRerenderPollsRemaining > 0
+    ) {
+      await new Promise((resolve) => window.setTimeout(resolve, fieldRerenderPollMs));
+      fieldRerenderPollsRemaining -= 1;
+      if (window.location.href !== request.pageUrl) return 'MISSING_REF';
+      element = resolveRef(instruction.field.ref);
+    }
     if (element === null) return 'MISSING_REF';
     if (!matchesSignature(element, instruction.field)) return 'STALE_FIELD';
+    if (window.location.href !== request.pageUrl) return 'MISSING_REF';
     if (!isVisible(element) || isForbidden(element, instruction.field)) return 'FORBIDDEN_FIELD';
     if (element.getAttribute('aria-disabled') === 'true') return 'READONLY_FIELD';
     if (

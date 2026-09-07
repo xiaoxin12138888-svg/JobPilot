@@ -3,8 +3,8 @@
 > 当前阶段：Phase 6 已于 2026-09-05 完成并通过。Phase 7 — Resume Version & Evidence Map
 > 保持 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`。Phase 8 — Interview Record & Feedback Loop
 > 已于 2026-09-07 完成并通过自动化、隔离浏览器、真实 runtime、重启持久化、既有回归和安全验收。
-> Phase 9 — Profile Vault & Safe Job Form Autofill 已完成实现和自动化验证，真实 ATS 人工验收
-> 待完成。BOSS 与牛客保持 `SUPPORTED — V1`。
+> Phase 9 — Profile Vault & Safe Job Form Autofill 已于 2026-09-07 完成实现、自动化验证和真实
+> 中国移动校招表单人工验收并标记 PASS。BOSS 与牛客保持 `SUPPORTED — V1`。
 
 ## 1. Global gates
 
@@ -114,7 +114,7 @@ API，并以标准 Alembic migration 升级原有 `runtime-data/jobpilot.db`；�
 
 ## 9. Phase 9 — Profile Vault & Safe Job Form Autofill
 
-状态：`IMPLEMENTED — REAL AUTOFILL ACCEPTANCE PENDING`（2026-09-07）。
+状态：`PASS`（2026-09-07）。
 
 交付 single-user 本地 `AutofillProfile`、Web“求职资料”、Extension 当前表单 Scanner、有限规则
 Resolver、遮罩 Preview、用户勾选确认与 Safe Fill Executor。Extension 继续只有 `activeTab`、
@@ -127,9 +127,10 @@ READY，fuzzy 必须人工确认，敏感/文件/勾选/未知项不自动填；
 只使用 DOM 原生 setter 与标准事件，无法唯一确认 option 时失败关闭。它不调用 LLM、私有框架
 API、form.submit/requestSubmit、Submit/Continue，也不创建或更新 Application。
 
-自动实现、单元/组件/安全产物门已完成。只有本地 fixture 浏览器验证、全部仓库回归和至少一个
-真实 ATS 的 Scan/Preview/Fill（不 Submit）完成，并由负责人确认映射、建议值、页面结果与无意外
-动作后，Phase 9 才能标记 PASS。
+自动实现、单元/组件/安全产物门、本地 fixture 浏览器验证和全部仓库回归已完成。真实中国移动
+校招表单检测 37 个字段（READY 1、REVIEW_REQUIRED 2、MANUAL 26、UNMAPPED 8），仅选择并成功
+填写 1 个姓名字段；attempts/success/failure 为 1/1/0，`Submit triggered: NO`。负责人确认映射、
+建议值、页面结果和无意外动作，Phase 9 标记 PASS；不得自动进入 Phase 10。
 
 ## 10. Later phases
 

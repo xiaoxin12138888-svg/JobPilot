@@ -12,16 +12,18 @@ Profile data in the Extension and never submit or advance a recruitment form.
 
 ## Implementation status
 
-Profile/API/Web and Extension Scanner/Resolver/Preview/Executor implementation is complete through
-`b46200c`. On 2026-09-07, locked dependency checks, 216 TypeScript tests, 224 Python tests, TypeScript
-typecheck, ESLint, Prettier, Ruff, Web/Extension production builds, Extension artifact security, API
-import/start and migration `upgrade -> downgrade -> upgrade` passed. All Python runtime checks used
-explicit temporary SQLite databases with LLM configuration absent.
+Profile/API/Web and Extension Scanner/Resolver/Preview/Executor implementation is complete. On
+2026-09-07, locked dependency checks, 222 TypeScript and 224 Python tests, TypeScript typecheck, ESLint,
+Prettier, Ruff, Web/Extension production builds, Extension artifact security, API import/start and
+migration `upgrade -> downgrade -> upgrade` passed. All Python runtime checks used explicit temporary
+SQLite databases with LLM configuration absent.
 
 An isolated Web browser run persisted one fictional Profile with two education and two experience
 entries across reload. The local form fixture passed UTF-8, DOM/accessibility structure, no-overflow and
-clean-console checks after adding an explicit document charset. Real Chrome Extension runtime and one
-real recruitment/ATS Scan -> Preview -> Fill -> human inspection remain pending, so Phase 9 is not PASS.
+clean-console checks after adding an explicit document charset. A real Chrome run on the China Mobile
+campus recruitment form detected 37 fields (READY 1, REVIEW_REQUIRED 2, MANUAL 26, UNMAPPED 8), selected
+and filled one name field, recorded attempts/success/failure 1/1/0 and did not trigger Submit/Continue.
+The owner accepted the mapping and page result. Phase 9 is PASS and stops before Phase 10.
 
 ## Frozen contract
 

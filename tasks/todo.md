@@ -39,7 +39,7 @@
 
 - [x] Add the local fixture and verify UTF-8, DOM/accessibility structure, no-overflow and clean console
   in an isolated browser.
-- [ ] Complete real Extension runtime Scan/Preview/Fill/no-Submit acceptance against a user-opened form.
+- [x] Complete real Extension runtime Scan/Preview/Fill/no-Submit acceptance against a user-opened form.
 - [x] Run locked installs, all Python/TypeScript/lint/format/typecheck/build/API/migration gates using
   explicit temporary SQLite for Python runtime and migration checks.
 - [x] Run artifact permission/secret/storage/remote/telemetry/private-API/auto-submit security scans.
@@ -47,10 +47,10 @@
   the full automated TypeScript/Python suites.
 - [x] Complete code review and simplification with Critical 0 and Required 0 after adding final-write
   sensitive-field enforcement and aria-disabled rejection.
-- [ ] Run one real recruitment/ATS form, record factual metrics and real Bad Cases without Submit.
-- [ ] Obtain owner confirmation for mapping correctness, proposed values, page result and no unexpected action.
+- [x] Run one real recruitment/ATS form, record factual metrics and real Bad Cases without Submit.
+- [x] Obtain owner confirmation for mapping correctness, proposed values, page result and no unexpected action.
 - [x] Synchronize canonical/technical documentation and commit coherent implementation increments.
-- [ ] Stop before Phase 10 after the real Autofill acceptance decision.
+- [x] Stop before Phase 10 after the real Autofill acceptance decision.
 
 ---
 

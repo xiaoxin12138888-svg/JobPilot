@@ -135,11 +135,25 @@ export function renderAutofillResult(
   closePopup: () => void,
 ): void {
   if (result.status === 'PAGE_CHANGED') {
+    const fieldStructureChanged = result.attempted > 0;
+    const onlyMissingRefs =
+      result.failures.length > 0 &&
+      result.failures.every((failure) => failure.code === 'MISSING_REF');
+    const onlyStaleFields =
+      result.failures.length > 0 &&
+      result.failures.every((failure) => failure.code === 'STALE_FIELD');
+    const changedTitle = onlyMissingRefs
+      ? '目标字段暂时不可用，请重新扫描。'
+      : onlyStaleFields
+        ? '目标字段结构已变化，请重新扫描。'
+        : '页面字段已重新渲染，请重新扫描。';
     renderAutofillActionState(
       root,
       'autofill-page-changed',
-      '页面表单已变化，请重新扫描。',
-      '为避免填错位置，本次没有继续填写失效字段。',
+      fieldStructureChanged ? changedTitle : '标签页或页面地址已变化，请重新扫描。',
+      fieldStructureChanged
+        ? '为避免填错位置，本次没有继续填写已失效的目标字段。'
+        : '为避免把资料写入错误页面，本次没有开始填写。',
       [actionButton('重新扫描', 'primary-button', () => void rescan())],
       true,
     );

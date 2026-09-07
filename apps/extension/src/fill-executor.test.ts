@@ -13,6 +13,7 @@ beforeEach(() => {
 afterEach(() => {
   document.body.replaceChildren();
   window.history.replaceState(null, '', '/');
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -141,12 +142,13 @@ describe('fillApplicationForm', () => {
     });
   });
 
-  it('rejects missing and stale refs without filling a replacement element', async () => {
+  it('rejects missing and type-changed refs without filling a replacement element', async () => {
     const scanned = descriptor('id:full-name');
     document.getElementById('full-name')?.remove();
     const replacement = document.createElement('input');
     replacement.id = 'full-name';
     replacement.name = 'different-name';
+    replacement.type = 'number';
     document.getElementById('application-form')?.prepend(replacement);
 
     const result = await fillApplicationForm(
@@ -162,6 +164,50 @@ describe('fillApplicationForm', () => {
       { fieldRef: 'id:missing', code: 'MISSING_REF' },
       { fieldRef: 'id:full-name', code: 'STALE_FIELD' },
     ]);
+  });
+
+  it('keeps a uniquely identified field valid when only mutable form hints change', async () => {
+    const scanned = descriptor('id:full-name');
+    const input = document.getElementById('full-name') as HTMLInputElement;
+    input.required = false;
+    input.placeholder = '页面校验更新后的提示';
+    input.autocomplete = 'off';
+
+    const result = await fillApplicationForm(request([{ field: scanned, value: '示例候选人' }]));
+
+    expect(input.value).toBe('示例候选人');
+    expect(result).toEqual({ status: 'COMPLETED', attempted: 1, filled: 1, failures: [] });
+  });
+
+  it('keeps an id-identified field valid when a framework rewrites its auxiliary name', async () => {
+    vi.useFakeTimers();
+    const scanned = descriptor('id:full-name');
+    const input = document.getElementById('full-name') as HTMLInputElement;
+    input.name = 'framework_generated_name';
+
+    const pendingResult = fillApplicationForm(request([{ field: scanned, value: '示例候选人' }]));
+    await vi.advanceTimersByTimeAsync(1_000);
+    const result = await pendingResult;
+
+    expect(input.value).toBe('示例候选人');
+    expect(result).toEqual({ status: 'COMPLETED', attempted: 1, filled: 1, failures: [] });
+  });
+
+  it('waits for a uniquely identified field that is briefly replaced during rerender', async () => {
+    vi.useFakeTimers();
+    const scanned = descriptor('id:full-name');
+    const original = document.getElementById('full-name') as HTMLInputElement;
+    const replacement = original.cloneNode() as HTMLInputElement;
+    replacement.removeAttribute('value');
+    original.remove();
+    window.setTimeout(() => document.getElementById('application-form')?.prepend(replacement), 400);
+
+    const pendingResult = fillApplicationForm(request([{ field: scanned, value: '示例候选人' }]));
+    await vi.advanceTimersByTimeAsync(1_000);
+    const result = await pendingResult;
+
+    expect(replacement.value).toBe('示例候选人');
+    expect(result).toEqual({ status: 'COMPLETED', attempted: 1, filled: 1, failures: [] });
   });
 
   it('rejects a changed page URL before touching any field', async () => {

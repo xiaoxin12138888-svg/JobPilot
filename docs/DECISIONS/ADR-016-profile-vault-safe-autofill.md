@@ -44,7 +44,9 @@ Profile 含姓名、联系方式、教育与经历等私密信息；招聘页面
    只有用户明确勾选后才可填写；MANUAL/UNMAPPED 不可选。手机号和邮箱只在预览中遮罩，Executor
    仍使用内存中的真实值。用户可以取消任何可填写项。
 9. Fill 需要第二个明确按钮“填写已确认字段”。Executor 先校验同一页面 URL、稳定 ref 与扫描时
-   字段签名；失效字段跳过，大量失效返回“页面表单已变化，请重新扫描”。Text/Textarea/原生日期
+   字段签名；唯一 id/name 是字段主身份，动态框架可改写另一个辅助标识及 required/placeholder/
+   autocomplete，但 kind 与 input type 必须不变。失效字段跳过，重渲染恢复使用所有字段共享的
+   最长 1 秒有界预算，大量失效返回脱敏的重新扫描提示。Text/Textarea/原生日期
    使用 native prototype setter 与最小 `focus → input → change → blur` 标准事件；不访问 React/Vue
    私有对象。原生 Select 仅接受唯一 exact/normalized/contains option。
 10. Combobox V1 仅在标准 DOM 中保守尝试：输入值后等待可见 options，仅唯一明确匹配时选择；
@@ -73,3 +75,10 @@ Profile 含姓名、联系方式、教育与经历等私密信息；招聘页面
 - 保守规则会让部分复杂控件保持手填，这是避免敏感误填、错误 DOM 和意外提交的有意取舍。
 - Phase 7 保持 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`。任何 Resume Import/Builder、
   AI Autofill、平台专用 Autofill Adapter 或 Phase 10 都必须另行批准。
+
+## Acceptance evidence
+
+2026-09-07，真实 Chrome 中国移动校招表单检测 37 个字段（READY 1、REVIEW_REQUIRED 2、
+MANUAL 26、UNMAPPED 8），用户只选择姓名并成功填写。attempts/success/failure 为 1/1/0，
+`Submit triggered: NO`；未点击 Continue、协议、上传或其他字段。项目负责人确认映射、建议值、
+页面结果和无意外动作，Phase 9 标记 PASS，并停止在 Phase 10 之前。

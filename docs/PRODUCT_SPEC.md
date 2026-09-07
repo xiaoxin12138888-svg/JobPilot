@@ -3,8 +3,8 @@
 > 状态：Phase 3 至 Phase 6 已通过，BOSS 与牛客均为 `SUPPORTED — V1`。Phase 7 — Resume
 > Version & Evidence Map 为 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`。Phase 8 — Interview
 > Record & Feedback Loop 已于 2026-09-07 完成并通过自动化、隔离浏览器、真实 runtime、重启
-> 持久化、既有回归和安全验收。Phase 9 — Profile Vault & Safe Job Form Autofill 已完成实现与
-> 自动化验证，真实 ATS 的人工映射与页面结果验收仍待完成。
+> 持久化、既有回归和安全验收。Phase 9 — Profile Vault & Safe Job Form Autofill 已于
+> 2026-09-07 完成自动化、安全门禁与真实中国移动校招表单人工验收，状态为 PASS。
 
 ## 1. 产品定位
 
@@ -228,7 +228,7 @@ Fill Executor 再次核对 URL、唯一 ref、字段签名、可见性与禁用/
 setter 和 focus/input/change/blur；native select、month/date 与 combobox 只有唯一明确 option
 时填写，否则失败关闭。FILE、radio/checkbox、协议、法律、隐私、薪资、证件和验证码不自动
 填写。实现不调用框架私有状态、`form.submit()`、`requestSubmit()`、Submit/Continue 按钮，也不
-创建或更新 Application。当前真实 ATS 人工验收完成前，Phase 9 不标记 PASS。
+创建或更新 Application。真实 ATS 验收已确认只填写 Preview 中选择的字段且不提交。
 
 ## 13. 本地与 no-proxy 边界
 
@@ -268,4 +268,7 @@ Application，也没有由面试动作隐式改变 Application 状态。
 
 Phase 9 只有在 Profile 持久化、Scanner/Resolver/Preview/Executor、Provider 未配置、全部安全与
 既有回归、真实 ATS Scan/Fill（不 Submit）以及项目负责人对映射和页面结果的确认全部完成后，
-才能标记 PASS。当前自动实现完成，真实 ATS 人工 Gate 仍待执行。
+才能标记 PASS。2026-09-07 在中国移动校招表单检测 37 个字段（READY 1、REVIEW_REQUIRED 2、
+MANUAL 26、UNMAPPED 8），仅选择并成功填写 1 个姓名字段；attempts/success/failure 为 1/1/0，
+未触发 Submit/Continue、协议或上传，项目负责人确认页面结果正确。Phase 9 标记 PASS，并停止在
+Phase 10 之前。

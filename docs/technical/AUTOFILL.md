@@ -1,6 +1,6 @@
 # Profile Vault 与安全表单自动填写
 
-> 状态：实现与自动化验证完成；真实招聘/ATS 表单的人工映射和页面结果验收待进行。
+> 状态：PASS；实现、自动化验证和真实中国移动校招表单人工验收均已完成。
 > Phase 7 继续保持 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`。
 
 ## 产品边界
@@ -87,8 +87,8 @@ homepage。匹配层级固定：
 Fill 前 Extension 再次确认活动 tab id 和 URL。页面内 Executor 再次确认：
 
 - URL 与扫描时完全一致；
-- ref 仍唯一指向同一元素；
-- kind/type/name/id/required/placeholder/autocomplete signature 未变化；
+- ref 仍唯一指向目标元素；唯一 id/name 是主身份，另一个辅助标识和表单提示允许被框架改写；
+- kind 与 input type 未变化；DOM path ref 继续核对完整 name/id/required/placeholder/autocomplete；
 - 控件仍可见、非 disabled/aria-disabled、非 readonly；
 - 控件和语义不属于 password、验证码、证件、薪资、法律/协议/隐私等敏感策略。
 
@@ -110,14 +110,16 @@ combobox 歧义、URL/ref/signature stale、敏感字段二次拒绝与 no-submi
 Extension build artifact 会检查权限、公钥 ID、CSP、remote URL、storage/cookie/history/webRequest/
 proxy、telemetry、private framework API、auto-submit 与 secret-bearing 配置。
 
-2026-09-07 自动质量门结果：216 条 TypeScript 测试和 224 条 Python 测试通过，TypeScript
+2026-09-07 自动质量门结果：222 条 TypeScript 与 224 条 Python 测试全部通过；其中真实 ATS
+修复后 Extension 独立套件为 112 条。TypeScript
 typecheck、ESLint、Prettier、Ruff、Web/Extension build、artifact security、API import/start 及
 `0009` upgrade -> downgrade -> upgrade 均通过。Python runtime 和 migration 只使用显式临时
 SQLite，且 LLM 配置为空。隔离 Web 浏览器使用虚构资料验证了两条教育、两条经历的保存与刷新
 持久化；本地 fixture 验证了 UTF-8 中文、语义 DOM、无横向溢出和无 console error/warning。
-这些结果不等同于真实 Chrome Extension 或真实 ATS 的 Scan/Preview/Fill 验收。
+真实 ATS 修复同时覆盖稳定 Popup 宽度、动态表单提示变化、辅助字段标识变化和最长 1 秒的全局
+有界重渲染恢复；URL、唯一主 ref、kind/type、敏感字段和 no-submit 安全边界保持不变。
 
-最终必须在至少一个用户打开的真实招聘/ATS 表单上执行 Scan → Preview → Confirm → Fill → 人工
-检查，并在 Submit 前停止。记录 detected/READY/REVIEW_REQUIRED/MANUAL/UNMAPPED、selected、
-attempts/success/failure 和 `Submit triggered: NO`。项目负责人确认映射、建议值、页面结果和无意外
-操作前，只能报告 `USER ACTION REQUIRED — REAL AUTOFILL ACCEPTANCE`，不能宣布 Phase 9 PASS。
+2026-09-07 在用户打开的真实中国移动校招表单完成 Scan → Preview → Confirm → Fill → 人工检查：
+detected 37、READY 1、REVIEW_REQUIRED 2、MANUAL 26、UNMAPPED 8、selected 1；
+attempts/success/failure 为 1/1/0，`Submit triggered: NO`。只填写姓名字段，未点击 Continue、协议、
+上传或其他字段；项目负责人确认映射、建议值、页面结果和无意外操作。Phase 9 标记 PASS。
