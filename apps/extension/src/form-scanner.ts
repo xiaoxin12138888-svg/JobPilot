@@ -179,6 +179,7 @@ export function scanApplicationForm(): FormScanResult {
   for (const element of candidates) {
     if (fields.length >= maxFieldCount) break;
     if (element instanceof HTMLInputElement && ignoredInputTypes.has(element.type)) continue;
+    if (element.getAttribute('aria-disabled') === 'true') continue;
     if (
       (element instanceof HTMLInputElement ||
         element instanceof HTMLTextAreaElement ||

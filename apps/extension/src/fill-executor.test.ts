@@ -200,4 +200,27 @@ describe('fillApplicationForm', () => {
     expect(requestSubmit).not.toHaveBeenCalled();
     expect(buttonClick).not.toHaveBeenCalled();
   });
+
+  it('enforces the sensitive-field policy again at the final write boundary', async () => {
+    const salaryLabel = document.createElement('label');
+    salaryLabel.htmlFor = 'expected-salary';
+    salaryLabel.textContent = '期望薪资';
+    const salary = document.createElement('input');
+    salary.id = 'expected-salary';
+    salary.name = 'expected_salary';
+    document.getElementById('application-form')?.append(salaryLabel, salary);
+    const salaryField = descriptor('id:expected-salary');
+
+    const result = await fillApplicationForm(
+      request([{ field: salaryField, value: '不得在此边界写入' }]),
+    );
+
+    expect(salary.value).toBe('');
+    expect(result).toEqual({
+      status: 'PARTIAL_FAILURE',
+      attempted: 1,
+      filled: 0,
+      failures: [{ fieldRef: 'id:expected-salary', code: 'FORBIDDEN_FIELD' }],
+    });
+  });
 });

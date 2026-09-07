@@ -181,7 +181,7 @@ function matchingKeys(hints: readonly string[], fuzzy: boolean): CanonicalFieldK
 function normalizeHint(value: string): string {
   return value
     .normalize('NFKC')
-    .toLocaleLowerCase()
+    .toLowerCase()
     .replace(/[\s\p{P}\p{S}_]+/gu, '');
 }
 

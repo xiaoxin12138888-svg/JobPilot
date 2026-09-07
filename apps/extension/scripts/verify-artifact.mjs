@@ -86,8 +86,18 @@ const withoutApprovedLoopback = artifactSource
 assert.doesNotMatch(withoutApprovedLoopback, /https?:\/\//iu, 'Remote runtime URL detected');
 assert.doesNotMatch(
   artifactSource,
-  /unsafe-eval|<all_urls>|chrome\.(?:identity|storage|proxy)|\b(?:auth0|logto|oauth|oidc|pkce|telemetry|analytics|sentry)\b/iu,
+  /unsafe-eval|<all_urls>|chrome\.(?:cookies|history|identity|proxy|storage|webRequest)|\b(?:auth0|logto|oauth|oidc|pkce|telemetry|analytics|sentry)\b/iu,
   'Forbidden Extension runtime capability detected',
+);
+assert.doesNotMatch(
+  artifactSource,
+  /document\.cookie|\b(?:localStorage|sessionStorage)\b|\bhistory\s*\.|\.submit\s*\(|requestSubmit\s*\(|__reactFiber|__reactInternalInstance|__vue__/u,
+  'Forbidden page access or auto-submit behavior detected',
+);
+assert.doesNotMatch(
+  artifactSource,
+  /JOBPILOT_LLM|API[_-]?KEY/iu,
+  'Secret-bearing configuration detected in Extension artifact',
 );
 
 console.log(`Extension artifact security gate PASS (${artifactFiles.length} files)`);

@@ -40,7 +40,7 @@ export async function fillApplicationForm(
   const normalize = (value: string): string =>
     value
       .normalize('NFKC')
-      .toLocaleLowerCase()
+      .toLowerCase()
       .replace(/[\s\p{P}\p{S}_]+/gu, '');
 
   const isVisible = (element: Element): boolean => {
@@ -112,13 +112,15 @@ export async function fillApplicationForm(
 
   const verificationPattern =
     /验证码|图形验证|captcha|verification[\s_-]*code|one[\s_-]*time[\s_-]*password|\botp\b/i;
+  const sensitivePattern =
+    /身份证|护照|银行卡|薪资|工资|期望待遇|民族|婚姻|政治面貌|签证|工作授权|工作许可|法律|隐私|授权|诚信|调剂|协议|条款|同意|声明|残疾|宗教|eeo|work[\s_-]*authorization|work[\s_-]*permit/iu;
   const isForbidden = (element: Element, field: FormFieldDescriptor): boolean => {
     if (['FILE', 'RADIO', 'CHECKBOX', 'UNKNOWN'].includes(field.kind)) return true;
     if (element instanceof HTMLInputElement && element.type === 'password') return true;
     const hints = [field.label, field.name, field.id, field.placeholder, field.autocomplete].join(
       ' ',
     );
-    return verificationPattern.test(hints);
+    return verificationPattern.test(hints) || sensitivePattern.test(hints);
   };
 
   const nativeSetter = (element: FillableControl): ((value: string) => void) | null => {
@@ -222,6 +224,7 @@ export async function fillApplicationForm(
     if (element === null) return 'MISSING_REF';
     if (!matchesSignature(element, instruction.field)) return 'STALE_FIELD';
     if (!isVisible(element) || isForbidden(element, instruction.field)) return 'FORBIDDEN_FIELD';
+    if (element.getAttribute('aria-disabled') === 'true') return 'READONLY_FIELD';
     if (
       (element instanceof HTMLInputElement ||
         element instanceof HTMLTextAreaElement ||

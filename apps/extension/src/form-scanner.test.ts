@@ -67,6 +67,7 @@ describe('scanApplicationForm', () => {
     expect(names).not.toContain('hidden_token');
     expect(names).not.toContain('visually_hidden');
     expect(names).not.toContain('disabled_field');
+    expect(names).not.toContain('aria_disabled');
     expect(names).not.toContain('jobpilot-control');
     expect(scanApplicationForm().fields.some((field) => field.type === 'submit')).toBe(false);
   });
