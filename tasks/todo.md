@@ -1,4 +1,54 @@
-# Phase 8 — Interview Record & Feedback Loop Checklist
+# Phase 9 — Profile Vault & Safe Job Form Autofill Checklist
+
+## Contract and safety
+
+- [x] Receive explicit Phase 9 approval from clean Phase 8 commit `eb3c9e8` and create
+  `phase/9-safe-autofill`.
+- [x] Read current canonical docs, ADRs, technical docs and owning API/Web/Extension implementation.
+- [x] Freeze ADR-016, Profile/API/Scanner/Resolver/Executor/privacy contracts and the Phase 10 stop.
+- [x] Keep Phase 7 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`; do not change Evidence Map behavior.
+- [x] Preserve the protected local manual, runtime SQLite, existing records and Provider secrets.
+
+## Profile foundation
+
+- [ ] RED/GREEN minimal Profile validation and singleton repository/service.
+- [ ] RED/GREEN reversible `0009_autofill_profile` migration on temporary SQLite only.
+- [ ] RED/GREEN nullable GET and full-replacement PUT API with existing write-security semantics.
+- [ ] RED/GREEN shared types/api-client strict parsing, no credentials and loopback-only transport.
+- [ ] RED/GREEN accessible Web “求职资料” editor with multiple education/experience rows.
+
+## Scanner, resolver and preview
+
+- [ ] RED/GREEN current-page Scanner, supported kinds, label priority, visibility/prohibited inputs and
+  stable refs against the synthetic local fixture.
+- [ ] RED/GREEN finite aliases, normalized exact mapping, fuzzy review-only, sensitive/manual, unknown and
+  missing-value behavior.
+- [ ] RED/GREEN existing DOM-order mapping for multiple education/experience rows without clicking add.
+- [ ] RED/GREEN preview masking, default selections, explicit fuzzy confirmation and user deselection.
+
+## Fill executor and integration
+
+- [ ] RED/GREEN text/textarea native setters and standard input/change events.
+- [ ] RED/GREEN conservative native select, date and combobox behavior.
+- [ ] RED/GREEN missing/stale ref, changed-page and partial-failure handling.
+- [ ] RED/GREEN no password/CAPTCHA/file/legal fill and no form.submit/requestSubmit/submit-button action.
+- [ ] Integrate explicit Scan and Fill buttons/states without BOSS/Nowcoder capture regression.
+- [ ] Keep manifest permissions exact and Extension Profile/Fill Plan memory-only.
+
+## Validation and acceptance
+
+- [ ] Add local fixture and complete isolated browser Scan/Preview/Fill/no-Submit acceptance.
+- [ ] Run locked installs, all Python/TypeScript/lint/format/typecheck/build/API/migration gates.
+- [ ] Run artifact permission/secret/storage/remote/telemetry/private-API/auto-submit security scans.
+- [ ] Regress BOSS, Nowcoder, Job, Application, JD AI, Resume, Evidence Map, Interview and Feedback.
+- [ ] Complete code review and simplification with Critical 0 and Required 0.
+- [ ] Run one real recruitment/ATS form, record factual metrics and real Bad Cases without Submit.
+- [ ] Obtain owner confirmation for mapping correctness, proposed values, page result and no unexpected action.
+- [ ] Synchronize documentation, commit coherent increments and stop before Phase 10.
+
+---
+
+# Historical Phase 8 — Interview Record & Feedback Loop Checklist
 
 ## Contract and safety
 

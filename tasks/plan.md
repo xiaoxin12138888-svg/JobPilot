@@ -1,4 +1,89 @@
-# Implementation Plan: Phase 8 — Interview Record & Feedback Loop
+# Implementation Plan: Phase 9 — Profile Vault & Safe Job Form Autofill
+
+> Owner-approved on 2026-09-07 from clean Phase 8 commit `eb3c9e8`. Phase 7 remains
+> `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`; this phase must not change Evidence Map behavior.
+
+## Objective
+
+Reduce repeated recruitment-form typing with one local structured Profile and a deterministic,
+user-triggered `Scan → Resolve → Preview → Confirm → Fill → Human Submit` path. The complete Phase must
+work with every `JOBPILOT_LLM_*` variable absent, keep existing Extension permissions, never persist
+Profile data in the Extension and never submit or advance a recruitment form.
+
+## Frozen contract
+
+- ADR-016 owns the data, API, browser-permission, privacy and no-submit decisions. `Scan != Fill !=
+  Submit` is a P0 invariant, not UI wording only.
+- `AutofillProfile` is a single local resource distinct from Resume Version and Application. It contains
+  the approved minimal `personal`, `education[]`, `experience[]` and `links` facts. GET returns a nullable
+  wrapper; PUT performs a full validated replacement. No list, identity, history, sync or Resume import.
+- `0009_autofill_profile` adds one singleton JSON-backed table and preserves every existing row. Tests and
+  migration cycles use explicit temporary SQLite only; the live database receives only standard upgrade
+  during later runtime acceptance.
+- Extension permissions remain exactly `activeTab`, `scripting` and the approved loopback host. Profile
+  and Fill Plan are ephemeral Popup memory; no storage, content script, background or recruitment host.
+- Scanner returns only the frozen `FormFieldDescriptor`, ignores prohibited fields and never reads current
+  values or modifies the page. Stable refs prefer unique id/name and otherwise use a round-trip DOM path.
+- Resolver is finite and deterministic: exact/normalized → READY, unique fuzzy → REVIEW_REQUIRED,
+  sensitive/missing-value/non-fillable → MANUAL, unknown → UNMAPPED. No confidence percentage or LLM.
+- Preview masks phone/email, defaults only READY to selected and lets the user deselect. REVIEW_REQUIRED
+  needs an explicit user selection; MANUAL/UNMAPPED cannot be filled.
+- Executor validates page/ref/signature, uses native setters and standard events, fills only unambiguous
+  native selects/combobox options and never touches file/password/CAPTCHA/legal fields. It never calls any
+  submit/continue/agreement action and never creates or mutates Application.
+- Third-party research remains reference-only unless an explicit later diff records MIT attribution.
+  jobApplier source is never copied; private React/Phoenix component hooks are never used.
+
+## Ordered slices
+
+1. Freeze ADR-016, this plan/checklist and Phase 10 stop boundary; verify the starting branch and protected
+   local files.
+2. RED/GREEN Profile domain, singleton migration, repository/service and GET/PUT API. Verify validation,
+   empty state, full replacement, restart persistence and upgrade/downgrade/upgrade on temporary SQLite.
+3. RED/GREEN shared wire types and api-client strict validation/credential-free GET/PUT; prove malformed
+   profile responses and non-loopback bases fail closed.
+4. RED/GREEN Web “求职资料” view with create/edit/save, multiple education/experience rows, data-minimization
+   copy, loading/error/empty states, keyboard access and 320/768/1024/1440 layouts.
+5. RED/GREEN Extension Scanner and stable refs using a synthetic local form fixture. Cover labels, supported
+   controls, visibility, prohibited inputs, options, JobPilot UI and no mutation/value reads.
+6. RED/GREEN deterministic Resolver and Fill Preview. Cover aliases, normalization, fuzzy review, sensitive
+   manual handling, unknown/missing values, multi-row order, masking and deselection.
+7. RED/GREEN Fill Executor for text/textarea/native select/date/conservative combobox, standard events,
+   missing/stale refs, changed page and partial failure. Add explicit no-submit/no-private-API safety tests.
+8. Integrate Popup states and API/profile navigation without regressing BOSS/Nowcoder capture. Build and scan
+   the final artifact for permissions, storage, secrets, remote runtime, telemetry and submit capabilities.
+9. Synchronize canonical and technical docs, run locked installs and all TypeScript/Python/lint/format/
+   typecheck/build/import/migration gates, then perform code review and simplification.
+10. Run isolated browser fixture acceptance and then one real user-opened recruitment/ATS form. Record only
+    factual metrics and real Bad Cases. Stop for owner mapping/page-result confirmation before Phase 9 PASS.
+
+## Checkpoints
+
+- Profile checkpoint: API, migration, client and Web persistence pass with no Provider configuration.
+- Browser logic checkpoint: Scanner/Resolver/Executor tests prove conservative mapping and no submit.
+- Integration checkpoint: Extension capture and Autofill coexist with the unchanged manifest surface.
+- Final checkpoint: all automated/security/regression gates pass; real form is filled without Submit; owner
+  explicitly accepts mapping and page result; Critical 0 and Required 0.
+
+## Risks and mitigations
+
+- Wrong field/DOM: finite aliases, fuzzy review-only, per-field signature validation and stale-session abort.
+- Sensitive action: manual policy precedes mapping; prohibited input kinds are ignored or non-fillable.
+- Framework compatibility: native setters and standard events only; unsupported widgets fail conservatively.
+- Profile leakage: SQLite only, ephemeral Extension memory, plain-text rendering and content-free logs/tests.
+- Scope explosion: generic current DOM first, no ATS registry, platform Adapter, automation DSL or AI mapper.
+
+## Stop conditions
+
+- Never read, log, commit or remotely transmit real Profile values; tests/fixtures use fictional data only.
+- Never add broad permissions, persistent scripts/storage, cookies, webRequest, proxy, history or private APIs.
+- Never auto-submit, click continue/agreement, upload files, solve verification or infer Application state.
+- Never change Phase 6/7 AI behavior or claim Phase 7 PASS.
+- Never claim real acceptance before user review, and never begin Phase 10 without explicit approval.
+
+---
+
+# Historical Implementation Plan: Phase 8 — Interview Record & Feedback Loop
 
 > Owner-approved on 2026-09-06. Phase 7 remains `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`;
 > this independent phase must not change its Evidence Map prompt, schema, evaluation or acceptance.
