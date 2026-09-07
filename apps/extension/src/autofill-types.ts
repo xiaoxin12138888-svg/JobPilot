@@ -23,3 +23,33 @@ export interface FormScanResult {
   pageUrl: string;
   fields: FormFieldDescriptor[];
 }
+
+export type CanonicalFieldKey =
+  | 'name'
+  | 'phone'
+  | 'email'
+  | 'current_city'
+  | 'school'
+  | 'major'
+  | 'degree'
+  | 'education_start'
+  | 'education_end'
+  | 'company'
+  | 'position'
+  | 'experience_start'
+  | 'experience_end'
+  | 'experience_description'
+  | 'github'
+  | 'portfolio'
+  | 'homepage';
+
+export type FillPlanStatus = 'READY' | 'REVIEW_REQUIRED' | 'MANUAL' | 'UNMAPPED';
+
+export interface FillPlanItem {
+  fieldRef: string;
+  pageLabel: string;
+  canonicalKey: CanonicalFieldKey | null;
+  proposedValue: string | null;
+  status: FillPlanStatus;
+  selected: boolean;
+}
