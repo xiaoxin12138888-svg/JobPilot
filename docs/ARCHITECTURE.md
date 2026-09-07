@@ -1,8 +1,9 @@
 # JobPilot 总体架构
 
-> 状态：ADR-008 至 ADR-015 Accepted。Phase 7 为
+> 状态：ADR-008 至 ADR-016 Accepted。Phase 7 为
 > `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`。Phase 8 在同一本地 SQLite 边界增加 Interview
-> Record 与请求时计算的事实 Feedback Summary，不依赖 Provider。
+> Record 与请求时计算的事实 Feedback Summary。Phase 9 的 Profile Vault 与安全 Autofill 已完成
+> 实现和自动化验证，真实 ATS 人工验收仍待完成；Phase 8/9 均不依赖 Provider。
 
 ## 1. 运行时
 
@@ -10,10 +11,10 @@
 flowchart LR
     U[用户]
     W[React Web]
-    E[Chrome Extension Job capture Popup]
+    E[Chrome Extension Capture / Autofill Popup]
     C[packages/api-client]
     A[FastAPI 127.0.0.1:8000]
-    S[(runtime-data/jobpilot.db\nJob / Application / Resume / Interview)]
+    S[(runtime-data/jobpilot.db\nJob / Application / Resume / Interview / Profile)]
     R[原招聘平台]
     P[显式配置的 LLM Provider]
 
@@ -26,21 +27,23 @@ flowchart LR
     A -. 仅用户点击 JD 分析且已配置 .-> P
     A -. 仅用户确认所选简历外发且已配置 .-> P
     R -. 当前可见 DOM 只读解析 .-> E
+    E -. 用户确认后填写\n永不 Submit .-> R
     W -. 仅打开 source_url .-> R
 ```
 
 受支持 launcher 在 Uvicorn 前把 SQLite migration 升级到 head。业务请求通过 FastAPI 访问
 SQLite；`GET /health` 仍不连接数据库。Web 与 Extension 永不直连 SQLite，API 不访问招聘网站。
-Provider 不参与 health、启动、Job/Application/Resume/Interview CRUD、Feedback Summary 或采集。
+Provider 不参与 health、启动、Job/Application/Resume/Interview/Profile CRUD、Feedback Summary、
+采集或 Autofill。
 JD 分析只接收单个 Job 的批准字段；Evidence Map 只在当次确认后接收当前 requirements 和所选
 Resume content。
 
 ## 2. Monorepo 边界
 
 ```text
-apps/web                 岗位库、简历版本、详情、投递/面试记录、事实复盘与可选分析/Evidence 展示
-apps/extension           BOSS/牛客页面分派、一次性只读 Adapter、确认编辑 Popup
-apps/api/domain          Job/Application/Resume/Interview/Feedback/Analysis/Evidence 值与规则
+apps/web                 岗位库、简历版本、求职资料、投递/面试、事实复盘与可选分析/Evidence 展示
+apps/extension           BOSS/牛客采集，以及 Scanner/Resolver/Preview/Safe Fill Popup
+apps/api/domain          Job/Application/Resume/Profile/Interview/Feedback/Analysis/Evidence 值与规则
 apps/api/application     use-case service、专用 repository port 与 JD/Evidence Provider ports
 apps/api/infrastructure  SQLAlchemy/SQLite/Alembic 与一个 OpenAI-compatible adapter
 apps/api/api             FastAPI schema、router、安全和错误映射
@@ -62,7 +65,8 @@ Alembic revision `0001_job_application` 创建 `jobs` 和 `applications`；`0002
 `applications.resume_version_id`；`0006_evidence_map_records` 增加每个 Job + Resume Version 的
 唯一当前结果与两份输入指纹；`0007_evidence_map_schema_v2` 扩展其 CHECK 以兼容 schema 1/2，
 存在 schema 2 记录时拒绝降级；`0008_interview_feedback` 为 Application 增加结果说明/淘汰原因，
-并新增 `interview_rounds` 与 `interview_questions`。Job 删除级联 Application、Interview、Question、
+并新增 `interview_rounds` 与 `interview_questions`；`0009_autofill_profile` 新增 id 固定为 1 的
+`autofill_profiles`，以四段 canonical JSON 保存当前最小 Profile。Job 删除级联 Application、Interview、Question、
 JD Analysis 和 Evidence；Round 删除级联 Question。被 Application 引用的 Resume 通过 RESTRICT
 和 service guard 保留，未引用 Resume 删除时级联其 Evidence。自动化测试必须显式传入临时数据库
 路径。
@@ -75,7 +79,9 @@ JD Analysis 和 Evidence；Round 删除级联 Question。被 Application 引用�
 - 浏览器 cross-site Origin 或 `Sec-Fetch-Site: cross-site` 写入被拒绝；
 - Manifest 公开公钥把 JobPilot Extension 固定为 `lgchonbleblfegkckndaaandoaekmgjf`；扩展只可
   写入 `POST /api/v1/jobs`，并要求该精确 Origin 与 `Sec-Fetch-Site: none`，且不加入 CORS；
-- POST/PATCH 只接受 `application/json`；
+- `GET /api/v1/autofill-profile` 对同一精确 Extension Origin 开放只读，并继续要求 loopback Host
+  与 `Sec-Fetch-Site: none`；Profile PUT 只允许现有精确 Web origins；
+- POST/PUT/PATCH 只接受 `application/json`；
 - SQLite locked/busy 映射为不泄漏内部信息的 `503 DATABASE_BUSY`；
 - request ID 与统一错误信封覆盖 validation、domain 和 framework error。
 
@@ -84,8 +90,8 @@ CORS/Host 不是对同一操作系统账户下恶意进程的认证。若以后�
 
 ## 5. Web architecture
 
-Web 不引入路由或状态框架。App 只协调 health 和 library/create/resumes/detail/feedback 五种视图；
-岗位库、表单、简历版本、详情、Application、Interview、Feedback、JDAnalysisPanel 与
+Web 不引入路由或状态框架。App 只协调 health 和 library/create/resumes/profile/detail/feedback 视图；
+岗位库、表单、简历版本、求职资料、详情、Application、Interview、Feedback、JDAnalysisPanel 与
 EvidenceMapPanel 为聚焦组件。所有业务 I/O 经过 api-client，不自行拼 HTTP。Interview UI 只记录
 用户输入的本地事实且不改变 Application；Feedback UI 只呈现 API 的确定性统计。Evidence Map 按
 六类条件呈现逐项明确结论、判断依据和原文证据，并在 Web 端确定性计算全图计数、待确认项与主要
@@ -123,13 +129,33 @@ Application 的 `outcomeNote`/`rejectionReason` 仍通过现有 Application serv
 domain 层确定性生成 funnel 和弱项排序。结果不持久化、不调用 Provider、不读取简历正文，也不
 产生评分、建议或因果推断。转化率在分母为零或后续事实计数大于前序计数时为 null。
 
-## 8. Local-first 与后续边界
+## 8. Profile 与 Autofill boundary
+
+Web 通过 api-client 的 GET/PUT 管理一个 `AutofillProfile`；API domain 负责长度、`YYYY-MM`、
+HTTP(S) URL、非空条目和最多 20 条教育/经历验证，repository 只操作 singleton row。Profile 与
+Resume/Application 没有关联、导入或隐式状态更新。
+
+Popup 打开时不读页面或 Profile。用户点击 Scan 后，Extension 并行读取精确 loopback Profile 并
+通过 `activeTab` 一次性注入自包含 Scanner。Resolver 在 Extension 内使用有限规则创建临时
+Fill Plan；Preview 默认只选择 READY，REVIEW_REQUIRED 由用户另行勾选。Fill 时再次查询当前 tab，
+并由自包含 Executor 核对 URL/ref/signature 后使用原生 setter 与标准事件。选项不唯一、字段失效、
+敏感/只读/文件/勾选控件均失败关闭。所有 Profile/Fill Plan 只在 Popup 内存，未进入 Extension
+storage；没有常驻 content script、后台、招聘 host permission、LLM、remote parser 或 telemetry。
+
+Scan、Fill、Submit 是三个独立动作。Executor 不包含任何 submit/requestSubmit/Submit/Continue
+调用，也不创建或更新 Application；最终提交始终由用户在招聘页面执行。
+
+## 9. Local-first 与后续边界
 
 installed core runtime 不依赖远程身份、CDN、字体/脚本、telemetry、update、对象存储或 AI。
 Extension 只使用 `activeTab` 与 `scripting`；没有 background、常驻 content script、`tabs`
 permission 或招聘网站 host permission。当前 tab 通过一个显式 BOSS/牛客条件分派进入对应
 Adapter；两个一次性 parser 都只能在明确用户手势后读取当前已呈现的必要 DOM 纯文本，随后
 由用户确认并通过共享 api-client 调用现有 Job service。
+
+Autofill 使用同一 `activeTab` 做另一次用户触发的一次性注入，但不复用或扩展 BOSS/牛客
+Adapter：generic Scanner 生成有界字段描述，Safe Fill 只写 Preview 已确认的字段。两条入口在
+Popup 中并列，互不自动触发，也不增加平台专用权限。
 
 两个 Adapter 共享 `JobCaptureDraft/JobCaptureResult`、Popup 状态/编辑/保存/duplicate 流程与
 source labels。平台检测、selectors、页面结构和可见文本 helper 保留在各 Adapter 内，因为

@@ -1,7 +1,7 @@
 # JobPilot API Contract
 
 > 状态：`GET /health`、Job/Application、BOSS/牛客 capture、Job Analysis、Resume Version、
-> Evidence Map、Interview 与 Feedback Summary contract 已由 ADR-015 冻结。JSON 字段使用
+> Evidence Map、Interview、Feedback Summary 与 Autofill Profile contract 已由 ADR-016 冻结。JSON 字段使用
 > camelCase。
 
 ## 1. Runtime boundary
@@ -13,10 +13,13 @@ Evidence Map 生成使用 65000 ms 客户端 timeout，后端 LLM Provider reque
 60 秒。
 
 写入还要求 loopback Host、安全的 Origin/Fetch Metadata 与 `application/json`。
-CORS 只列精确 Web origin 和 `GET, POST, PATCH, DELETE`，不允许 credentials。
+CORS 只列精确 Web origin 和 `GET, POST, PUT, PATCH, DELETE`，不允许 credentials。
 JobPilot Extension 只可写入 `POST /api/v1/jobs`，并要求精确 Origin
 `chrome-extension://lgchonbleblfegkckndaaandoaekmgjf` 与 `Sec-Fetch-Site: none`；该 Origin
 不属于 CORS allowlist，其他 Chrome Extension ID 即使格式合法也不受信任。
+唯一例外读路径是 `GET /api/v1/autofill-profile`：精确 JobPilot Extension Origin、
+`Sec-Fetch-Site: none` 与 loopback Host 的组合可读；其他 Extension、普通跨站网页或非 loopback
+target 均为 403。Profile PUT 不向 Extension 开放。
 
 ## 2. Health
 
@@ -345,7 +348,61 @@ JD Analysis 缺失、stale 或其他前置条件非法为 422；Provider 未配�
 时间或培养年限时，届别最多为 PARTIAL，且不得推导目标毕业年份。quote 的精确 grounding 和
 旧存量记录的有界读取兼容保持不变。
 
-## 10. Errors
+## 10. Autofill Profile endpoints
+
+### `GET /api/v1/autofill-profile`
+
+当前尚无 Profile 时返回：
+
+```json
+{"profile":null}
+```
+
+存在时返回 single-user 当前资源：
+
+```json
+{
+  "profile": {
+    "personal": {
+      "name": "示例用户",
+      "phone": "13800000000",
+      "email": "candidate@example.test",
+      "currentCity": "示例市"
+    },
+    "education": [
+      {
+        "school": "示例大学",
+        "major": "信息工程",
+        "degree": "本科",
+        "start": "2022-09",
+        "end": "2026-06"
+      }
+    ],
+    "experience": [],
+    "links": {
+      "github": "https://github.com/example-candidate",
+      "portfolio": null,
+      "homepage": null
+    },
+    "createdAt": "2026-09-07T08:00:00Z",
+    "updatedAt": "2026-09-07T08:00:00Z"
+  }
+}
+```
+
+### `PUT /api/v1/autofill-profile`
+
+请求体是完整替换对象，结构与上例 `profile` 相同但不含时间字段。`personal`、`education`、
+`experience`、`links` 四段必需；所有事实可为空，但整个 Profile 至少包含一个事实。教育与经历
+各最多 20 条，单条不得全空；月份只接受 `YYYY-MM`；链接只接受无 userinfo 的 HTTP(S)。短文本
+最多 300 字符，phone/email 最多 320，经历描述最多 20,000，URL 最多 2,048。成功返回上面的
+`{"profile": {...}}`；非法输入为 422。
+
+该 PUT 只接受精确 loopback Web Origin、非 cross-site Fetch Metadata 与 `application/json`，不接受
+Extension Origin。接口不提供 list/delete/history/sync，不接收 `userId`、Resume 文件或 Provider
+配置。
+
+## 11. Errors
 
 所有公开错误保持：
 
@@ -371,7 +428,7 @@ Job，便于 Extension 打开本机详情；其他错误保持原有三字段 en
 - 502：`AI_INVALID_RESPONSE`，Provider envelope/content/schema 无法验证；公开响应不增加诊断字段，
   本机日志只记录固定白名单失败分类，不记录任何输入或原始响应；
 - 503：SQLite 暂时 locked/busy，或 `AI_NOT_CONFIGURED` / `AI_PROVIDER_UNAVAILABLE`；
-- 403/415：localhost 写安全边界；
+- 403/415：localhost Profile 读/写与通用 mutation 安全边界；
 - 500：统一未知错误，不返回 exception、SQL 或 traceback。
 
 响应均带 `X-Request-Id`，其值与 error envelope 一致。

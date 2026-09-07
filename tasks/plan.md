@@ -10,6 +10,19 @@ user-triggered `Scan → Resolve → Preview → Confirm → Fill → Human Subm
 work with every `JOBPILOT_LLM_*` variable absent, keep existing Extension permissions, never persist
 Profile data in the Extension and never submit or advance a recruitment form.
 
+## Implementation status
+
+Profile/API/Web and Extension Scanner/Resolver/Preview/Executor implementation is complete through
+`b46200c`. On 2026-09-07, locked dependency checks, 216 TypeScript tests, 224 Python tests, TypeScript
+typecheck, ESLint, Prettier, Ruff, Web/Extension production builds, Extension artifact security, API
+import/start and migration `upgrade -> downgrade -> upgrade` passed. All Python runtime checks used
+explicit temporary SQLite databases with LLM configuration absent.
+
+An isolated Web browser run persisted one fictional Profile with two education and two experience
+entries across reload. The local form fixture passed UTF-8, DOM/accessibility structure, no-overflow and
+clean-console checks after adding an explicit document charset. Real Chrome Extension runtime and one
+real recruitment/ATS Scan -> Preview -> Fill -> human inspection remain pending, so Phase 9 is not PASS.
+
 ## Frozen contract
 
 - ADR-016 owns the data, API, browser-permission, privacy and no-submit decisions. `Scan != Fill !=

@@ -11,7 +11,8 @@
 3. **Loopback only**：API 与客户端只接受 loopback；不提供公网/LAN fallback。
 4. **One fact source**：未来持久业务状态由本机 API/domain 与 SQLite 定义。
 5. **User trigger and confirmation**：招聘页面读取必须由用户主动触发并在保存前确认；真实简历
-   发往可选 Provider 前必须在当次 Web 操作中明确告知并确认。
+   发往可选 Provider 前必须在当次 Web 操作中明确告知并确认；表单 Scan、Fill 与 Submit 必须
+   分离，只有用户确认的字段可以 Fill，Submit 永远由用户执行。
 6. **No remote core dependency**：已安装核心不依赖境外服务、CDN、远程代码、telemetry 或 update API。
 7. **Simple architecture first**：只实现当前已批准、已有消费者的最小边界。
 
@@ -30,12 +31,17 @@
 ### Extension
 
 - Phase 5 提供本地 health 与 BOSS/牛客当前岗位读取/确认 Popup；
+- Phase 9 在同一 Popup 增加用户触发的 Scanner、deterministic Resolver、Preview 与 Safe Fill；
 - bundle 不执行远程 JavaScript，不下载 CDN 资源，不发送 telemetry，不修改代理；
 - 仅使用 `activeTab`、`scripting` 与精确 loopback host；没有 background、常驻 content
   script、`tabs` permission、storage、identity 或 recruitment host permission；
 - Manifest `key` 只能包含可公开公钥以固定 Extension ID；不得提交私钥或 secret。API 只精确
   接受该 JobPilot Extension Origin 与安全 Fetch Metadata，不信任其他合法 Extension ID；
 - page capture 必须是明确用户手势、当前页面、一次性只读 DOM parser 和最小返回 schema。
+- Scanner 不返回当前值或完整 DOM；Profile/Fill Plan 只在 Popup 内存。READY 默认选中，fuzzy
+  只能 REVIEW_REQUIRED，敏感/文件/勾选/缺值不得进入写入计划。
+- Executor 必须重新校验 URL/ref/signature，使用原生 setter 与标准事件，并且不得调用
+  form.submit/requestSubmit、Submit/Continue、框架私有状态或招聘网站私有 API。
 
 ### API
 
@@ -53,7 +59,8 @@
 ## 4. Data and security
 
 - 当前业务数据只含 `jobs`、`applications`、`jd_analysis_records`、`resume_versions`、
-  `evidence_map_records`、`interview_rounds` 与 `interview_questions`；所有表不含 `user_id` 或
+  `evidence_map_records`、`interview_rounds`、`interview_questions` 与 singleton
+  `autofill_profiles`；所有表不含 `user_id` 或
   身份字段；
 - 数据库只使用本地 SQLite file URL；默认 `runtime-data/jobpilot.db` 属于用户数据，自动化不得触碰；
 - SQLite connections 启用 foreign keys 与有界 busy timeout；当前保留 rollback journal，WAL 必须由实测需要驱动；
@@ -74,6 +81,8 @@
   禁止匹配/ATS/Offer 分数。
 - Feedback 的面试岗位只按至少存在一轮的不同 Application 计数；漏斗率只在前一阶段分母非零且
   后一阶段不超过前一阶段时计算。原始计数不截断、不推断缺失记录，派生统计不持久化。
+- AutofillProfile 默认不收集证件、银行卡、婚姻、民族、政治面貌等低价值敏感事实；Profile 不进
+  日志、Git、测试真实数据、Extension storage 或远端。Autofill 完整链路不得调用 LLM。
 
 ## 5. P0 no-proxy rule
 
@@ -119,7 +128,7 @@
 - tests、lint、format、typecheck、build 和 API gates 通过；
 - loopback/CORS、secret、remote-runtime、manifest/CSP 和 tracked-artifact 扫描通过；
 - browser/runtime 无法验证时明确报告 BLOCKED，不虚构 PASS；
-- 全部 `JOBPILOT_LLM_*` 缺失时 Interview 与 Feedback 仍完整可用；
+- 全部 `JOBPILOT_LLM_*` 缺失时 Interview、Feedback、Profile 与 Autofill 仍完整可用；
 - `code-review-and-quality` 为 Critical 0 / Required 0；
 - `code-simplification` 后无确认的死代码；
 - 文档与实现一致，工作树按任务要求交付。

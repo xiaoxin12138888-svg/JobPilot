@@ -11,40 +11,46 @@
 
 ## Profile foundation
 
-- [ ] RED/GREEN minimal Profile validation and singleton repository/service.
-- [ ] RED/GREEN reversible `0009_autofill_profile` migration on temporary SQLite only.
-- [ ] RED/GREEN nullable GET and full-replacement PUT API with existing write-security semantics.
-- [ ] RED/GREEN shared types/api-client strict parsing, no credentials and loopback-only transport.
-- [ ] RED/GREEN accessible Web “求职资料” editor with multiple education/experience rows.
+- [x] RED/GREEN minimal Profile validation and singleton repository/service.
+- [x] RED/GREEN reversible `0009_autofill_profile` migration on temporary SQLite only.
+- [x] RED/GREEN nullable GET and full-replacement PUT API with existing write-security semantics.
+- [x] RED/GREEN shared types/api-client strict parsing, no credentials and loopback-only transport.
+- [x] RED/GREEN accessible Web “求职资料” editor with multiple education/experience rows.
 
 ## Scanner, resolver and preview
 
-- [ ] RED/GREEN current-page Scanner, supported kinds, label priority, visibility/prohibited inputs and
+- [x] RED/GREEN current-page Scanner, supported kinds, label priority, visibility/prohibited inputs and
   stable refs against the synthetic local fixture.
-- [ ] RED/GREEN finite aliases, normalized exact mapping, fuzzy review-only, sensitive/manual, unknown and
+- [x] RED/GREEN finite aliases, normalized exact mapping, fuzzy review-only, sensitive/manual, unknown and
   missing-value behavior.
-- [ ] RED/GREEN existing DOM-order mapping for multiple education/experience rows without clicking add.
-- [ ] RED/GREEN preview masking, default selections, explicit fuzzy confirmation and user deselection.
+- [x] RED/GREEN existing DOM-order mapping for multiple education/experience rows without clicking add.
+- [x] RED/GREEN preview masking, default selections, explicit fuzzy confirmation and user deselection.
 
 ## Fill executor and integration
 
-- [ ] RED/GREEN text/textarea native setters and standard input/change events.
-- [ ] RED/GREEN conservative native select, date and combobox behavior.
-- [ ] RED/GREEN missing/stale ref, changed-page and partial-failure handling.
-- [ ] RED/GREEN no password/CAPTCHA/file/legal fill and no form.submit/requestSubmit/submit-button action.
-- [ ] Integrate explicit Scan and Fill buttons/states without BOSS/Nowcoder capture regression.
-- [ ] Keep manifest permissions exact and Extension Profile/Fill Plan memory-only.
+- [x] RED/GREEN text/textarea native setters and standard input/change events.
+- [x] RED/GREEN conservative native select, date and combobox behavior.
+- [x] RED/GREEN missing/stale ref, changed-page and partial-failure handling.
+- [x] RED/GREEN no password/CAPTCHA/file/legal fill and no form.submit/requestSubmit/submit-button action.
+- [x] Integrate explicit Scan and Fill buttons/states without BOSS/Nowcoder capture regression.
+- [x] Keep manifest permissions exact and Extension Profile/Fill Plan memory-only.
 
 ## Validation and acceptance
 
-- [ ] Add local fixture and complete isolated browser Scan/Preview/Fill/no-Submit acceptance.
-- [ ] Run locked installs, all Python/TypeScript/lint/format/typecheck/build/API/migration gates.
-- [ ] Run artifact permission/secret/storage/remote/telemetry/private-API/auto-submit security scans.
-- [ ] Regress BOSS, Nowcoder, Job, Application, JD AI, Resume, Evidence Map, Interview and Feedback.
-- [ ] Complete code review and simplification with Critical 0 and Required 0.
+- [x] Add the local fixture and verify UTF-8, DOM/accessibility structure, no-overflow and clean console
+  in an isolated browser.
+- [ ] Complete real Extension runtime Scan/Preview/Fill/no-Submit acceptance against a user-opened form.
+- [x] Run locked installs, all Python/TypeScript/lint/format/typecheck/build/API/migration gates using
+  explicit temporary SQLite for Python runtime and migration checks.
+- [x] Run artifact permission/secret/storage/remote/telemetry/private-API/auto-submit security scans.
+- [x] Regress BOSS, Nowcoder, Job, Application, JD AI, Resume, Evidence Map, Interview and Feedback through
+  the full automated TypeScript/Python suites.
+- [x] Complete code review and simplification with Critical 0 and Required 0 after adding final-write
+  sensitive-field enforcement and aria-disabled rejection.
 - [ ] Run one real recruitment/ATS form, record factual metrics and real Bad Cases without Submit.
 - [ ] Obtain owner confirmation for mapping correctness, proposed values, page result and no unexpected action.
-- [ ] Synchronize documentation, commit coherent increments and stop before Phase 10.
+- [x] Synchronize canonical/technical documentation and commit coherent implementation increments.
+- [ ] Stop before Phase 10 after the real Autofill acceptance decision.
 
 ---
 

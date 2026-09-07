@@ -7,12 +7,12 @@ JobPilot 不替代招聘网站，不建设职位数据库，也不代表用户�
 
 ## 当前状态
 
-项目已通过 **Phase 3 — Job & Application Domain Foundation**、**Phase 4 — BOSS Direct Job Capture**、**Phase 5 — Nowcoder Adapter & Shared Capture Contract**、**Phase 6 — JD Structured AI Analysis** 与 **Phase 8 — Interview Record & Feedback Loop**。Phase 8 已于 2026-09-07 完成自动化、隔离浏览器、真实 runtime、重启持久化、既有回归和安全验收。**Phase 7 — Resume Version & Evidence Map** 已实现，但真实语义质量验收仍为 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`。核心能力包括：
+项目已通过 **Phase 3 — Job & Application Domain Foundation**、**Phase 4 — BOSS Direct Job Capture**、**Phase 5 — Nowcoder Adapter & Shared Capture Contract**、**Phase 6 — JD Structured AI Analysis** 与 **Phase 8 — Interview Record & Feedback Loop**。**Phase 9 — Profile Vault & Safe Job Form Autofill** 已完成实现与自动化验证，仍等待真实 ATS 的人工映射/页面结果验收，因此尚未标记 PASS。**Phase 7 — Resume Version & Evidence Map** 已实现，但真实语义质量验收仍为 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`。核心能力包括：
 
-- React Web：本机 API 状态、岗位库、纯文本简历版本、岗位详情/编辑/删除、投递状态/使用简历记录、面试轮次与题目、自我复盘、Application 结果记录、事实型求职复盘，以及可选 JD Analysis/Evidence Map；
-- Chrome Extension：使用 `activeTab` + `scripting` 的用户主动采集 Popup，无后台进程；唯一 host permission 是 `http://127.0.0.1:8000/*`；
-- FastAPI：公开 `GET /health`、Job/Application/Resume Version、Interview 与事实型 Feedback Summary，以及每个 Job 的可选分析/Evidence Map API，默认绑定 `127.0.0.1`；
-- SQLite、SQLAlchemy 与 Alembic：launcher 启动前自动升级 `runtime-data/jobpilot.db`，业务表为 `jobs`、`applications`、`jd_analysis_records`、`resume_versions`、`evidence_map_records`、`interview_rounds` 与 `interview_questions`；
+- React Web：本机 API 状态、岗位库、纯文本简历版本、本地求职资料、岗位详情/编辑/删除、投递状态/使用简历记录、面试轮次与题目、自我复盘、Application 结果记录、事实型求职复盘，以及可选 JD Analysis/Evidence Map；
+- Chrome Extension：使用 `activeTab` + `scripting` 的用户主动 Popup，支持 BOSS/牛客岗位采集与当前申请表的 Scan → Preview → Confirm → Fill；无后台进程，唯一 host permission 是 `http://127.0.0.1:8000/*`；
+- FastAPI：公开 `GET /health`、Job/Application/Resume Version、Autofill Profile、Interview 与事实型 Feedback Summary，以及每个 Job 的可选分析/Evidence Map API，默认绑定 `127.0.0.1`；
+- SQLite、SQLAlchemy 与 Alembic：launcher 启动前自动升级 `runtime-data/jobpilot.db`，业务表另含 single-user singleton `autofill_profiles`；
 - `packages/shared-types` 与 `packages/api-client`：提供 camelCase 业务契约、credential-free 请求和不可信响应校验。
 
 Phase 4 已交付 BOSS 直聘当前岗位页采集；Phase 5 在同一确认编辑与本地保存链路上新增牛客岗位详情页。两个 Adapter 都只读取用户当前打开页面的必要可见文本。Phase 6 不改 Extension，只允许 Web 在用户点击后把单个已保存 Job 的最小 JD 字段经 FastAPI 发送给显式配置的 Provider。Phase 7 增加本地纯文本 Resume Version、Application 显式使用版本和 Evidence Map；新生成结果会综合当前非 stale JD Analysis 的硬性要求、加分项、职责、技能、经验与学历六类条件，并从完整简历中寻找一至三段可追溯的语义证据，而非要求关键词相同。语义判断不能补全简历未写的能力、年限、学历、毕业年份或其他用户事实。只有用户在当次操作中确认后，所选简历正文才会与这些条件一起发往同一个可选 Provider。不开 AI 时本地核心照常工作。
@@ -21,6 +21,12 @@ Phase 8 不调用 LLM：用户可在已有 Application 下记录多轮面试、�
 复盘，并为淘汰/Offer 等终态保存自己的结果说明。`求职复盘` 直接从 SQLite 计算岗位、投递、
 面试、题目、结果、来源和简历版本事实；不存派生统计，不给 AI 分数、推荐或因果结论。面试动作
 不会自动改变 Application 状态。
+
+Phase 9 同样不调用 LLM：用户在 Web 的“求职资料”中维护最小结构化事实；只有点击 Extension 的
+“扫描当前表单”后，当前页面才被一次性扫描。确定性规则把精确/规范化字段设为“可填写”，把唯一
+模糊候选设为“需确认”，敏感、文件、单选/复选、缺值和未知字段分别保持手动或未识别。只有用户
+在 Preview 中确认并点击“填写已确认字段”后才写入页面；JobPilot 永不点击 Submit/Continue，
+也不创建或推进 Application。Profile 和 Fill Plan 只存在于本机 SQLite 与当次 Popup 内存。
 
 ## 本地优先意味着什么
 
@@ -56,12 +62,13 @@ React Web ---------\
                     > exact loopback HTTP -> FastAPI -> Job/Application/Resume/Interview/Feedback
 Chrome Extension --/                            |
                                                  v
-                                      runtime-data/jobpilot.db (SQLite)
+                         runtime-data/jobpilot.db (SQLite + AutofillProfile)
 
 React Web -- explicit analysis click ------------\
 React Web -- explicit Resume disclosure/confirm --> FastAPI -- optional --> configured LLM provider
 
 BOSS/Nowcoder current rendered DOM -- user click/read-only --> Chrome Extension
+Current application form -- user Scan/Confirm/Fill --> Chrome Extension -- no Submit
 Web original-platform link -> user's browser -> recruitment website
 JobPilot API never proxies recruitment website traffic
 ```
@@ -113,7 +120,7 @@ pnpm run dev:web
 pnpm run build:extension
 ```
 
-在 Chrome/Chromium 扩展管理页开启 Developer mode，选择 **Load unpacked**，并指向 `apps/extension/dist`。Popup 打开时只检查精确的 `http://127.0.0.1:8000/health`；用户随后明确点击时，才会读取当前 BOSS 或牛客岗位详情页并显示可编辑预览。
+在 Chrome/Chromium 扩展管理页开启 Developer mode，选择 **Load unpacked**，并指向 `apps/extension/dist`。Popup 打开时只检查精确的 `http://127.0.0.1:8000/health`；用户随后明确点击时，才会读取当前 BOSS/牛客岗位详情，或扫描当前招聘申请表并生成填写预览。扫描不改页面，填写后仍由用户自己检查并提交。
 
 Manifest 提交的 `key` 只是可公开的扩展公钥，不包含私钥或 secret；它让 GitHub 源码用户通过
 **Load unpacked** 得到固定 ID `lgchonbleblfegkckndaaandoaekmgjf`。如果此前加载过不含该 key
@@ -123,7 +130,8 @@ Extension 通过 manifest 中精确的 `http://127.0.0.1:8000/*` host permission
 API 写入 gate 只为 `POST /api/v1/jobs` 额外接受精确 Origin
 `chrome-extension://lgchonbleblfegkckndaaandoaekmgjf` 与 `Sec-Fetch-Site: none` 的组合；其他
 合法或畸形 Extension ID 均拒绝。该 Origin 不加入 CORS；API CORS 仍仅服务精确的 loopback
-Web origin。
+Web origin。Extension 读取 `GET /api/v1/autofill-profile` 也要求同一精确 Origin、
+`Sec-Fetch-Site: none` 与 loopback Host；Profile 的 PUT 仍只允许合法 Web origin。
 
 ## Local configuration
 
@@ -167,7 +175,10 @@ pnpm run api:import:check
 - [简历证据映射](docs/technical/EVIDENCE_MAP.md)
 - [面试记录](docs/technical/INTERVIEW_RECORD.md)
 - [事实反馈闭环](docs/technical/FEEDBACK_LOOP.md)
+- [求职资料与安全自动填写](docs/technical/AUTOFILL.md)
+- [自动填写第三方研究与许可](docs/technical/THIRD_PARTY_AUTOFILL_RESEARCH.md)
 - [JD 分析评测状态](docs/evaluation/JD_ANALYSIS_RESULTS.md)
+- [自动填写 Bad Cases](docs/evaluation/AUTOFILL_BAD_CASES.md)
 - [架构决策记录](docs/DECISIONS/README.md)
 
-本地产品边界由 [ADR-008](docs/DECISIONS/ADR-008-local-first-single-user-no-authentication.md) 固定，SQLite 存储由 [ADR-009](docs/DECISIONS/ADR-009-local-sqlite-storage.md) 固定，BOSS/牛客共享采集合同由 [ADR-012](docs/DECISIONS/ADR-012-nowcoder-shared-capture-contract.md) 固定，可选 JD 分析由 [ADR-013](docs/DECISIONS/ADR-013-jd-structured-ai-analysis.md) 固定，Resume Version 与 grounded Evidence Map 由 [ADR-014](docs/DECISIONS/ADR-014-resume-version-evidence-map.md) 固定，本地面试记录与事实反馈由 [ADR-015](docs/DECISIONS/ADR-015-interview-record-feedback-loop.md) 固定。被移除的历史认证实现和 ADR 可从 annotated tag `pre-local-first-cleanup` 恢复；它们不是当前产品文档。
+本地产品边界由 [ADR-008](docs/DECISIONS/ADR-008-local-first-single-user-no-authentication.md) 固定，SQLite 存储由 [ADR-009](docs/DECISIONS/ADR-009-local-sqlite-storage.md) 固定，BOSS/牛客共享采集合同由 [ADR-012](docs/DECISIONS/ADR-012-nowcoder-shared-capture-contract.md) 固定，可选 JD 分析由 [ADR-013](docs/DECISIONS/ADR-013-jd-structured-ai-analysis.md) 固定，Resume Version 与 grounded Evidence Map 由 [ADR-014](docs/DECISIONS/ADR-014-resume-version-evidence-map.md) 固定，本地面试记录与事实反馈由 [ADR-015](docs/DECISIONS/ADR-015-interview-record-feedback-loop.md) 固定，Profile Vault 与安全表单自动填写由 [ADR-016](docs/DECISIONS/ADR-016-profile-vault-safe-autofill.md) 固定。被移除的历史认证实现和 ADR 可从 annotated tag `pre-local-first-cleanup` 恢复；它们不是当前产品文档。

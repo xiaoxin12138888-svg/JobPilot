@@ -3,7 +3,8 @@
 > 当前阶段：Phase 6 已于 2026-09-05 完成并通过。Phase 7 — Resume Version & Evidence Map
 > 保持 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`。Phase 8 — Interview Record & Feedback Loop
 > 已于 2026-09-07 完成并通过自动化、隔离浏览器、真实 runtime、重启持久化、既有回归和安全验收。
-> BOSS 与牛客保持 `SUPPORTED — V1`。
+> Phase 9 — Profile Vault & Safe Job Form Autofill 已完成实现和自动化验证，真实 ATS 人工验收
+> 待完成。BOSS 与牛客保持 `SUPPORTED — V1`。
 
 ## 1. Global gates
 
@@ -111,19 +112,39 @@ API，并以标准 Alembic migration 升级原有 `runtime-data/jobpilot.db`；�
 复盘、完成/取消状态边界、确定性 Feedback、重启持久化、PATCH null 422、既有功能与安全回归均
 通过，Application 状态未被面试操作隐式改变。
 
-## 9. Later phases
+## 9. Phase 9 — Profile Vault & Safe Job Form Autofill
+
+状态：`IMPLEMENTED — REAL AUTOFILL ACCEPTANCE PENDING`（2026-09-07）。
+
+交付 single-user 本地 `AutofillProfile`、Web“求职资料”、Extension 当前表单 Scanner、有限规则
+Resolver、遮罩 Preview、用户勾选确认与 Safe Fill Executor。Extension 继续只有 `activeTab`、
+`scripting` 和精确 loopback host；不增加 storage、background、常驻 content script 或招聘网站
+host permission。Profile 与 Resume/Application 独立，只存 SQLite 并在 Extension 中保持当次
+Popup 内存。
+
+`Scan != Fill != Submit`：Scanner 不读字段现值、不改页面；Resolver 只把精确/规范化结果设为
+READY，fuzzy 必须人工确认，敏感/文件/勾选/未知项不自动填；Executor 复核 URL/ref/signature，
+只使用 DOM 原生 setter 与标准事件，无法唯一确认 option 时失败关闭。它不调用 LLM、私有框架
+API、form.submit/requestSubmit、Submit/Continue，也不创建或更新 Application。
+
+自动实现、单元/组件/安全产物门已完成。只有本地 fixture 浏览器验证、全部仓库回归和至少一个
+真实 ATS 的 Scan/Preview/Fill（不 Submit）完成，并由负责人确认映射、建议值、页面结果与无意外
+动作后，Phase 9 才能标记 PASS。
+
+## 10. Later phases
 
 AI 面试、模拟面试、Personal Knowledge Base、其余招聘平台、策略建议与发布加固必须由负责人
 另行明确批准。远程能力必须显式启用、可替换、可降级，不能成为本地
 Job/Application/Resume/Interview 核心依赖。
 
-## 10. P0 no-proxy gate
+## 11. P0 no-proxy gate
 
 installed runtime 不访问远程身份、公共 CDN、远程字体/脚本、GitHub runtime/raw、telemetry、
 update 或强制境外 AI。未来每个 Adapter 必须分别记录招聘页、Extension、识别、解析、
 确认保存和岗位库的真实关闭代理结果；任一核心步骤依赖代理就不能标为支持。
 
-## 11. Stop boundary
+## 12. Stop boundary
 
-不得把暂停中的 Phase 7 写成 PASS，也不得自动开始下一阶段、实现 AI 面试、策略推荐或
+不得把暂停中的 Phase 7 写成 PASS，也不得自动开始 Phase 10、实现 AI Autofill、简历文件导入、
+AI 面试、策略推荐或
 智联/实习僧/猎聘/国聘等其他平台。

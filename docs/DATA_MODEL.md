@@ -4,7 +4,8 @@
 > `0004_jd_analysis_records` 新增单 Job 当前分析，`0005_resume_versions` 与
 > `0006_evidence_map_records` 新增 Phase 7 本地简历版本、Application 关联和当前 Evidence Map；
 > `0007_evidence_map_schema_v2` 允许旧 schema 1 与当前 schema 2 共存；
-> `0008_interview_feedback` 增加本地面试记录与 Application 结果字段。
+> `0008_interview_feedback` 增加本地面试记录与 Application 结果字段；
+> `0009_autofill_profile` 增加 single-user 当前求职资料。
 
 ## 1. Storage rules
 
@@ -152,7 +153,25 @@ mappings；新生成固定为 schema 2，并包含当前分析的硬性要求、
 `PROJECT`、`BEHAVIORAL`、`BUSINESS`、`OTHER`。问题、回答、自评与备注都是本地不可信纯文本，
 不发送 Provider。Feedback Summary 直接聚合这些表，不创建派生统计表。
 
-## 9. Application state machine
+## 9. `autofill_profiles`
+
+| 列 | 类型/约束 |
+| --- | --- |
+| `id` | Integer, PK, CHECK = 1 |
+| `personal_json` | Text, NOT NULL，canonical JSON object |
+| `education_json` | Text, NOT NULL，canonical JSON array |
+| `experience_json` | Text, NOT NULL，canonical JSON array |
+| `links_json` | Text, NOT NULL，canonical JSON object |
+| `created_at` | DateTime, NOT NULL |
+| `updated_at` | DateTime, NOT NULL |
+
+固定 `id = 1` 表示一个安装实例只有一个当前 Profile，不创建 user/tenant/owner 或 profile list。
+PUT 原位完整替换并保留 created_at；GET 无行时返回 null。JSON 只承载批准的 personal、最多 20 条
+education、最多 20 条 experience 与 links 字段，并由 domain 在写入前完成长度、控制字符、月份、
+URL 和非空验证。它与 Resume Version、Application、Job 没有 FK，不从 Resume 自动导入，也不会
+因 Autofill 创建/推进 Application。Extension 不持久化副本。
+
+## 10. Application state machine
 
 显式允许表（同状态更新为 no-op）：
 
@@ -168,12 +187,12 @@ mappings；新生成固定为 schema 2，并包含当前分析的硬性要求、
 
 任何目标为 applied 的流转都要求显式确认。不创建 event sourcing 或 audit table。
 
-## 10. Deletion and deferred models
+## 11. Deletion and deferred models
 
 Web 明确确认后真实删除 Job，SQLite 级联其 Application、Interview Round/Question、JD analysis
 与 Evidence Map；当前无 archive/restore。删除 Interview Round 级联其 Question。被 Application
 引用的 Resume Version 不可删除；未引用版本删除时级联其 Evidence Map。
 
-Phase 8 不创建 Resume 文件/文档、Feedback/Insight/Analytics/Event、Recommendation、Score、
-Embedding、Vector、User、Identity、Session 或 LocalProfile。任何新表必须在对应 Phase 获批后
-设计 migration 与生命周期。
+Phase 9 不创建 Resume 文件/文档、Profile history、Feedback/Insight/Analytics/Event、
+Recommendation、Score、Embedding、Vector、User、Identity、Session 或云 Profile。任何新表
+必须在对应 Phase 获批后设计 migration 与生命周期。

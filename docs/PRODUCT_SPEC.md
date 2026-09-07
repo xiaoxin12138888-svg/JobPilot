@@ -3,7 +3,8 @@
 > 状态：Phase 3 至 Phase 6 已通过，BOSS 与牛客均为 `SUPPORTED — V1`。Phase 7 — Resume
 > Version & Evidence Map 为 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`。Phase 8 — Interview
 > Record & Feedback Loop 已于 2026-09-07 完成并通过自动化、隔离浏览器、真实 runtime、重启
-> 持久化、既有回归和安全验收。
+> 持久化、既有回归和安全验收。Phase 9 — Profile Vault & Safe Job Form Autofill 已完成实现与
+> 自动化验证，真实 ATS 的人工映射与页面结果验收仍待完成。
 
 ## 1. 产品定位
 
@@ -59,6 +60,18 @@ Phase 8 增加完全本地的面试与事实复盘链路：
 ```
 
 Interview 行为不自动改变 Application；Feedback Summary 不调用 Provider、不保存派生结果。
+
+Phase 9 增加不依赖 Provider 的本地资料与安全填写流程：
+
+```text
+Web 维护本机 AutofillProfile -> 用户打开招聘申请表 -> 点击 Extension 扫描
+-> 确定性 Resolve -> Preview 中确认/取消 -> 点击填写已确认字段
+-> 用户检查页面 -> 用户自己点击招聘网站 Submit
+```
+
+`Scan != Fill != Submit` 是 P0 边界。扫描不读取字段当前值、不修改页面；填写只处理 Preview 中
+被用户确认的非敏感字段；JobPilot 永不自动 Submit、Continue、勾选协议、上传文件或改变
+Application。
 
 ## 3. Job
 
@@ -124,6 +137,7 @@ Application 表示一个 Job 的真实求职进度。一个 Job 最多一个 App
 - 面试轮次创建、编辑、完成、取消/删除，实际问题 CRUD、回答摘要、表现自评和手动复盘；
 - Application 结果说明与用户填写的淘汰原因；
 - `求职复盘` 的 loading/error/retry/empty/populated 状态和事实统计；
+- `求职资料` 的 loading/error/empty/edit/save、多教育/经历条目和本机隐私说明；
 - Job Detail 的 JD Analysis 与 Evidence Map 前置、确认、loading、success、stale、error/retry；
 - 320/768/1024/1440 响应式布局与键盘可访问控件。
 
@@ -197,13 +211,34 @@ Application 状态。
 显示 0% 假象或超过 100% 的误导值。原始计数不截断、不补推缺失事实。统计不产生评分、推荐、
 策略或不同来源/简历版本之间的因果结论。
 
-## 12. 本地与 no-proxy 边界
+## 12. Profile Vault 与安全自动填写
+
+`AutofillProfile` 是 single-user singleton 本地资源，与 Resume Version 和 Application 独立。
+字段仅包含 name/phone/email/currentCity，多条 education 与 experience，以及 GitHub/作品集/
+个人主页链接；默认不收集身份证、护照、银行卡、婚姻、民族、政治面貌、家庭地址等低价值敏感
+事实。Web 可查看、编辑并完整替换，Extension 不持久化 Profile。
+
+用户点击“扫描当前表单”后，Scanner 只返回有界的 `FormFieldDescriptor`；password、验证码、
+hidden、disabled、submit 与 JobPilot 自身控件被忽略。Ref 依次使用唯一 id、唯一 name 或可回溯
+DOM path。Resolver 只使用有限 alias 与规范化规则：精确/规范化为 `READY`，唯一模糊候选为
+`REVIEW_REQUIRED`，敏感/缺值/不可填写为 `MANUAL`，未知为 `UNMAPPED`。Preview 默认只勾选
+READY，phone/email 仅显示遮罩值。
+
+Fill Executor 再次核对 URL、唯一 ref、字段签名、可见性与禁用/只读/敏感策略。文本使用原生
+setter 和 focus/input/change/blur；native select、month/date 与 combobox 只有唯一明确 option
+时填写，否则失败关闭。FILE、radio/checkbox、协议、法律、隐私、薪资、证件和验证码不自动
+填写。实现不调用框架私有状态、`form.submit()`、`requestSubmit()`、Submit/Continue 按钮，也不
+创建或更新 Application。当前真实 ATS 人工验收完成前，Phase 9 不标记 PASS。
+
+## 13. 本地与 no-proxy 边界
 
 - Web、Extension 与 API 只通过精确 loopback 通信；
 - installed runtime 不依赖账号、云服务、CDN、远程字体/脚本、telemetry、update 或境外 AI；
 - JobPilot API 不请求或代理招聘网站；
 - Extension 使用 `activeTab` + `scripting` 在用户点击后对当前 tab 执行一次只读解析；没有
   招聘网站 host permission、`tabs` permission、background 或常驻 content script；
+- Phase 9 的 Fill 是另一次明确点击后的有界页面写入，只处理 Preview 已确认字段并在 Submit 前
+  停止；它不改变 BOSS/牛客采集 Adapter 的只读边界；
 - Extension Manifest 通过可公开公钥固定 ID；API 只允许该精确 Extension Origin 与
   `Sec-Fetch-Site: none` 组合写入 Job create，其他资源和 Extension ID 不受信任，Extension
   Origin 不加入 CORS；
@@ -211,14 +246,15 @@ Application 状态。
 - 外部 LLM 只属于显式启用的可选增强，Key 仅存在 FastAPI 进程环境；Web/Extension 不持有 Key，
   本地核心不依赖 Provider，也不修改系统或浏览器代理。
 - 简历默认只在本机 SQLite；任何 Evidence Map 外发都要求用户在当次 Web 操作中确认。
+- Autofill 不调用 LLM 或远程 parser；Profile 只从精确 loopback API 读取并保留在当次 Popup 内存。
 
-## 13. Phase 8 非目标
+## 14. Phase 9 非目标
 
-PDF/DOCX/图片/OCR、文件上传、简历生成/整份改写、ATS/匹配/Offer 分数、推荐、RAG、embedding、
-vector DB、Agent/LangChain、AI 面试、模拟面试、自动答案、录音/转写、日历同步、自动投递、
-新招聘平台、云同步、账号、认证和多用户均不属于 Phase 8。
+PDF/DOCX/图片/OCR、自动上传简历、从 Resume 自动导入 Profile、开放题生成、AI 字段识别、
+Resume Tailoring、通用 ATS Engine、平台专用 Autofill Adapter、自动 Submit/Continue/协议同意、
+验证码绕过、批量投递、新招聘平台、云同步、账号、认证和多用户均不属于 Phase 9。
 
-## 14. 成功标准
+## 15. 成功标准
 
 Phase 8 必须通过 Interview/Application/Feedback schema、CRUD、cascade、统计、API/UI、
 provider-free、privacy/security 自动测试和全部既有回归。浏览器验收必须录入至少一轮、三道
@@ -229,3 +265,7 @@ Phase 7 的真实语义质量验收保持独立暂停，Phase 8 不得把它改�
 migration/API 的真实 runtime 中复用现有 Application 完成一轮三题、编辑、自我复盘、完成/取消
 边界、确定性 Feedback、重启持久化、PATCH null 422、既有功能与安全验收；没有创建重复
 Application，也没有由面试动作隐式改变 Application 状态。
+
+Phase 9 只有在 Profile 持久化、Scanner/Resolver/Preview/Executor、Provider 未配置、全部安全与
+既有回归、真实 ATS Scan/Fill（不 Submit）以及项目负责人对映射和页面结果的确认全部完成后，
+才能标记 PASS。当前自动实现完成，真实 ATS 人工 Gate 仍待执行。
