@@ -6,6 +6,7 @@ import {
 } from '@jobpilot/api-client';
 
 import type { JobCaptureDraft, JobCaptureResult } from './job-capture';
+import { type AutofillDependencies, createAutofillWorkflow } from './popup-autofill';
 import { renderPreview } from './popup-form';
 import {
   renderDuplicate,
@@ -29,6 +30,7 @@ export interface CaptureDependencies {
 interface PopupDependencies {
   getHealth(): Promise<ApiHealthResponse>;
   capture?: CaptureDependencies;
+  autofill?: AutofillDependencies;
 }
 
 function getPopupRoot(): HTMLElement {
@@ -45,6 +47,10 @@ export async function initializePopup(dependencies: PopupDependencies): Promise<
   let currentDraft: JobCaptureDraft | undefined;
   let currentWarnings: readonly string[] = [];
   let lastSaveInput: CreateJobInput | undefined;
+  const autofill =
+    dependencies.autofill === undefined
+      ? undefined
+      : createAutofillWorkflow(root, dependencies.autofill);
 
   function showPreview(validationMessage?: string): void {
     if (currentDraft === undefined || dependencies.capture === undefined) return;
@@ -114,10 +120,10 @@ export async function initializePopup(dependencies: PopupDependencies): Promise<
     renderStatus(root, 'checking', '正在检查本机 JobPilot…', '正在连接本机服务。');
     try {
       await dependencies.getHealth();
-      if (dependencies.capture === undefined) {
+      if (dependencies.capture === undefined && autofill === undefined) {
         renderStatus(root, 'available', '本机 JobPilot 可用', '服务正在运行，可以使用本地工作台。');
       } else {
-        renderReady(root, capture);
+        renderReady(root, dependencies.capture === undefined ? undefined : capture, autofill?.scan);
       }
     } catch {
       renderUnavailable(root, checkHealth);

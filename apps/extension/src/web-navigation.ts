@@ -11,3 +11,9 @@ export async function openManualJobForm(): Promise<void> {
   url.searchParams.set('view', 'create');
   await chrome.tabs.create({ url: url.toString() });
 }
+
+export async function openAutofillProfile(): Promise<void> {
+  const url = new URL(JOBPILOT_WEB_URL);
+  url.searchParams.set('view', 'profile');
+  await chrome.tabs.create({ url: url.toString() });
+}

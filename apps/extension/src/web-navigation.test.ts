@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { openJobPilotJob, openManualJobForm } from './web-navigation';
+import { openAutofillProfile, openJobPilotJob, openManualJobForm } from './web-navigation';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -27,6 +27,17 @@ describe('Extension Web navigation', () => {
 
     expect(create).toHaveBeenCalledWith({
       url: 'http://127.0.0.1:5173/?view=create',
+    });
+  });
+
+  it('opens the local Autofill Profile without carrying page data', async () => {
+    const create = vi.fn().mockResolvedValue({});
+    vi.stubGlobal('chrome', { tabs: { create } });
+
+    await openAutofillProfile();
+
+    expect(create).toHaveBeenCalledWith({
+      url: 'http://127.0.0.1:5173/?view=profile',
     });
   });
 });

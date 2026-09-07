@@ -12,13 +12,29 @@ export type PopupState =
   | 'duplicate'
   | 'unsupported'
   | 'parse-error'
-  | 'save-error';
+  | 'save-error'
+  | 'scanning'
+  | 'autofill-preview'
+  | 'filling'
+  | 'autofill-no-profile'
+  | 'autofill-unavailable'
+  | 'autofill-unsupported'
+  | 'autofill-scan-error'
+  | 'autofill-page-changed'
+  | 'autofill-completed'
+  | 'autofill-partial';
 
 export function setRootState(root: HTMLElement, state: PopupState): void {
   root.dataset.state = state;
   root.setAttribute(
     'aria-busy',
-    state === 'checking' || state === 'parsing' || state === 'saving' ? 'true' : 'false',
+    state === 'checking' ||
+      state === 'parsing' ||
+      state === 'saving' ||
+      state === 'scanning' ||
+      state === 'filling'
+      ? 'true'
+      : 'false',
   );
 }
 
@@ -35,13 +51,30 @@ export function renderStatus(
   root.replaceChildren(panel);
 }
 
-export function renderReady(root: HTMLElement, onCapture: () => Promise<void>): void {
+export function renderReady(
+  root: HTMLElement,
+  onCapture?: () => Promise<void>,
+  onScan?: () => Promise<void>,
+): void {
+  const actions: HTMLButtonElement[] = [];
+  if (onCapture !== undefined) {
+    actions.push(actionButton('读取当前岗位', 'primary-button', () => void onCapture()));
+  }
+  if (onScan !== undefined) {
+    actions.push(
+      actionButton(
+        '扫描当前表单',
+        onCapture === undefined ? 'primary-button' : 'secondary-button',
+        () => void onScan(),
+      ),
+    );
+  }
   renderActionState(
     root,
     'ready',
     '可以读取当前岗位',
-    '请确认当前标签是一个具体的 BOSS 直聘或牛客招聘岗位详情页。',
-    [actionButton('读取当前岗位', 'primary-button', () => void onCapture())],
+    '读取岗位信息，或扫描当前申请表。所有操作只会在你点击后开始。',
+    actions,
   );
 }
 
