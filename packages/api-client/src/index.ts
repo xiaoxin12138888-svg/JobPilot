@@ -4,6 +4,8 @@ import type {
   Application,
   ApplicationListResponse,
   ApplicationStatus,
+  AutofillProfileInput,
+  AutofillProfileResponse,
   CreateInterviewQuestionInput,
   CreateInterviewRoundInput,
   CreateResumeVersionInput,
@@ -43,6 +45,13 @@ export type {
   ApplicationListItem,
   ApplicationListResponse,
   ApplicationStatus,
+  AutofillEducationEntry,
+  AutofillExperienceEntry,
+  AutofillPersonalDetails,
+  AutofillProfile,
+  AutofillProfileInput,
+  AutofillProfileLinks,
+  AutofillProfileResponse,
   CreateJobInput,
   CreateInterviewQuestionInput,
   CreateInterviewRoundInput,
@@ -172,6 +181,8 @@ export interface ApiClient {
   ): Promise<InterviewQuestion>;
   deleteInterviewQuestion(questionId: string): Promise<void>;
   getFeedbackSummary(): Promise<FeedbackSummary>;
+  getAutofillProfile(): Promise<AutofillProfileResponse>;
+  replaceAutofillProfile(input: AutofillProfileInput): Promise<AutofillProfileResponse>;
   createResumeVersion(input: CreateResumeVersionInput): Promise<ResumeVersion>;
   listResumeVersions(): Promise<ResumeVersionListResponse>;
   getResumeVersion(resumeVersionId: string): Promise<ResumeVersion>;
@@ -219,7 +230,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
 
   async function request(
     path: string,
-    method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     body?: unknown,
     timeoutMilliseconds = REQUEST_TIMEOUT_MILLISECONDS,
   ): Promise<unknown> {
@@ -428,6 +439,14 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     async getFeedbackSummary(): Promise<FeedbackSummary> {
       return requireFeedbackSummary(await request('/api/v1/feedback-summary', 'GET'));
     },
+    async getAutofillProfile(): Promise<AutofillProfileResponse> {
+      return requireAutofillProfileResponse(await request('/api/v1/autofill-profile', 'GET'));
+    },
+    async replaceAutofillProfile(input): Promise<AutofillProfileResponse> {
+      return requireAutofillProfileResponse(
+        await request('/api/v1/autofill-profile', 'PUT', input),
+      );
+    },
     async createResumeVersion(input): Promise<ResumeVersion> {
       return requireResumeVersion(await request('/api/v1/resume-versions', 'POST', input));
     },
@@ -543,6 +562,16 @@ function requireFeedbackSummary(value: unknown): FeedbackSummary {
     throw new Error('JobPilot API returned an invalid Feedback Summary response');
   }
   return value as FeedbackSummary;
+}
+
+function requireAutofillProfileResponse(value: unknown): AutofillProfileResponse {
+  if (
+    !isRecordWithKeys(value, ['profile']) ||
+    (value.profile !== null && !isAutofillProfile(value.profile))
+  ) {
+    throw new Error('JobPilot API returned an invalid Autofill Profile response');
+  }
+  return value as unknown as AutofillProfileResponse;
 }
 
 function requireResumeVersion(value: unknown): ResumeVersion {
@@ -764,6 +793,49 @@ const RESUME_VERSION_KEYS = [
   'createdAt',
   'updatedAt',
 ] as const;
+const AUTOFILL_EDUCATION_KEYS = ['school', 'major', 'degree', 'start', 'end'] as const;
+const AUTOFILL_EXPERIENCE_KEYS = ['company', 'position', 'start', 'end', 'description'] as const;
+
+function isAutofillProfile(value: unknown): boolean {
+  return (
+    isRecordWithKeys(value, [
+      'personal',
+      'education',
+      'experience',
+      'links',
+      'createdAt',
+      'updatedAt',
+    ]) &&
+    isRecordWithKeys(value.personal, ['name', 'phone', 'email', 'currentCity']) &&
+    Object.values(value.personal).every(isNullableString) &&
+    Array.isArray(value.education) &&
+    value.education.length <= 20 &&
+    value.education.every(
+      (item) =>
+        isRecordWithKeys(item, AUTOFILL_EDUCATION_KEYS) &&
+        isNullableString(item.school) &&
+        isNullableString(item.major) &&
+        isNullableString(item.degree) &&
+        isNullableMonth(item.start) &&
+        isNullableMonth(item.end),
+    ) &&
+    Array.isArray(value.experience) &&
+    value.experience.length <= 20 &&
+    value.experience.every(
+      (item) =>
+        isRecordWithKeys(item, AUTOFILL_EXPERIENCE_KEYS) &&
+        isNullableString(item.company) &&
+        isNullableString(item.position) &&
+        isNullableMonth(item.start) &&
+        isNullableMonth(item.end) &&
+        isNullableString(item.description),
+    ) &&
+    isRecordWithKeys(value.links, ['github', 'portfolio', 'homepage']) &&
+    Object.values(value.links).every(isNullableHttpUrl) &&
+    isDateString(value.createdAt) &&
+    isDateString(value.updatedAt)
+  );
+}
 
 function isJobFields(value: Record<string, unknown>): boolean {
   return (
@@ -1016,6 +1088,25 @@ function isRecordWithKeys(
 
 function isNullableString(value: unknown): value is string | null {
   return value === null || typeof value === 'string';
+}
+
+function isNullableMonth(value: unknown): boolean {
+  return value === null || (typeof value === 'string' && /^[0-9]{4}-(0[1-9]|1[0-2])$/.test(value));
+}
+
+function isNullableHttpUrl(value: unknown): boolean {
+  if (value === null) return true;
+  if (typeof value !== 'string') return false;
+  try {
+    const parsed = new URL(value);
+    return (
+      (parsed.protocol === 'http:' || parsed.protocol === 'https:') &&
+      !parsed.username &&
+      !parsed.password
+    );
+  } catch {
+    return false;
+  }
 }
 
 function isDateString(value: unknown): value is string {

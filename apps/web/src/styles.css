@@ -405,6 +405,88 @@ textarea {
   min-height: 28rem;
 }
 
+.profile-page {
+  max-width: 64rem;
+}
+.profile-privacy-note {
+  margin-bottom: 1.25rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid #b8cdbf;
+  border-radius: 0.8rem;
+  color: var(--accent-dark);
+  background: var(--accent-soft);
+}
+.profile-privacy-note p {
+  margin: 0.35rem 0 0;
+  line-height: 1.6;
+}
+.profile-form,
+.profile-entry-list {
+  display: grid;
+  gap: 1rem;
+}
+.profile-section {
+  padding: clamp(1rem, 3vw, 1.5rem);
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  background: white;
+}
+.profile-section > header {
+  margin-bottom: 1rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--border);
+}
+.profile-section h2,
+.profile-section h3,
+.profile-section header p {
+  margin: 0;
+}
+.profile-section h2 {
+  font-size: 1.1rem;
+}
+.profile-section header p,
+.profile-save-actions p {
+  margin-top: 0.35rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+.profile-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.profile-entry {
+  padding: 1rem;
+  border: 1px solid #dfe2dc;
+  border-radius: 0.65rem;
+  background: #fbfcfa;
+}
+.profile-entry-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+}
+.profile-entry-heading h3 {
+  font-size: 0.95rem;
+}
+.profile-entry-list + .button {
+  margin-top: 1rem;
+}
+.profile-wide-field {
+  grid-column: 1 / -1;
+}
+.profile-save-actions {
+  align-items: center;
+  justify-content: space-between;
+}
+.profile-save-actions p {
+  max-width: 34rem;
+  margin: 0;
+}
+
 .job-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1284,6 +1366,12 @@ dd {
   .feedback-totals,
   .feedback-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .profile-fields {
+    grid-template-columns: 1fr;
+  }
+  .profile-wide-field {
+    grid-column: auto;
   }
 }
 @media (max-width: 38rem) {

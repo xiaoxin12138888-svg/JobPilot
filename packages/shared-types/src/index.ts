@@ -289,6 +289,51 @@ export interface ResumeVersionListResponse {
   offset: number;
 }
 
+export interface AutofillPersonalDetails {
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  currentCity: string | null;
+}
+
+export interface AutofillEducationEntry {
+  school: string | null;
+  major: string | null;
+  degree: string | null;
+  start: string | null;
+  end: string | null;
+}
+
+export interface AutofillExperienceEntry {
+  company: string | null;
+  position: string | null;
+  start: string | null;
+  end: string | null;
+  description: string | null;
+}
+
+export interface AutofillProfileLinks {
+  github: string | null;
+  portfolio: string | null;
+  homepage: string | null;
+}
+
+export interface AutofillProfileInput {
+  personal: AutofillPersonalDetails;
+  education: AutofillEducationEntry[];
+  experience: AutofillExperienceEntry[];
+  links: AutofillProfileLinks;
+}
+
+export interface AutofillProfile extends AutofillProfileInput {
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AutofillProfileResponse {
+  profile: AutofillProfile | null;
+}
+
 export interface CreateResumeVersionInput {
   name: string;
   content: string;

@@ -400,6 +400,57 @@ describe('createApiClient', () => {
     });
   });
 
+  it('gets and replaces the singleton local Autofill Profile without credentials', async () => {
+    const profile = createAutofillProfilePayload();
+    const fetchImplementation = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(jsonResponse({ profile: null }))
+      .mockResolvedValueOnce(jsonResponse({ profile }));
+    const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
+
+    await expect(client.getAutofillProfile()).resolves.toEqual({ profile: null });
+    await expect(
+      client.replaceAutofillProfile({
+        personal: profile.personal,
+        education: profile.education,
+        experience: profile.experience,
+        links: profile.links,
+      }),
+    ).resolves.toEqual({ profile });
+
+    expect(fetchImplementation.mock.calls.map((call) => [call[0], call[1]?.method])).toEqual([
+      ['http://127.0.0.1:8000/api/v1/autofill-profile', 'GET'],
+      ['http://127.0.0.1:8000/api/v1/autofill-profile', 'PUT'],
+    ]);
+    expect(fetchImplementation.mock.calls[1]?.[1]).toMatchObject({
+      credentials: 'omit',
+      redirect: 'error',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        personal: profile.personal,
+        education: profile.education,
+        experience: profile.experience,
+        links: profile.links,
+      }),
+    });
+  });
+
+  it.each([
+    { profile: { ...createAutofillProfilePayload(), privateField: 'must-not-pass' } },
+    {
+      profile: {
+        ...createAutofillProfilePayload(),
+        education: [{ ...createAutofillProfilePayload().education[0], start: '2026' }],
+      },
+    },
+    { profile: { ...createAutofillProfilePayload(), links: { homepage: 42 } } },
+  ])('rejects an untrusted Autofill Profile payload', async (payload) => {
+    const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(payload));
+    const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
+
+    await expect(client.getAutofillProfile()).rejects.toThrow('invalid Autofill Profile response');
+  });
+
   it.each([
     { ...createFeedbackSummaryPayload(), recommendation: '优先使用 V1' },
     {
@@ -779,6 +830,42 @@ function createResumePayload() {
     applicationCount: 0,
     createdAt: '2026-09-05T00:00:00Z',
     updatedAt: '2026-09-05T00:00:00Z',
+  };
+}
+
+function createAutofillProfilePayload() {
+  return {
+    personal: {
+      name: '示例用户',
+      phone: '000-0000-0000',
+      email: 'candidate@example.invalid',
+      currentCity: '示例市',
+    },
+    education: [
+      {
+        school: '示例大学',
+        major: '信息管理',
+        degree: '本科',
+        start: '2022-09',
+        end: '2026-06',
+      },
+    ],
+    experience: [
+      {
+        company: '示例公司',
+        position: '产品实习生',
+        start: '2025-01',
+        end: '2025-06',
+        description: '梳理需求并跟进验收。',
+      },
+    ],
+    links: {
+      github: 'https://github.com/example-candidate',
+      portfolio: null,
+      homepage: 'https://example.invalid',
+    },
+    createdAt: '2026-09-07T00:00:00Z',
+    updatedAt: '2026-09-07T00:00:00Z',
   };
 }
 

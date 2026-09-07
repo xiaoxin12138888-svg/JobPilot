@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type {
   ApiClient,
   Application,
+  AutofillProfile,
   CreateJobInput,
   CreateInterviewQuestionInput,
   CreateInterviewRoundInput,
@@ -845,6 +846,60 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: resume.name })).toBeInTheDocument();
   });
 
+  it('creates and edits the local structured Autofill Profile without importing a Resume', async () => {
+    const savedProfile = createAutofillProfile();
+    const replaceAutofillProfile = vi.fn(async () => ({ profile: savedProfile }));
+    const apiClient = createApiClient({
+      getAutofillProfile: vi.fn().mockResolvedValue({ profile: null }),
+      replaceAutofillProfile,
+    });
+    render(<App apiClient={apiClient} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '求职资料' }));
+    expect(await screen.findByRole('heading', { name: '求职资料' })).toBeInTheDocument();
+    expect(screen.getByText('资料只保存在本机 SQLite')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /从简历导入/ })).toBeNull();
+
+    fireEvent.change(screen.getByLabelText('姓名'), { target: { value: '示例用户' } });
+    fireEvent.change(screen.getByLabelText('手机号'), { target: { value: '000-0000-0000' } });
+    fireEvent.change(screen.getByLabelText('邮箱'), {
+      target: { value: 'candidate@example.invalid' },
+    });
+    fireEvent.change(screen.getByLabelText('当前城市'), { target: { value: '示例市' } });
+
+    fireEvent.click(screen.getByRole('button', { name: '添加教育经历' }));
+    fireEvent.change(screen.getByLabelText('学校 1'), { target: { value: '示例大学' } });
+    fireEvent.change(screen.getByLabelText('专业 1'), { target: { value: '信息管理' } });
+    fireEvent.change(screen.getByLabelText('学历 1'), { target: { value: '本科' } });
+
+    fireEvent.click(screen.getByRole('button', { name: '添加工作或实习经历' }));
+    fireEvent.change(screen.getByLabelText('公司 1'), { target: { value: '示例公司' } });
+    fireEvent.change(screen.getByLabelText('职位 1'), { target: { value: '产品实习生' } });
+    fireEvent.change(screen.getByLabelText('经历描述 1'), {
+      target: { value: '梳理需求并跟进验收。' },
+    });
+    fireEvent.change(screen.getByLabelText('GitHub'), {
+      target: { value: 'https://github.com/example-candidate' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '保存求职资料' }));
+
+    await vi.waitFor(() => expect(replaceAutofillProfile).toHaveBeenCalledOnce());
+    expect(replaceAutofillProfile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        personal: {
+          name: '示例用户',
+          phone: '000-0000-0000',
+          email: 'candidate@example.invalid',
+          currentCity: '示例市',
+        },
+        education: [expect.objectContaining({ school: '示例大学', major: '信息管理' })],
+        experience: [expect.objectContaining({ company: '示例公司', position: '产品实习生' })],
+      }),
+    );
+    expect(await screen.findByText('求职资料已保存到本机。')).toBeInTheDocument();
+  });
+
   it('explicitly saves the Resume Version used by an existing Application', async () => {
     const job = createJob();
     const resume = createResume();
@@ -1079,6 +1134,8 @@ function createApiClient(overrides: Partial<ApiClient> = {}): ApiClient {
     updateInterviewQuestion: vi.fn(),
     deleteInterviewQuestion: vi.fn(),
     getFeedbackSummary: vi.fn(),
+    getAutofillProfile: vi.fn(),
+    replaceAutofillProfile: vi.fn(),
     getJobAnalysis: vi.fn().mockResolvedValue({ isConfigured: false, analysis: null }),
     analyzeJob: vi.fn(),
     getJobEvidenceMap: vi.fn().mockResolvedValue({ isConfigured: false, evidenceMap: null }),
@@ -1145,6 +1202,42 @@ function createResume(overrides: Partial<ResumeVersion> = {}): ResumeVersion {
     createdAt: '2026-09-05T00:00:00Z',
     updatedAt: '2026-09-05T00:00:00Z',
     ...overrides,
+  };
+}
+
+function createAutofillProfile(): AutofillProfile {
+  return {
+    personal: {
+      name: '示例用户',
+      phone: '000-0000-0000',
+      email: 'candidate@example.invalid',
+      currentCity: '示例市',
+    },
+    education: [
+      {
+        school: '示例大学',
+        major: '信息管理',
+        degree: '本科',
+        start: null,
+        end: null,
+      },
+    ],
+    experience: [
+      {
+        company: '示例公司',
+        position: '产品实习生',
+        start: null,
+        end: null,
+        description: '梳理需求并跟进验收。',
+      },
+    ],
+    links: {
+      github: 'https://github.com/example-candidate',
+      portfolio: null,
+      homepage: null,
+    },
+    createdAt: '2026-09-07T00:00:00Z',
+    updatedAt: '2026-09-07T00:00:00Z',
   };
 }
 

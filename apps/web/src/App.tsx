@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import type { ApiClient, Job } from '@jobpilot/api-client';
 
 import { FeedbackSummaryPage } from './components/FeedbackSummaryPage';
+import { AutofillProfilePage } from './components/AutofillProfilePage';
 import { JobDetail } from './components/JobDetail';
 import { JobForm } from './components/JobForm';
 import { JobLibrary } from './components/JobLibrary';
@@ -19,6 +20,7 @@ type View =
   | { name: 'library' }
   | { name: 'create' }
   | { name: 'resumes' }
+  | { name: 'profile' }
   | { name: 'feedback' }
   | { name: 'detail'; jobId: string };
 
@@ -47,9 +49,11 @@ function Workspace({ apiClient }: AppProps) {
           ? '?view=create'
           : nextView.name === 'resumes'
             ? '?view=resumes'
-            : nextView.name === 'feedback'
-              ? '?view=feedback'
-              : '';
+            : nextView.name === 'profile'
+              ? '?view=profile'
+              : nextView.name === 'feedback'
+                ? '?view=feedback'
+                : '';
     window.history.replaceState(null, '', `${window.location.pathname}${query}`);
   }
 
@@ -85,6 +89,13 @@ function Workspace({ apiClient }: AppProps) {
       </AppFrame>
     );
   }
+  if (view.name === 'profile') {
+    return (
+      <AppFrame active="profile" onNavigate={navigate}>
+        <AutofillProfilePage apiClient={apiClient} />
+      </AppFrame>
+    );
+  }
   if (view.name === 'feedback') {
     return (
       <AppFrame active="feedback" onNavigate={navigate}>
@@ -109,6 +120,7 @@ function initialViewFromLocation(): View {
   if (jobId && jobId.length <= 36) return { name: 'detail', jobId };
   if (params.get('view') === 'create') return { name: 'create' };
   if (params.get('view') === 'resumes') return { name: 'resumes' };
+  if (params.get('view') === 'profile') return { name: 'profile' };
   if (params.get('view') === 'feedback') return { name: 'feedback' };
   return { name: 'library' };
 }
@@ -119,7 +131,7 @@ function AppFrame({
   onNavigate,
 }: {
   children: React.ReactNode;
-  active: 'jobs' | 'resumes' | 'feedback';
+  active: 'jobs' | 'profile' | 'resumes' | 'feedback';
   onNavigate(view: View): void;
 }) {
   return (
@@ -131,6 +143,13 @@ function AppFrame({
         </div>
         <div className="topbar-actions">
           <nav className="workspace-nav" aria-label="工作台导航">
+            <button
+              type="button"
+              aria-current={active === 'profile' ? 'page' : undefined}
+              onClick={() => onNavigate({ name: 'profile' })}
+            >
+              求职资料
+            </button>
             <button
               type="button"
               aria-current={active === 'jobs' ? 'page' : undefined}
