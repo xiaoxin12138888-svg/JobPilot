@@ -1,0 +1,49 @@
+<main>
+  <form id="application-form">
+    <label for="full-name">姓名</label>
+    <input id="full-name" name="candidate_name" required value="不应读取的现有姓名" />
+
+    <input name="phone" type="tel" aria-label="手机号码" />
+
+    <span id="email-caption">电子邮箱</span>
+    <input name="email" type="email" aria-labelledby="email-caption" />
+
+    <input name="school" placeholder="毕业院校" />
+
+    <label>个人介绍 <textarea rows="4"></textarea></label>
+
+    <label for="degree">学历</label>
+    <select id="degree" name="degree">
+      <option value="">请选择</option>
+      <option value="bachelor">本科</option>
+      <option value="master">硕士</option>
+    </select>
+
+    <label for="education-start">入学月份</label>
+    <input id="education-start" name="education_start" type="month" />
+
+    <label for="city-combobox">当前城市</label>
+    <input
+      id="city-combobox"
+      role="combobox"
+      aria-autocomplete="list"
+      aria-controls="city-options"
+    />
+    <div id="city-options" role="listbox">
+      <div role="option">示例市</div>
+    </div>
+
+    <label><input name="agreement" type="checkbox" /> 同意隐私条款</label>
+    <label><input name="relocate" type="radio" /> 是否接受调剂</label>
+    <label><input name="resume_file" type="file" /> 上传简历</label>
+    <label><input name="favorite_color" type="text" /> 最喜欢的颜色</label>
+
+    <input name="password" type="password" />
+    <input name="verification_code" aria-label="短信验证码" />
+    <input name="hidden_token" type="hidden" />
+    <input name="visually_hidden" style="display: none" />
+    <input name="disabled_field" disabled />
+    <button type="submit">提交申请</button>
+  </form>
+  <input data-jobpilot-ui name="jobpilot-control" />
+</main>
