@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 
 import type { ApiClient, ResumeVersion } from '@jobpilot/api-client';
 
+import { ResumeImportFlow } from './ResumeImportFlow';
+
 interface ResumeVersionsPageProps {
   apiClient: ApiClient;
 }
@@ -16,6 +18,7 @@ export function ResumeVersionsPage({ apiClient }: ResumeVersionsPageProps) {
   const [error, setError] = useState<string>();
   const [editor, setEditor] = useState<EditorState>();
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -84,6 +87,21 @@ export function ResumeVersionsPage({ apiClient }: ResumeVersionsPageProps) {
     }
   }
 
+  if (importing) {
+    return (
+      <ResumeImportFlow
+        apiClient={apiClient}
+        onCancel={() => setImporting(false)}
+        onConfirmed={(result) => {
+          const createdResume = result.resumeVersion;
+          if (createdResume) {
+            setResumes((items) => [createdResume, ...items]);
+          }
+        }}
+      />
+    );
+  }
+
   if (editor) {
     return (
       <section className="page-section narrow" aria-labelledby="resume-editor-title">
@@ -96,7 +114,7 @@ export function ResumeVersionsPage({ apiClient }: ResumeVersionsPageProps) {
             <h1 id="resume-editor-title">
               {editor.mode === 'create' ? '新建简历版本' : '查看 / 编辑简历版本'}
             </h1>
-            <p>正文只保存在本机 SQLite；V1 仅支持手动录入或粘贴纯文本。</p>
+            <p>正文只保存在本机 SQLite；可手动录入、粘贴，或从本机 PDF/DOCX 导入。</p>
           </div>
         </div>
         <div className="resume-editor content-card">
@@ -149,13 +167,18 @@ export function ResumeVersionsPage({ apiClient }: ResumeVersionsPageProps) {
           <h1 id="resume-list-title">简历版本</h1>
           <p>保存不同岗位方向的纯文本简历版本，并记录真实投递时使用的版本。</p>
         </div>
-        <button
-          type="button"
-          className="button primary"
-          onClick={() => setEditor({ mode: 'create', name: '', content: '' })}
-        >
-          新建简历版本
-        </button>
+        <div className="page-heading-actions">
+          <button type="button" className="button secondary" onClick={() => setImporting(true)}>
+            导入简历
+          </button>
+          <button
+            type="button"
+            className="button primary"
+            onClick={() => setEditor({ mode: 'create', name: '', content: '' })}
+          >
+            新建简历版本
+          </button>
+        </div>
       </div>
       {error && (
         <div className="inline-error" role="alert">

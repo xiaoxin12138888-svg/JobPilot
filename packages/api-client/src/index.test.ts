@@ -258,6 +258,65 @@ describe('createApiClient', () => {
     });
   });
 
+  it('parses a local resume with multipart transport and no credentials or manual content type', async () => {
+    const preview = createResumeImportPreviewPayload();
+    const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(preview));
+    const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
+    const file = new File(['local-content'], 'resume.docx', {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
+
+    await expect(client.parseResumeImport(file)).resolves.toEqual(preview);
+
+    const [url, init] = fetchImplementation.mock.calls[0]!;
+    expect(url).toBe('http://127.0.0.1:8000/api/v1/resume-imports/parse');
+    expect(init).toMatchObject({
+      cache: 'no-store',
+      credentials: 'omit',
+      headers: { Accept: 'application/json' },
+      method: 'POST',
+      redirect: 'error',
+    });
+    expect(init?.body).toBeInstanceOf(FormData);
+    const uploaded = (init?.body as FormData).get('file') as File;
+    expect(uploaded.name).toBe('resume.docx');
+    expect(await uploaded.text()).toBe('local-content');
+  });
+
+  it('confirms only the explicitly selected resume and profile values as JSON', async () => {
+    const confirmation = {
+      resumeVersion: createResumePayload(),
+      profile: createAutofillProfilePayload(),
+    };
+    const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(confirmation));
+    const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
+    const input = {
+      resumeVersion: { name: '导入简历 2026-09-07', content: '已编辑正文' },
+      profileImport: { personal: { phone: '13800138000' } },
+    };
+
+    await expect(client.confirmResumeImport(input)).resolves.toEqual(confirmation);
+    expect(fetchImplementation).toHaveBeenCalledWith(
+      'http://127.0.0.1:8000/api/v1/resume-imports/confirm',
+      expect.objectContaining({
+        body: JSON.stringify(input),
+        credentials: 'omit',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+        method: 'POST',
+        redirect: 'error',
+      }),
+    );
+  });
+
+  it('rejects an untrusted resume import preview shape', async () => {
+    const invalid = { ...createResumeImportPreviewPayload(), sourceFilename: 'private.docx' };
+    const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(invalid));
+    const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
+    const file = new File(['content'], 'resume.docx');
+
+    await expect(client.parseResumeImport(file)).rejects.toThrow('invalid Resume Import preview');
+  });
+
   it('requires explicit applied confirmation in the status request body', async () => {
     const application = createApplicationPayload('applied');
     const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(application));
@@ -866,6 +925,44 @@ function createAutofillProfilePayload() {
     },
     createdAt: '2026-09-07T00:00:00Z',
     updatedAt: '2026-09-07T00:00:00Z',
+  };
+}
+
+function createResumeImportPreviewPayload() {
+  return {
+    fileType: 'DOCX' as const,
+    extractedText: '基本信息\n示例用户',
+    blocks: [
+      { kind: 'HEADING' as const, text: '基本信息' },
+      { kind: 'TEXT' as const, text: '示例用户' },
+    ],
+    sections: [{ type: 'BASIC' as const, heading: '基本信息', text: '示例用户' }],
+    profileCandidates: {
+      personal: {
+        name: '示例用户',
+        phone: '13800138000',
+        email: 'candidate@example.invalid',
+        currentCity: null,
+      },
+      education: [
+        {
+          school: '示例大学',
+          major: '信息管理',
+          degree: null,
+          start: '2022-09',
+          end: null,
+        },
+      ],
+      experience: [],
+      links: { github: null, portfolio: null, homepage: null },
+    },
+    warnings: [{ code: 'EXPERIENCE_NOT_DETECTED', message: '未识别到明确的工作或实习经历' }],
+    metrics: {
+      fileSizeBytes: 1024,
+      pageCount: null,
+      parseLatencyMs: 8,
+      extractedCharacterCount: 9,
+    },
   };
 }
 

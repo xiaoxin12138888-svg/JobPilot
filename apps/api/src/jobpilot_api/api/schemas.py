@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from jobpilot_api.application.evidence_maps import EvidenceMapState
 from jobpilot_api.application.jd_analysis import JDAnalysisState
 from jobpilot_api.application.repositories import ApplicationListEntry, JobListEntry
+from jobpilot_api.application.resume_imports import ResumeImportParseResult
 from jobpilot_api.domain.applications import Application, ApplicationStatus, RejectionReason
 from jobpilot_api.domain.autofill_profiles import AutofillProfile
 from jobpilot_api.domain.evidence_maps import (
@@ -37,6 +38,12 @@ from jobpilot_api.domain.interviews import (
 )
 from jobpilot_api.domain.jd_analysis import EvidenceItem, JDAnalysis, JDAnalysisRecord
 from jobpilot_api.domain.jobs import Job
+from jobpilot_api.domain.resume_imports import (
+    DocumentBlock,
+    ResumeImportConfirmation,
+    ResumeProfileImportPatch,
+    ResumeSection,
+)
 from jobpilot_api.domain.resume_versions import ResumeVersion
 
 
@@ -47,6 +54,137 @@ def _camel_case(value: str) -> str:
 
 class ApiModel(BaseModel):
     model_config = ConfigDict(alias_generator=_camel_case, populate_by_name=True, extra="forbid")
+
+
+class ResumeImportBlockResponse(ApiModel):
+    kind: str
+    text: str
+
+    @classmethod
+    def from_domain(cls, block: DocumentBlock) -> ResumeImportBlockResponse:
+        return cls(kind=block.kind.value, text=block.text)
+
+
+class ResumeImportSectionResponse(ApiModel):
+    type: str
+    heading: str | None
+    text: str
+
+    @classmethod
+    def from_domain(cls, section: ResumeSection) -> ResumeImportSectionResponse:
+        return cls(type=section.kind.value, heading=section.heading, text=section.text)
+
+
+class ResumeImportPersonalCandidateResponse(ApiModel):
+    name: str | None
+    phone: str | None
+    email: str | None
+    current_city: str | None
+
+
+class ResumeImportEducationCandidateResponse(ApiModel):
+    school: str | None
+    major: str | None
+    degree: str | None
+    start: str | None
+    end: str | None
+
+
+class ResumeImportExperienceCandidateResponse(ApiModel):
+    company: str | None
+    position: str | None
+    start: str | None
+    end: str | None
+    description: str | None
+
+
+class ResumeImportLinksCandidateResponse(ApiModel):
+    github: str | None
+    portfolio: str | None
+    homepage: str | None
+
+
+class ResumeImportProfileCandidatesResponse(ApiModel):
+    personal: ResumeImportPersonalCandidateResponse
+    education: list[ResumeImportEducationCandidateResponse]
+    experience: list[ResumeImportExperienceCandidateResponse]
+    links: ResumeImportLinksCandidateResponse
+
+
+class ResumeImportMetricsResponse(ApiModel):
+    file_size_bytes: int
+    page_count: int | None
+    parse_latency_ms: int
+    extracted_character_count: int
+
+
+class ResumeImportWarningResponse(ApiModel):
+    code: str
+    message: str
+
+
+class ResumeImportParseResponse(ApiModel):
+    file_type: str
+    extracted_text: str
+    blocks: list[ResumeImportBlockResponse]
+    sections: list[ResumeImportSectionResponse]
+    profile_candidates: ResumeImportProfileCandidatesResponse
+    warnings: list[ResumeImportWarningResponse]
+    metrics: ResumeImportMetricsResponse
+
+    @classmethod
+    def from_result(cls, result: ResumeImportParseResult) -> ResumeImportParseResponse:
+        preview = result.preview
+        candidates = preview.profile_candidates
+        return cls(
+            file_type=preview.file_type.value.upper(),
+            extracted_text=preview.extracted_text,
+            blocks=[ResumeImportBlockResponse.from_domain(item) for item in preview.blocks],
+            sections=[ResumeImportSectionResponse.from_domain(item) for item in preview.sections],
+            profile_candidates=ResumeImportProfileCandidatesResponse(
+                personal=ResumeImportPersonalCandidateResponse(
+                    name=candidates.personal.name,
+                    phone=candidates.personal.phone,
+                    email=candidates.personal.email,
+                    current_city=candidates.personal.current_city,
+                ),
+                education=[
+                    ResumeImportEducationCandidateResponse(
+                        school=item.school,
+                        major=item.major,
+                        degree=item.degree,
+                        start=item.start,
+                        end=item.end,
+                    )
+                    for item in candidates.education
+                ],
+                experience=[
+                    ResumeImportExperienceCandidateResponse(
+                        company=item.company,
+                        position=item.position,
+                        start=item.start,
+                        end=item.end,
+                        description=item.description,
+                    )
+                    for item in candidates.experience
+                ],
+                links=ResumeImportLinksCandidateResponse(
+                    github=candidates.links.github,
+                    portfolio=candidates.links.portfolio,
+                    homepage=candidates.links.homepage,
+                ),
+            ),
+            warnings=[
+                ResumeImportWarningResponse(code=item.code, message=item.message)
+                for item in preview.warnings
+            ],
+            metrics=ResumeImportMetricsResponse(
+                file_size_bytes=result.metrics.size_bytes,
+                page_count=result.metrics.page_count,
+                parse_latency_ms=result.metrics.parse_latency_ms,
+                extracted_character_count=result.metrics.character_count,
+            ),
+        )
 
 
 class JobCreateRequest(ApiModel):
@@ -701,6 +839,52 @@ class AutofillProfileResponse(ApiModel):
             profile=(
                 AutofillProfileDataResponse.from_domain(profile) if profile is not None else None
             )
+        )
+
+
+class ResumeProfileImportRequest(ApiModel):
+    personal: PersonalDetailsPayload = Field(default_factory=PersonalDetailsPayload)
+    education: list[EducationEntryPayload] = Field(default_factory=list, max_length=20)
+    experience: list[ExperienceEntryPayload] = Field(default_factory=list, max_length=20)
+    links: ProfileLinksPayload = Field(default_factory=ProfileLinksPayload)
+
+    def to_domain(self) -> ResumeProfileImportPatch:
+        return ResumeProfileImportPatch.create(
+            personal=self.personal.model_dump(exclude_unset=True),
+            education=[item.model_dump() for item in self.education],
+            experience=[item.model_dump() for item in self.experience],
+            links=self.links.model_dump(exclude_unset=True),
+        )
+
+
+class ResumeImportConfirmRequest(ApiModel):
+    resume_version: ResumeVersionCreateRequest | None = None
+    profile_import: ResumeProfileImportRequest | None = None
+
+    @model_validator(mode="after")
+    def require_a_target(self) -> ResumeImportConfirmRequest:
+        if self.resume_version is None and self.profile_import is None:
+            raise ValueError("at least one import target must be provided")
+        return self
+
+
+class ResumeImportConfirmResponse(ApiModel):
+    resume_version: ResumeVersionResponse | None
+    profile: AutofillProfileDataResponse | None
+
+    @classmethod
+    def from_domain(cls, result: ResumeImportConfirmation) -> ResumeImportConfirmResponse:
+        return cls(
+            resume_version=(
+                ResumeVersionResponse.from_domain(result.resume_version)
+                if result.resume_version is not None
+                else None
+            ),
+            profile=(
+                AutofillProfileDataResponse.from_domain(result.profile)
+                if result.profile is not None
+                else None
+            ),
         )
 
 

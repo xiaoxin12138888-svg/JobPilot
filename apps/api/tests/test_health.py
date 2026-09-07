@@ -35,6 +35,8 @@ def test_openapi_exposes_only_health_and_approved_business_routes() -> None:
         "/api/v1/interviews/{interview_id}/questions",
         "/api/v1/interview-questions/{question_id}",
         "/api/v1/feedback-summary",
+        "/api/v1/resume-imports/parse",
+        "/api/v1/resume-imports/confirm",
         "/api/v1/resume-versions",
         "/api/v1/resume-versions/{resume_version_id}",
         "/api/v1/resume-versions/{resume_version_id}/duplicate",

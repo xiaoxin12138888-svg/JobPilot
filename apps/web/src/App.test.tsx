@@ -826,6 +826,19 @@ describe('App', () => {
     expect(deleteResumeVersion).toHaveBeenCalledWith('resume-2');
   });
 
+  it('opens resume import from the Resume Versions view without parsing or saving early', async () => {
+    const apiClient = createApiClient();
+    render(<App apiClient={apiClient} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '简历版本' }));
+    fireEvent.click(await screen.findByRole('button', { name: '导入简历' }));
+
+    expect(await screen.findByRole('heading', { name: '导入简历' })).toBeInTheDocument();
+    expect(screen.getByText(/先解析预览，确认后才写入/)).toBeInTheDocument();
+    expect(apiClient.parseResumeImport).not.toHaveBeenCalled();
+    expect(apiClient.confirmResumeImport).not.toHaveBeenCalled();
+  });
+
   it('keeps an in-use Resume Version visible when deletion is blocked', async () => {
     const resume = createResume({ applicationCount: 1 });
     const apiClient = createApiClient({
@@ -858,6 +871,7 @@ describe('App', () => {
     fireEvent.click(await screen.findByRole('button', { name: '求职资料' }));
     expect(await screen.findByRole('heading', { name: '求职资料' })).toBeInTheDocument();
     expect(screen.getByText('资料只保存在本机 SQLite')).toBeInTheDocument();
+    expect(screen.getByText(/只有在简历导入预览中明确确认后才会更新所选资料/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /从简历导入/ })).toBeNull();
 
     fireEvent.change(screen.getByLabelText('姓名'), { target: { value: '示例用户' } });
@@ -1146,6 +1160,8 @@ function createApiClient(overrides: Partial<ApiClient> = {}): ApiClient {
     updateResumeVersion: vi.fn(),
     duplicateResumeVersion: vi.fn(),
     deleteResumeVersion: vi.fn(),
+    parseResumeImport: vi.fn(),
+    confirmResumeImport: vi.fn(),
     ...overrides,
   };
 }

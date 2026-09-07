@@ -48,6 +48,11 @@ from jobpilot_api.domain.jd_analysis import (
     analysis_from_stored_json,
 )
 from jobpilot_api.domain.jobs import Job, JobDraft
+from jobpilot_api.domain.resume_imports import (
+    ResumeImportConfirmation,
+    ResumeProfileImportPatch,
+    merge_autofill_profile,
+)
 from jobpilot_api.domain.resume_versions import ResumeVersion, ResumeVersionDraft
 from jobpilot_api.infrastructure.database.models import (
     ApplicationModel,
@@ -487,6 +492,62 @@ class SqlAlchemyAutofillProfileRepository:
         except OperationalError as error:
             raise _database_error(error) from error
         return _autofill_profile(model)
+
+
+class SqlAlchemyResumeImportRepository:
+    _PROFILE_ID = 1
+
+    def __init__(self, sessions: sessionmaker[Session]) -> None:
+        self._sessions = sessions
+
+    def confirm(
+        self,
+        resume_version: ResumeVersionDraft | None,
+        profile_import: ResumeProfileImportPatch | None,
+    ) -> ResumeImportConfirmation:
+        now = datetime.now(UTC)
+        resume_model: ResumeVersionModel | None = None
+        profile_model: AutofillProfileModel | None = None
+        try:
+            with self._sessions.begin() as session:
+                if resume_version is not None:
+                    resume_model = ResumeVersionModel(
+                        id=str(uuid4()),
+                        name=resume_version.name,
+                        content=resume_version.content,
+                        created_at=now,
+                        updated_at=now,
+                    )
+                    session.add(resume_model)
+                if profile_import is not None:
+                    profile_model = session.get(AutofillProfileModel, self._PROFILE_ID)
+                    current = (
+                        _autofill_profile(profile_model) if profile_model is not None else None
+                    )
+                    merged = merge_autofill_profile(current, profile_import)
+                    values = _autofill_profile_draft_values(merged)
+                    if profile_model is None:
+                        profile_model = AutofillProfileModel(
+                            id=self._PROFILE_ID,
+                            **values,
+                            created_at=now,
+                            updated_at=now,
+                        )
+                        session.add(profile_model)
+                    else:
+                        for name, value in values.items():
+                            setattr(profile_model, name, value)
+                        profile_model.updated_at = now
+        except OperationalError as error:
+            raise _database_error(error) from error
+        return ResumeImportConfirmation(
+            resume_version=(
+                _resume_version(resume_model, application_count=0)
+                if resume_model is not None
+                else None
+            ),
+            profile=_autofill_profile(profile_model) if profile_model is not None else None,
+        )
 
 
 class SqlAlchemyEvidenceMapRepository:

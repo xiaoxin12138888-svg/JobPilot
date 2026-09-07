@@ -10,6 +10,7 @@ from sqlalchemy.orm import sessionmaker
 from jobpilot_api.application.evidence_maps import EvidenceMapService
 from jobpilot_api.application.jd_analysis import JDAnalysisService
 from jobpilot_api.application.providers import EvidenceMapProvider, JDAnalysisProvider
+from jobpilot_api.application.resume_imports import ResumeImportService
 from jobpilot_api.application.services import (
     ApplicationService,
     AutofillProfileService,
@@ -31,6 +32,7 @@ from jobpilot_api.infrastructure.database.repositories import (
     SqlAlchemyInterviewRepository,
     SqlAlchemyJDAnalysisRepository,
     SqlAlchemyJobRepository,
+    SqlAlchemyResumeImportRepository,
     SqlAlchemyResumeVersionRepository,
 )
 
@@ -54,6 +56,7 @@ class ServiceProvider:
         self._interviews: InterviewService | None = None
         self._feedback: FeedbackSummaryService | None = None
         self._autofill_profile: AutofillProfileService | None = None
+        self._resume_import: ResumeImportService | None = None
         configured_provider = (
             OpenAICompatibleJDAnalysisProvider(llm_settings) if llm_settings is not None else None
         )
@@ -103,6 +106,7 @@ class ServiceProvider:
                     interview_repository = SqlAlchemyInterviewRepository(sessions)
                     feedback_repository = SqlAlchemyFeedbackSummaryRepository(sessions)
                     autofill_profile_repository = SqlAlchemyAutofillProfileRepository(sessions)
+                    resume_import_repository = SqlAlchemyResumeImportRepository(sessions)
                     self._engine = engine
                     self._jobs = JobService(job_repository)
                     self._applications = ApplicationService(
@@ -129,6 +133,7 @@ class ServiceProvider:
                     )
                     self._feedback = FeedbackSummaryService(feedback_repository)
                     self._autofill_profile = AutofillProfileService(autofill_profile_repository)
+                    self._resume_import = ResumeImportService(resume_import_repository)
         return (
             self._jobs,
             self._applications,
@@ -143,6 +148,11 @@ class ServiceProvider:
     def close(self) -> None:
         if self._engine is not None:
             self._engine.dispose()
+
+    def resume_import_service(self) -> ResumeImportService:
+        self.services()
+        assert self._resume_import is not None
+        return self._resume_import
 
 
 def get_job_service(request: Request) -> JobService:
@@ -183,3 +193,7 @@ def get_feedback_summary_service(request: Request) -> FeedbackSummaryService:
 def get_autofill_profile_service(request: Request) -> AutofillProfileService:
     _, _, _, _, _, _, _, autofill_profile = request.app.state.service_provider.services()
     return autofill_profile
+
+
+def get_resume_import_service(request: Request) -> ResumeImportService:
+    return request.app.state.service_provider.resume_import_service()

@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, File, Query, Request, Response, UploadFile, status
+from starlette.concurrency import run_in_threadpool
 
 from jobpilot_api.api.dependencies import (
     get_analysis_service,
@@ -12,6 +13,7 @@ from jobpilot_api.api.dependencies import (
     get_feedback_summary_service,
     get_interview_service,
     get_job_service,
+    get_resume_import_service,
     get_resume_version_service,
 )
 from jobpilot_api.api.schemas import (
@@ -39,6 +41,9 @@ from jobpilot_api.api.schemas import (
     JobListResponse,
     JobResponse,
     JobUpdateRequest,
+    ResumeImportConfirmRequest,
+    ResumeImportConfirmResponse,
+    ResumeImportParseResponse,
     ResumeVersionCreateRequest,
     ResumeVersionDuplicateRequest,
     ResumeVersionListResponse,
@@ -47,6 +52,7 @@ from jobpilot_api.api.schemas import (
 )
 from jobpilot_api.application.evidence_maps import EvidenceMapService
 from jobpilot_api.application.jd_analysis import JDAnalysisService
+from jobpilot_api.application.resume_imports import ResumeImportService
 from jobpilot_api.application.services import (
     ApplicationService,
     AutofillProfileService,
@@ -59,11 +65,50 @@ from jobpilot_api.domain.applications import ApplicationStatus
 from jobpilot_api.domain.autofill_profiles import AutofillProfileDraft
 from jobpilot_api.domain.interviews import InterviewQuestionDraft, InterviewRoundDraft
 from jobpilot_api.domain.jobs import JobDraft
+from jobpilot_api.domain.resume_imports import MAX_RESUME_FILE_BYTES, ResumeImportError
 from jobpilot_api.domain.resume_versions import ResumeVersionDraft
 
 router = APIRouter(prefix="/api/v1")
 PageLimit = Annotated[int, Query(ge=1, le=100)]
 PageOffset = Annotated[int, Query(ge=0)]
+
+
+@router.post("/resume-imports/parse", response_model=ResumeImportParseResponse)
+async def parse_resume_import(
+    request: Request,
+    service: Annotated[ResumeImportService, Depends(get_resume_import_service)],
+    file: Annotated[UploadFile, File()],
+) -> ResumeImportParseResponse:
+    form = await request.form()
+    if set(form) != {"file"} or len(form.getlist("file")) != 1:
+        raise ResumeImportError("VALIDATION_ERROR", "简历上传只能包含一个文件")
+    try:
+        data = await file.read(MAX_RESUME_FILE_BYTES + 1)
+    finally:
+        await file.close()
+    result = await run_in_threadpool(
+        service.parse,
+        filename=file.filename,
+        content_type=file.content_type,
+        data=data,
+    )
+    return ResumeImportParseResponse.from_result(result)
+
+
+@router.post("/resume-imports/confirm", response_model=ResumeImportConfirmResponse)
+def confirm_resume_import(
+    request: ResumeImportConfirmRequest,
+    service: Annotated[ResumeImportService, Depends(get_resume_import_service)],
+) -> ResumeImportConfirmResponse:
+    resume_version = (
+        ResumeVersionDraft.create(**request.resume_version.model_dump())
+        if request.resume_version is not None
+        else None
+    )
+    profile_import = (
+        request.profile_import.to_domain() if request.profile_import is not None else None
+    )
+    return ResumeImportConfirmResponse.from_domain(service.confirm(resume_version, profile_import))
 
 
 @router.get("/feedback-summary", response_model=FeedbackSummaryResponse)

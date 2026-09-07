@@ -6,6 +6,7 @@ import type {
   ApplicationStatus,
   AutofillProfileInput,
   AutofillProfileResponse,
+  ConfirmResumeImportInput,
   CreateInterviewQuestionInput,
   CreateInterviewRoundInput,
   CreateResumeVersionInput,
@@ -22,6 +23,8 @@ import type {
   JobSource,
   ResumeVersion,
   ResumeVersionListResponse,
+  ResumeImportConfirmResponse,
+  ResumeImportParseResponse,
   UpdateInterviewQuestionInput,
   UpdateInterviewRoundInput,
   UpdateApplicationInput,
@@ -85,6 +88,17 @@ export type {
   ResumeEvidence,
   ResumeVersion,
   ResumeVersionListResponse,
+  ResumeImportBlock,
+  ResumeImportBlockKind,
+  ResumeImportConfirmResponse,
+  ResumeImportEducationCandidate,
+  ResumeImportExperienceCandidate,
+  ResumeImportFileType,
+  ResumeImportParseResponse,
+  ResumeImportSection,
+  ResumeImportSectionKind,
+  ResumeProfileImportInput,
+  ConfirmResumeImportInput,
   ResumeVersionFeedbackStats,
   RejectionReason,
   SourceFeedbackStats,
@@ -100,6 +114,7 @@ export type {
 const REQUEST_TIMEOUT_MILLISECONDS = 5_000;
 const ANALYSIS_REQUEST_TIMEOUT_MILLISECONDS = 35_000;
 const EVIDENCE_MAP_REQUEST_TIMEOUT_MILLISECONDS = 65_000;
+const RESUME_PARSE_REQUEST_TIMEOUT_MILLISECONDS = 15_000;
 const APPLICATION_STATUSES = new Set<ApplicationStatus>([
   'planned',
   'applied',
@@ -195,6 +210,8 @@ export interface ApiClient {
     input: DuplicateResumeVersionInput,
   ): Promise<ResumeVersion>;
   deleteResumeVersion(resumeVersionId: string): Promise<void>;
+  parseResumeImport(file: File): Promise<ResumeImportParseResponse>;
+  confirmResumeImport(input: ConfirmResumeImportInput): Promise<ResumeImportConfirmResponse>;
 }
 
 export interface ApiClientOptions {
@@ -264,6 +281,43 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         if (isApiErrorEnvelope(payload)) {
           throw new ApiRequestError(response.status, payload.error);
         }
+        throw new Error(`JobPilot API request failed with status ${response.status}`);
+      }
+      return payload;
+    } catch (error) {
+      if (abortController.signal.aborted) {
+        throw new Error('JobPilot API request timed out', { cause: error });
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  async function requestMultipart(path: string, formData: FormData): Promise<unknown> {
+    const abortController = new AbortController();
+    const timeout = setTimeout(
+      () => abortController.abort(),
+      RESUME_PARSE_REQUEST_TIMEOUT_MILLISECONDS,
+    );
+    try {
+      const response = await fetchImplementation(new URL(path, baseUrl).toString(), {
+        body: formData,
+        cache: 'no-store',
+        credentials: 'omit',
+        headers: { Accept: 'application/json' },
+        method: 'POST',
+        redirect: 'error',
+        signal: abortController.signal,
+      });
+      let payload: unknown;
+      try {
+        payload = await response.json();
+      } catch {
+        throw new Error('JobPilot API returned invalid JSON');
+      }
+      if (!response.ok) {
+        if (isApiErrorEnvelope(payload)) throw new ApiRequestError(response.status, payload.error);
         throw new Error(`JobPilot API request failed with status ${response.status}`);
       }
       return payload;
@@ -479,6 +533,18 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     async deleteResumeVersion(resumeVersionId): Promise<void> {
       await request(`/api/v1/resume-versions/${encodeURIComponent(resumeVersionId)}`, 'DELETE');
     },
+    async parseResumeImport(file): Promise<ResumeImportParseResponse> {
+      const formData = new FormData();
+      formData.append('file', file, file.name);
+      return requireResumeImportParse(
+        await requestMultipart('/api/v1/resume-imports/parse', formData),
+      );
+    },
+    async confirmResumeImport(input): Promise<ResumeImportConfirmResponse> {
+      return requireResumeImportConfirm(
+        await request('/api/v1/resume-imports/confirm', 'POST', input),
+      );
+    },
   };
 }
 
@@ -586,6 +652,26 @@ function requireResumeVersionList(value: unknown): ResumeVersionListResponse {
     throw new Error('JobPilot API returned an invalid Resume Version list response');
   }
   return value as unknown as ResumeVersionListResponse;
+}
+
+function requireResumeImportParse(value: unknown): ResumeImportParseResponse {
+  if (!isResumeImportParse(value)) {
+    throw new Error('JobPilot API returned an invalid Resume Import preview');
+  }
+  return value as ResumeImportParseResponse;
+}
+
+function requireResumeImportConfirm(value: unknown): ResumeImportConfirmResponse {
+  if (
+    !isRecordWithKeys(value, ['resumeVersion', 'profile']) ||
+    (value.resumeVersion !== null &&
+      (!isRecord(value.resumeVersion) ||
+        !isResumeVersionFieldsWithExactKeys(value.resumeVersion))) ||
+    (value.profile !== null && !isAutofillProfile(value.profile))
+  ) {
+    throw new Error('JobPilot API returned an invalid Resume Import confirmation');
+  }
+  return value as unknown as ResumeImportConfirmResponse;
 }
 
 function requireJobAnalysis(value: unknown): JobAnalysisResponse {
@@ -795,6 +881,106 @@ const RESUME_VERSION_KEYS = [
 ] as const;
 const AUTOFILL_EDUCATION_KEYS = ['school', 'major', 'degree', 'start', 'end'] as const;
 const AUTOFILL_EXPERIENCE_KEYS = ['company', 'position', 'start', 'end', 'description'] as const;
+
+function isResumeImportParse(value: unknown): value is ResumeImportParseResponse {
+  if (
+    !isRecordWithKeys(value, [
+      'fileType',
+      'extractedText',
+      'blocks',
+      'sections',
+      'profileCandidates',
+      'warnings',
+      'metrics',
+    ]) ||
+    (value.fileType !== 'PDF' && value.fileType !== 'DOCX') ||
+    typeof value.extractedText !== 'string' ||
+    !Array.isArray(value.blocks) ||
+    !value.blocks.every(
+      (item) =>
+        isRecordWithKeys(item, ['kind', 'text']) &&
+        (item.kind === 'TEXT' || item.kind === 'TABLE_ROW' || item.kind === 'HEADING') &&
+        typeof item.text === 'string',
+    ) ||
+    !Array.isArray(value.sections) ||
+    !value.sections.every(isResumeImportSection) ||
+    !Array.isArray(value.warnings) ||
+    !value.warnings.every(
+      (item) =>
+        isRecordWithKeys(item, ['code', 'message']) &&
+        typeof item.code === 'string' &&
+        typeof item.message === 'string',
+    ) ||
+    !isResumeImportProfileCandidates(value.profileCandidates) ||
+    !isResumeImportMetrics(value.metrics)
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function isResumeImportSection(value: unknown): boolean {
+  return (
+    isRecordWithKeys(value, ['type', 'heading', 'text']) &&
+    [
+      'BASIC',
+      'EDUCATION',
+      'EXPERIENCE',
+      'PROJECT',
+      'SKILLS',
+      'CERTIFICATES',
+      'AWARDS',
+      'OTHER',
+    ].includes(value.type as string) &&
+    isNullableString(value.heading) &&
+    typeof value.text === 'string'
+  );
+}
+
+function isResumeImportProfileCandidates(value: unknown): boolean {
+  return (
+    isRecordWithKeys(value, ['personal', 'education', 'experience', 'links']) &&
+    isRecordWithKeys(value.personal, ['name', 'phone', 'email', 'currentCity']) &&
+    Object.values(value.personal).every(isNullableString) &&
+    Array.isArray(value.education) &&
+    value.education.every(
+      (item) =>
+        isRecordWithKeys(item, AUTOFILL_EDUCATION_KEYS) &&
+        isNullableString(item.school) &&
+        isNullableString(item.major) &&
+        isNullableString(item.degree) &&
+        isNullableMonth(item.start) &&
+        isNullableMonth(item.end),
+    ) &&
+    Array.isArray(value.experience) &&
+    value.experience.every(
+      (item) =>
+        isRecordWithKeys(item, AUTOFILL_EXPERIENCE_KEYS) &&
+        isNullableString(item.company) &&
+        isNullableString(item.position) &&
+        isNullableMonth(item.start) &&
+        isNullableMonth(item.end) &&
+        isNullableString(item.description),
+    ) &&
+    isRecordWithKeys(value.links, ['github', 'portfolio', 'homepage']) &&
+    Object.values(value.links).every(isNullableHttpUrl)
+  );
+}
+
+function isResumeImportMetrics(value: unknown): boolean {
+  return (
+    isRecordWithKeys(value, [
+      'fileSizeBytes',
+      'pageCount',
+      'parseLatencyMs',
+      'extractedCharacterCount',
+    ]) &&
+    isNonNegativeInteger(value.fileSizeBytes) &&
+    (value.pageCount === null || isNonNegativeInteger(value.pageCount)) &&
+    isNonNegativeInteger(value.parseLatencyMs) &&
+    isNonNegativeInteger(value.extractedCharacterCount)
+  );
+}
 
 function isAutofillProfile(value: unknown): boolean {
   return (

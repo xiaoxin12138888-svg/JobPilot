@@ -334,6 +334,61 @@ export interface AutofillProfileResponse {
   profile: AutofillProfile | null;
 }
 
+export type ResumeImportFileType = 'PDF' | 'DOCX';
+export type ResumeImportBlockKind = 'TEXT' | 'TABLE_ROW' | 'HEADING';
+export type ResumeImportSectionKind =
+  'BASIC' | 'EDUCATION' | 'EXPERIENCE' | 'PROJECT' | 'SKILLS' | 'CERTIFICATES' | 'AWARDS' | 'OTHER';
+
+export interface ResumeImportBlock {
+  kind: ResumeImportBlockKind;
+  text: string;
+}
+
+export interface ResumeImportSection {
+  type: ResumeImportSectionKind;
+  heading: string | null;
+  text: string;
+}
+
+export type ResumeImportEducationCandidate = AutofillEducationEntry;
+export type ResumeImportExperienceCandidate = AutofillExperienceEntry;
+
+export interface ResumeImportParseResponse {
+  fileType: ResumeImportFileType;
+  extractedText: string;
+  blocks: ResumeImportBlock[];
+  sections: ResumeImportSection[];
+  profileCandidates: {
+    personal: AutofillPersonalDetails;
+    education: ResumeImportEducationCandidate[];
+    experience: ResumeImportExperienceCandidate[];
+    links: AutofillProfileLinks;
+  };
+  warnings: { code: string; message: string }[];
+  metrics: {
+    fileSizeBytes: number;
+    pageCount: number | null;
+    parseLatencyMs: number;
+    extractedCharacterCount: number;
+  };
+}
+
+export interface ResumeProfileImportInput {
+  personal?: Partial<AutofillPersonalDetails>;
+  education?: AutofillEducationEntry[];
+  experience?: AutofillExperienceEntry[];
+  links?: Partial<AutofillProfileLinks>;
+}
+
+export type ConfirmResumeImportInput =
+  | { resumeVersion: CreateResumeVersionInput; profileImport?: ResumeProfileImportInput }
+  | { resumeVersion?: CreateResumeVersionInput; profileImport: ResumeProfileImportInput };
+
+export interface ResumeImportConfirmResponse {
+  resumeVersion: ResumeVersion | null;
+  profile: AutofillProfile | null;
+}
+
 export interface CreateResumeVersionInput {
   name: string;
   content: string;

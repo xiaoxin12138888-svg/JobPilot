@@ -93,7 +93,10 @@ export function AutofillProfilePage({ apiClient }: { apiClient: ApiClient }) {
 
       <aside className="profile-privacy-note" aria-label="资料隐私说明">
         <strong>资料只保存在本机 SQLite</strong>
-        <p>不会从简历自动导入，不会上传云端；Extension 仅在你点击扫描后临时读取。</p>
+        <p>
+          只有在简历导入预览中明确确认后才会更新所选资料；不会上传云端，Extension
+          仅在你点击扫描后临时读取。
+        </p>
       </aside>
 
       {loading ? (

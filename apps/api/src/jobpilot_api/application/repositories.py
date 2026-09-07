@@ -16,6 +16,7 @@ from jobpilot_api.domain.interviews import (
 )
 from jobpilot_api.domain.jd_analysis import JDAnalysis, JDAnalysisRecord
 from jobpilot_api.domain.jobs import Job, JobDraft
+from jobpilot_api.domain.resume_imports import ResumeImportConfirmation, ResumeProfileImportPatch
 from jobpilot_api.domain.resume_versions import ResumeVersion, ResumeVersionDraft
 
 
@@ -107,6 +108,14 @@ class AutofillProfileRepository(Protocol):
     def get(self) -> AutofillProfile | None: ...
 
     def upsert(self, draft: AutofillProfileDraft) -> AutofillProfile: ...
+
+
+class ResumeImportRepository(Protocol):
+    def confirm(
+        self,
+        resume_version: ResumeVersionDraft | None,
+        profile_import: ResumeProfileImportPatch | None,
+    ) -> ResumeImportConfirmation: ...
 
 
 class EvidenceMapRepository(Protocol):
