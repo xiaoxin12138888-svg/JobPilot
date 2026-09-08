@@ -168,6 +168,70 @@ def test_common_unlabeled_table_rows_are_parsed_only_when_core_facts_are_clear()
     )
 
 
+def test_dated_unlabeled_lines_map_clear_education_and_internship_facts() -> None:
+    document = ParsedResumeDocument(
+        file_type=ResumeFileType.DOCX,
+        raw_text=(
+            "实习经历\n"
+            "2024.12 — 2025.02 示例研究所 运维实习生（系统验收）\n"
+            "参与系统验收并跟进问题闭环。\n"
+            "教育经历\n"
+            "2025.09 — 至今 示例理工大学 硕士｜电子信息\n"
+            "2021.09 — 2025.07 示例师范大学 本科｜计算机科学与技术"
+        ),
+        blocks=tuple(
+            DocumentBlock(DocumentBlockKind.TEXT, line)
+            for line in (
+                "实习经历",
+                "2024.12 — 2025.02 示例研究所 运维实习生（系统验收）",
+                "参与系统验收并跟进问题闭环。",
+                "教育经历",
+                "2025.09 — 至今 示例理工大学 硕士｜电子信息",
+                "2021.09 — 2025.07 示例师范大学 本科｜计算机科学与技术",
+            )
+        ),
+    )
+
+    candidates = build_resume_import_preview(document).profile_candidates
+
+    assert candidates.experience == (
+        ExperienceEntry("示例研究所", "运维实习生（系统验收）", "2024-12", "2025-02", None),
+    )
+    assert candidates.education == (
+        EducationEntry("示例理工大学", "电子信息", "硕士", "2025-09", None),
+        EducationEntry("示例师范大学", "计算机科学与技术", "本科", "2021-09", "2025-07"),
+    )
+
+
+def test_dated_narrative_lines_are_not_mapped_as_profile_rows() -> None:
+    document = ParsedResumeDocument(
+        file_type=ResumeFileType.DOCX,
+        raw_text=(
+            "实习经历\n"
+            "2024.12 — 2025.02 参与研究所 项目交付与问题跟进\n"
+            "教育经历\n"
+            "2021.09 — 2025.07 示例大学 参与课程调研"
+        ),
+        blocks=(
+            DocumentBlock(DocumentBlockKind.TEXT, "实习经历"),
+            DocumentBlock(
+                DocumentBlockKind.TEXT,
+                "2024.12 — 2025.02 参与研究所 项目交付与问题跟进",
+            ),
+            DocumentBlock(DocumentBlockKind.TEXT, "教育经历"),
+            DocumentBlock(
+                DocumentBlockKind.TEXT,
+                "2021.09 — 2025.07 示例大学 参与课程调研",
+            ),
+        ),
+    )
+
+    candidates = build_resume_import_preview(document).profile_candidates
+
+    assert candidates.experience == ()
+    assert candidates.education == ()
+
+
 def test_profile_patch_changes_only_selected_scalars_and_appends_selected_rows() -> None:
     current_draft = AutofillProfileDraft.create(
         personal={

@@ -42,8 +42,10 @@ Preview 不返回或保存原始文件名，包含 `fileType`、`extractedText`�
 只有完整行匹配批准 alias 才切 BASIC、EDUCATION、EXPERIENCE、PROJECT、SKILLS、CERTIFICATES、
 AWARDS、OTHER。正文只出现“项目”等词不会切 section。phone/email 使用有界 regex；name 只在
 靠近联系方式且形态明确时保守候选。教育/经历优先读取明确标签；常见 `|` 分隔表格行只有同时
-存在可识别学校/公司与明确月份时才保守生成候选。绝不推断学历、毕业年份、培养年限、公司或
-职位；不确定内容保留在 section text。
+存在可识别学校/公司与明确月份时才保守生成候选。明确教育/经历 section 下的同行标题还可按
+“行首明确月份范围 + 机构后缀 + 学历/职位”生成候选：教育必须出现批准的学历值，经历必须出现
+明确单位后缀和独立职位，并拒绝以“参与/负责/协助”等叙述动词开头的伪机构。绝不推断学历、
+毕业年份、培养年限、公司或职位；不确定内容保留在 section text。
 
 ## Confirm and merge
 

@@ -236,15 +236,44 @@ _HEADING_ALIASES = {
 }
 _EMAIL_PATTERN = re.compile(r"(?<![\w.+-])[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,63}(?![\w.-])", re.I)
 _PHONE_PATTERN = re.compile(r"(?<!\d)(?:\+?86[- ]?)?1[3-9]\d(?:[- ]?\d){8}(?!\d)")
+_MONTH_VALUE_PATTERN = r"(?:19|20)\d{2}[./-](?:0?[1-9]|1[0-2])"
 _MONTH_PATTERN = re.compile(r"(?<!\d)((?:19|20)\d{2})[./-](0?[1-9]|1[0-2])(?!\d)")
+_DATED_LINE_PATTERN = re.compile(
+    rf"^\s*(?P<start>{_MONTH_VALUE_PATTERN})\s*"
+    rf"(?:(?:[-—–~至到])\s*(?P<end>{_MONTH_VALUE_PATTERN}|今|至今|现在|present))?\s+"
+    r"(?P<body>.+?)\s*$",
+    re.I,
+)
 _LABEL_PATTERN = re.compile(
     r"^(学校|院校|专业|学历|学位|公司|单位|职位|岗位|时间)\s*[：:]\s*(.+)$",
     re.I,
 )
 _SCHOOL_PATTERN = re.compile(r"(?:大学|学院|学校|university|college|institute)$", re.I)
 _COMPANY_PATTERN = re.compile(
-    r"(?:公司|集团|事务所|研究院|实验室|corp(?:oration)?|company|co\.?|ltd\.?|inc\.?)$",
+    r"(?:公司|集团|事务所|研究院|研究所|实验室|corp(?:oration)?|company|co\.?|ltd\.?|inc\.?)$",
     re.I,
+)
+_INLINE_SCHOOL_PATTERN = re.compile(
+    r"^(?P<school>.+?(?:大学|学院|学校|university|college|institute))\s+"
+    r"(?P<details>.+)$",
+    re.I,
+)
+_INLINE_COMPANY_PATTERN = re.compile(
+    r"^(?P<company>.+?(?:公司|集团|事务所|研究院|研究所|实验室|"
+    r"corp(?:oration)?|company|co\.?|ltd\.?|inc\.?))\s+"
+    r"(?P<position>.+)$",
+    re.I,
+)
+_INLINE_ORGANIZATION_NARRATIVE_PREFIXES = (
+    "负责",
+    "参与",
+    "协助",
+    "推动",
+    "完成",
+    "支持",
+    "跟进",
+    "基于",
+    "通过",
 )
 _DEGREE_VALUES = {
     "专科",
@@ -372,6 +401,7 @@ def _education_candidates(sections: tuple[ResumeSection, ...]) -> tuple[Educatio
             if any((school, major, degree, start, end)):
                 entries.append(EducationEntry(school, major, degree, start, end))
         entries.extend(_unlabeled_education_entries(section.text))
+        entries.extend(_dated_unlabeled_education_entries(section.text))
     return tuple(entries)
 
 
@@ -387,6 +417,7 @@ def _experience_candidates(sections: tuple[ResumeSection, ...]) -> tuple[Experie
             if any((company, position, start, end)):
                 entries.append(ExperienceEntry(company, position, start, end, None))
         entries.extend(_unlabeled_experience_entries(section.text))
+        entries.extend(_dated_unlabeled_experience_entries(section.text))
     return tuple(entries)
 
 
@@ -429,6 +460,67 @@ def _unlabeled_experience_entries(text: str) -> tuple[ExperienceEntry, ...]:
         start, end = _months(date_text)
         entries.append(ExperienceEntry(company, position, start, end, None))
     return tuple(entries)
+
+
+def _dated_unlabeled_education_entries(text: str) -> tuple[EducationEntry, ...]:
+    entries: list[EducationEntry] = []
+    for date_text, body in _dated_unlabeled_lines(text):
+        match = _INLINE_SCHOOL_PATTERN.fullmatch(body)
+        if match is None:
+            continue
+        details = match.group("details").strip()
+        components = tuple(value.strip() for value in re.split(r"[|｜]", details) if value.strip())
+        degree = next(
+            (value for value in components if value.casefold() in _DEGREE_VALUES),
+            None,
+        )
+        if degree is None:
+            continue
+        major = next((value for value in components if value != degree), None)
+        start, end = _months(date_text)
+        entries.append(EducationEntry(match.group("school").strip(), major, degree, start, end))
+    return tuple(entries)
+
+
+def _dated_unlabeled_experience_entries(text: str) -> tuple[ExperienceEntry, ...]:
+    entries: list[ExperienceEntry] = []
+    for date_text, body in _dated_unlabeled_lines(text):
+        match = _INLINE_COMPANY_PATTERN.fullmatch(body)
+        if match is None:
+            continue
+        company = match.group("company").strip()
+        position = match.group("position").strip()
+        if (
+            company.startswith(_INLINE_ORGANIZATION_NARRATIVE_PREFIXES)
+            or not position
+            or len(position) > 120
+            or any(mark in position for mark in (":", "："))
+        ):
+            continue
+        start, end = _months(date_text)
+        entries.append(
+            ExperienceEntry(
+                company,
+                position,
+                start,
+                end,
+                None,
+            )
+        )
+    return tuple(entries)
+
+
+def _dated_unlabeled_lines(text: str) -> tuple[tuple[str, str], ...]:
+    rows: list[tuple[str, str]] = []
+    for line in text.splitlines():
+        if "|" in line:
+            continue
+        match = _DATED_LINE_PATTERN.fullmatch(line)
+        if match is None:
+            continue
+        date_text = " ".join(value for value in (match.group("start"), match.group("end")) if value)
+        rows.append((date_text, match.group("body").strip()))
+    return tuple(rows)
 
 
 def _unlabeled_table_rows(text: str) -> tuple[tuple[str, ...], ...]:
