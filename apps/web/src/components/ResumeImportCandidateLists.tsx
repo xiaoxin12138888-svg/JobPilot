@@ -1,8 +1,10 @@
 import type {
   AutofillEducationEntry,
   AutofillExperienceEntry,
+  AutofillProjectEntry,
   ResumeImportEducationCandidate,
   ResumeImportExperienceCandidate,
+  ResumeImportProjectCandidate,
 } from '@jobpilot/api-client';
 
 export type EducationSelection = ResumeImportEducationCandidate & {
@@ -11,6 +13,11 @@ export type EducationSelection = ResumeImportEducationCandidate & {
 };
 
 export type ExperienceSelection = ResumeImportExperienceCandidate & {
+  selected: boolean;
+  possibleDuplicate: boolean;
+};
+
+export type ProjectSelection = ResumeImportProjectCandidate & {
   selected: boolean;
   possibleDuplicate: boolean;
 };
@@ -135,6 +142,63 @@ export function ImportExperienceList({
   );
 }
 
+export function ImportProjectList({
+  items,
+  existing,
+  disabled,
+  onChange,
+}: CandidateListProps<ProjectSelection> & { existing: AutofillProjectEntry[] }) {
+  return (
+    <section className="import-candidate-section" aria-labelledby="import-project-title">
+      <h3 id="import-project-title">项目经历</h3>
+      <ExistingRows
+        label="现有项目经历"
+        emptyMessage="当前没有已保存的项目经历。"
+        rows={existing.map(formatProject)}
+      />
+      <h4>导入候选</h4>
+      {items.length === 0 ? (
+        <p>未识别到可映射的项目经历。</p>
+      ) : (
+        items.map((item, index) => (
+          <fieldset
+            className="import-candidate"
+            aria-label={`导入项目经历 ${index + 1}`}
+            key={index}
+          >
+            <legend>项目经历 {index + 1}</legend>
+            {item.possibleDuplicate && <p className="duplicate-note">可能与现有经历重复</p>}
+            <CandidateFields
+              values={item}
+              fields={PROJECT_FIELDS}
+              disabled={disabled}
+              onChange={(key, value) =>
+                onChange(
+                  items.map((entry, itemIndex) =>
+                    itemIndex === index ? { ...entry, [key]: value } : entry,
+                  ),
+                )
+              }
+            />
+            <CandidateToggle
+              checked={item.selected}
+              disabled={disabled}
+              label="添加这条项目经历"
+              onChange={(selected) =>
+                onChange(
+                  items.map((entry, itemIndex) =>
+                    itemIndex === index ? { ...entry, selected } : entry,
+                  ),
+                )
+              }
+            />
+          </fieldset>
+        ))
+      )}
+    </section>
+  );
+}
+
 function ExistingRows({
   label,
   emptyMessage,
@@ -196,6 +260,13 @@ const EXPERIENCE_FIELDS: readonly [keyof AutofillExperienceEntry, string][] = [
   ['end', '结束月份'],
   ['description', '经历描述'],
 ];
+const PROJECT_FIELDS: readonly [keyof AutofillProjectEntry, string][] = [
+  ['name', '项目名称'],
+  ['role', '项目角色'],
+  ['start', '开始月份'],
+  ['end', '结束月份'],
+  ['description', '项目描述'],
+];
 
 function CandidateFields<T extends object>({
   values,
@@ -230,6 +301,10 @@ function formatEducation(item: AutofillEducationEntry): string {
 
 function formatExperience(item: AutofillExperienceEntry): string {
   return compactFacts([item.company, item.position, formatPeriod(item.start, item.end)]);
+}
+
+function formatProject(item: AutofillProjectEntry): string {
+  return compactFacts([item.name, item.role, formatPeriod(item.start, item.end)]);
 }
 
 function formatPeriod(start: string | null, end: string | null): string | null {

@@ -312,6 +312,14 @@ export interface AutofillExperienceEntry {
   description: string | null;
 }
 
+export interface AutofillProjectEntry {
+  name: string | null;
+  role: string | null;
+  start: string | null;
+  end: string | null;
+  description: string | null;
+}
+
 export interface AutofillProfileLinks {
   github: string | null;
   portfolio: string | null;
@@ -322,6 +330,7 @@ export interface AutofillProfileInput {
   personal: AutofillPersonalDetails;
   education: AutofillEducationEntry[];
   experience: AutofillExperienceEntry[];
+  projects: AutofillProjectEntry[];
   links: AutofillProfileLinks;
 }
 
@@ -352,6 +361,7 @@ export interface ResumeImportSection {
 
 export type ResumeImportEducationCandidate = AutofillEducationEntry;
 export type ResumeImportExperienceCandidate = AutofillExperienceEntry;
+export type ResumeImportProjectCandidate = AutofillProjectEntry;
 
 export interface ResumeImportParseResponse {
   fileType: ResumeImportFileType;
@@ -362,6 +372,7 @@ export interface ResumeImportParseResponse {
     personal: AutofillPersonalDetails;
     education: ResumeImportEducationCandidate[];
     experience: ResumeImportExperienceCandidate[];
+    projects: ResumeImportProjectCandidate[];
     links: AutofillProfileLinks;
   };
   warnings: { code: string; message: string }[];
@@ -377,6 +388,7 @@ export interface ResumeProfileImportInput {
   personal?: Partial<AutofillPersonalDetails>;
   education?: AutofillEducationEntry[];
   experience?: AutofillExperienceEntry[];
+  projects?: AutofillProjectEntry[];
   links?: Partial<AutofillProfileLinks>;
 }
 

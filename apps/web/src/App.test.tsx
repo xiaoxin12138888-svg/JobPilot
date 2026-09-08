@@ -892,6 +892,12 @@ describe('App', () => {
     fireEvent.change(screen.getByLabelText('经历描述 1'), {
       target: { value: '梳理需求并跟进验收。' },
     });
+    fireEvent.click(screen.getByRole('button', { name: '添加项目经历' }));
+    fireEvent.change(screen.getByLabelText('项目名称 1'), { target: { value: 'JobPilot' } });
+    fireEvent.change(screen.getByLabelText('项目角色 1'), { target: { value: '产品负责人' } });
+    fireEvent.change(screen.getByLabelText('项目描述 1'), {
+      target: { value: '完成需求分析与阶段验收。' },
+    });
     fireEvent.change(screen.getByLabelText('GitHub'), {
       target: { value: 'https://github.com/example-candidate' },
     });
@@ -909,6 +915,7 @@ describe('App', () => {
         },
         education: [expect.objectContaining({ school: '示例大学', major: '信息管理' })],
         experience: [expect.objectContaining({ company: '示例公司', position: '产品实习生' })],
+        projects: [expect.objectContaining({ name: 'JobPilot', role: '产品负责人' })],
       }),
     );
     expect(await screen.findByText('求职资料已保存到本机。')).toBeInTheDocument();
@@ -1245,6 +1252,15 @@ function createAutofillProfile(): AutofillProfile {
         start: null,
         end: null,
         description: '梳理需求并跟进验收。',
+      },
+    ],
+    projects: [
+      {
+        name: 'JobPilot',
+        role: '产品负责人',
+        start: null,
+        end: null,
+        description: '完成需求分析与阶段验收。',
       },
     ],
     links: {

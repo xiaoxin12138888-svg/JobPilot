@@ -50,6 +50,7 @@ export type {
   ApplicationStatus,
   AutofillEducationEntry,
   AutofillExperienceEntry,
+  AutofillProjectEntry,
   AutofillPersonalDetails,
   AutofillProfile,
   AutofillProfileInput,
@@ -93,6 +94,7 @@ export type {
   ResumeImportConfirmResponse,
   ResumeImportEducationCandidate,
   ResumeImportExperienceCandidate,
+  ResumeImportProjectCandidate,
   ResumeImportFileType,
   ResumeImportParseResponse,
   ResumeImportSection,
@@ -881,6 +883,7 @@ const RESUME_VERSION_KEYS = [
 ] as const;
 const AUTOFILL_EDUCATION_KEYS = ['school', 'major', 'degree', 'start', 'end'] as const;
 const AUTOFILL_EXPERIENCE_KEYS = ['company', 'position', 'start', 'end', 'description'] as const;
+const AUTOFILL_PROJECT_KEYS = ['name', 'role', 'start', 'end', 'description'] as const;
 
 function isResumeImportParse(value: unknown): value is ResumeImportParseResponse {
   if (
@@ -939,7 +942,7 @@ function isResumeImportSection(value: unknown): boolean {
 
 function isResumeImportProfileCandidates(value: unknown): boolean {
   return (
-    isRecordWithKeys(value, ['personal', 'education', 'experience', 'links']) &&
+    isRecordWithKeys(value, ['personal', 'education', 'experience', 'projects', 'links']) &&
     isRecordWithKeys(value.personal, ['name', 'phone', 'email', 'currentCity']) &&
     Object.values(value.personal).every(isNullableString) &&
     Array.isArray(value.education) &&
@@ -962,6 +965,8 @@ function isResumeImportProfileCandidates(value: unknown): boolean {
         isNullableMonth(item.end) &&
         isNullableString(item.description),
     ) &&
+    Array.isArray(value.projects) &&
+    value.projects.every(isAutofillProject) &&
     isRecordWithKeys(value.links, ['github', 'portfolio', 'homepage']) &&
     Object.values(value.links).every(isNullableHttpUrl)
   );
@@ -988,6 +993,7 @@ function isAutofillProfile(value: unknown): boolean {
       'personal',
       'education',
       'experience',
+      'projects',
       'links',
       'createdAt',
       'updatedAt',
@@ -1016,10 +1022,24 @@ function isAutofillProfile(value: unknown): boolean {
         isNullableMonth(item.end) &&
         isNullableString(item.description),
     ) &&
+    Array.isArray(value.projects) &&
+    value.projects.length <= 20 &&
+    value.projects.every(isAutofillProject) &&
     isRecordWithKeys(value.links, ['github', 'portfolio', 'homepage']) &&
     Object.values(value.links).every(isNullableHttpUrl) &&
     isDateString(value.createdAt) &&
     isDateString(value.updatedAt)
+  );
+}
+
+function isAutofillProject(value: unknown): boolean {
+  return (
+    isRecordWithKeys(value, AUTOFILL_PROJECT_KEYS) &&
+    isNullableString(value.name) &&
+    isNullableString(value.role) &&
+    isNullableMonth(value.start) &&
+    isNullableMonth(value.end) &&
+    isNullableString(value.description)
   );
 }
 

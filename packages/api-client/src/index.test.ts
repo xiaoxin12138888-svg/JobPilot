@@ -473,6 +473,7 @@ describe('createApiClient', () => {
         personal: profile.personal,
         education: profile.education,
         experience: profile.experience,
+        projects: profile.projects,
         links: profile.links,
       }),
     ).resolves.toEqual({ profile });
@@ -489,6 +490,7 @@ describe('createApiClient', () => {
         personal: profile.personal,
         education: profile.education,
         experience: profile.experience,
+        projects: profile.projects,
         links: profile.links,
       }),
     });
@@ -503,6 +505,12 @@ describe('createApiClient', () => {
       },
     },
     { profile: { ...createAutofillProfilePayload(), links: { homepage: 42 } } },
+    {
+      profile: {
+        ...createAutofillProfilePayload(),
+        projects: [{ ...createAutofillProfilePayload().projects[0], start: '2026' }],
+      },
+    },
   ])('rejects an untrusted Autofill Profile payload', async (payload) => {
     const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(payload));
     const client = createApiClient({ baseUrl: 'http://127.0.0.1:8000', fetchImplementation });
@@ -918,6 +926,15 @@ function createAutofillProfilePayload() {
         description: '梳理需求并跟进验收。',
       },
     ],
+    projects: [
+      {
+        name: '示例项目',
+        role: '产品负责人',
+        start: '2025-07',
+        end: '2025-09',
+        description: '完成需求分析与阶段验收。',
+      },
+    ],
     links: {
       github: 'https://github.com/example-candidate',
       portfolio: null,
@@ -954,6 +971,15 @@ function createResumeImportPreviewPayload() {
         },
       ],
       experience: [],
+      projects: [
+        {
+          name: 'JobPilot',
+          role: null,
+          start: '2025-07',
+          end: '2025-09',
+          description: '本地求职工作台',
+        },
+      ],
       links: { github: null, portfolio: null, homepage: null },
     },
     warnings: [{ code: 'EXPERIENCE_NOT_DETECTED', message: '未识别到明确的工作或实习经历' }],

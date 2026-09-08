@@ -17,6 +17,7 @@ const profile: AutofillProfile = {
     { school: '示例大学', major: '信息工程', degree: '本科', start: '2022-09', end: '2026-06' },
   ],
   experience: [],
+  projects: [],
   links: { github: null, portfolio: null, homepage: null },
   createdAt: '2026-09-07T08:00:00Z',
   updatedAt: '2026-09-07T08:00:00Z',

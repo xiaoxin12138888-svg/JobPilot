@@ -24,6 +24,7 @@ const profile: AutofillProfileInput = {
       description: '参与需求分析与验证。',
     },
   ],
+  projects: [],
   links: {
     github: 'https://github.com/example-candidate',
     portfolio: 'https://portfolio.example.test',

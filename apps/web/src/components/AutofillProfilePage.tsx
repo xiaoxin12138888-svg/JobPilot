@@ -8,6 +8,8 @@ import type {
   AutofillProfileInput,
 } from '@jobpilot/api-client';
 
+import { ProfileProjectEntries } from './ProfileProjectEntries';
+
 const EMPTY_EDUCATION: AutofillEducationEntry = {
   school: null,
   major: null,
@@ -341,6 +343,16 @@ export function AutofillProfilePage({ apiClient }: { apiClient: ApiClient }) {
             </button>
           </ProfileSection>
 
+          <ProfileSection
+            title="项目经历"
+            description="独立记录项目事实；Extension 不会扫描或自动填写这些内容。"
+          >
+            <ProfileProjectEntries
+              projects={draft.projects}
+              onChange={(projects) => setDraft({ ...draft, projects })}
+            />
+          </ProfileSection>
+
           <ProfileSection title="链接" description="仅保存 HTTP / HTTPS 链接。">
             <div className="profile-fields">
               <TextField
@@ -441,6 +453,7 @@ function emptyProfile(): AutofillProfileInput {
     personal: { name: null, phone: null, email: null, currentCity: null },
     education: [],
     experience: [],
+    projects: [],
     links: { github: null, portfolio: null, homepage: null },
   };
 }
@@ -450,6 +463,7 @@ function inputFromProfile(profile: AutofillProfile): AutofillProfileInput {
     personal: { ...profile.personal },
     education: profile.education.map((item) => ({ ...item })),
     experience: profile.experience.map((item) => ({ ...item })),
+    projects: profile.projects.map((item) => ({ ...item })),
     links: { ...profile.links },
   };
 }
@@ -477,6 +491,13 @@ function normalizeInput(input: AutofillProfileInput): AutofillProfileInput {
       end: text(item.end),
       description: text(item.description),
     })),
+    projects: input.projects.map((item) => ({
+      name: text(item.name),
+      role: text(item.role),
+      start: text(item.start),
+      end: text(item.end),
+      description: text(item.description),
+    })),
     links: {
       github: text(input.links.github),
       portfolio: text(input.links.portfolio),
@@ -490,6 +511,7 @@ function hasFact(input: AutofillProfileInput): boolean {
     ...Object.values(input.personal),
     ...input.education.flatMap(Object.values),
     ...input.experience.flatMap(Object.values),
+    ...input.projects.flatMap(Object.values),
     ...Object.values(input.links),
   ].some(Boolean);
 }

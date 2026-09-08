@@ -43,7 +43,7 @@ it('parses into an editable preview without saving and masks contacts by default
   expect(screen.getByLabelText('导入手机号')).toHaveValue('13800138000');
 });
 
-it('shows existing education and experience details beside imported candidates', async () => {
+it('shows existing education, experience and project details beside imported candidates', async () => {
   const profile = currentProfile();
   profile.experience = [
     {
@@ -51,6 +51,15 @@ it('shows existing education and experience details beside imported candidates',
       position: '运营助理',
       start: '2024-01',
       end: '2024-06',
+      description: null,
+    },
+  ];
+  profile.projects = [
+    {
+      name: '既有项目',
+      role: '成员',
+      start: '2024-07',
+      end: '2024-09',
       description: null,
     },
   ];
@@ -62,6 +71,15 @@ it('shows existing education and experience details beside imported candidates',
       start: '2025-01',
       end: '2025-06',
       description: null,
+    },
+  ];
+  parsed.profileCandidates.projects = [
+    {
+      name: '新增项目',
+      role: '负责人',
+      start: '2025-07',
+      end: '2025-09',
+      description: '完成阶段验收',
     },
   ];
   const apiClient = client({
@@ -80,12 +98,18 @@ it('shows existing education and experience details beside imported candidates',
   expect(screen.getByRole('list', { name: '现有工作或实习经历' })).toHaveTextContent(
     '既有公司 · 运营助理 · 2024-01 — 2024-06',
   );
+  expect(screen.getByRole('list', { name: '现有项目经历' })).toHaveTextContent(
+    '既有项目 · 成员 · 2024-07 — 2024-09',
+  );
   expect(
     within(screen.getByRole('group', { name: '导入教育经历 1' })).getByLabelText('学校'),
   ).toHaveValue('新增大学');
   expect(
     within(screen.getByRole('group', { name: '导入工作经历 1' })).getByLabelText('公司'),
   ).toHaveValue('新增公司');
+  expect(
+    within(screen.getByRole('group', { name: '导入项目经历 1' })).getByLabelText('项目名称'),
+  ).toHaveValue('新增项目');
 });
 
 it('confirms only selected fields and rows while preventing duplicate clicks', async () => {
@@ -128,6 +152,15 @@ it('confirms only selected fields and rows while preventing duplicate clicks', a
         { school: '新增大学', major: '信息管理', degree: null, start: '2022-09', end: null },
       ],
       experience: [],
+      projects: [
+        {
+          name: 'JobPilot',
+          role: '产品负责人',
+          start: '2025-07',
+          end: '2025-09',
+          description: '本地求职工作台',
+        },
+      ],
       links: {},
     },
   });
@@ -190,6 +223,36 @@ it('marks normalized duplicate rows as review-only and renders hostile-looking t
   const education = screen.getByRole('group', { name: '导入教育经历 1' });
   expect(within(education).getByText('可能与现有经历重复')).toBeInTheDocument();
   expect(within(education).getByRole('checkbox', { name: '添加这条教育经历' })).not.toBeChecked();
+});
+
+it('marks normalized duplicate projects as review-only', async () => {
+  const duplicatePreview = preview();
+  duplicatePreview.profileCandidates.projects[0]!.name = ' Job Pilot ';
+  const profile = currentProfile();
+  profile.projects = [
+    {
+      name: 'JobPilot',
+      role: '产品负责人',
+      start: '2025-07',
+      end: '2025-09',
+      description: null,
+    },
+  ];
+  const apiClient = client({
+    parseResumeImport: vi.fn().mockResolvedValue(duplicatePreview),
+    confirmResumeImport: vi.fn(),
+    getAutofillProfile: vi.fn().mockResolvedValue({ profile }),
+  });
+  render(<ResumeImportFlow apiClient={apiClient} onCancel={vi.fn()} onConfirmed={vi.fn()} />);
+  fireEvent.change(screen.getByLabelText('选择 PDF 或 DOCX 简历'), {
+    target: { files: [new File(['resume'], 'resume.docx')] },
+  });
+
+  await screen.findByRole('heading', { name: '导入预览' });
+  fireEvent.click(screen.getByRole('checkbox', { name: '更新求职资料' }));
+  const project = screen.getByRole('group', { name: '导入项目经历 1' });
+  expect(within(project).getByText('可能与现有经历重复')).toBeInTheDocument();
+  expect(within(project).getByRole('checkbox', { name: '添加这条项目经历' })).not.toBeChecked();
 });
 
 it('rechecks duplicate status after candidate edits and disables every preview control while saving', async () => {
@@ -260,6 +323,15 @@ function preview(): ResumeImportParseResponse {
         },
       ],
       experience: [],
+      projects: [
+        {
+          name: 'JobPilot',
+          role: '产品负责人',
+          start: '2025-07',
+          end: '2025-09',
+          description: '本地求职工作台',
+        },
+      ],
       links: { github: null, portfolio: null, homepage: null },
     },
     warnings: [{ code: 'EXPERIENCE_NOT_DETECTED', message: '未识别到明确的工作或实习经历' }],
@@ -282,6 +354,7 @@ function currentProfile(): AutofillProfile {
     },
     education: [{ school: '既有大学', major: '数学', degree: null, start: null, end: null }],
     experience: [],
+    projects: [],
     links: { github: null, portfolio: null, homepage: null },
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',

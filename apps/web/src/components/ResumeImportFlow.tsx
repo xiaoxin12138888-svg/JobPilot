@@ -4,6 +4,7 @@ import type {
   ApiClient,
   AutofillEducationEntry,
   AutofillExperienceEntry,
+  AutofillProjectEntry,
   AutofillPersonalDetails,
   AutofillProfile,
   AutofillProfileLinks,
@@ -15,8 +16,10 @@ import type {
 import {
   ImportEducationList,
   ImportExperienceList,
+  ImportProjectList,
   type EducationSelection,
   type ExperienceSelection,
+  type ProjectSelection,
 } from './ResumeImportCandidateLists';
 
 interface ResumeImportFlowProps {
@@ -61,6 +64,7 @@ export function ResumeImportFlow({ apiClient, onCancel, onConfirmed }: ResumeImp
   const [selectedLinks, setSelectedLinks] = useState<SelectedLinks>(emptySelectedLinks);
   const [education, setEducation] = useState<EducationSelection[]>([]);
   const [experience, setExperience] = useState<ExperienceSelection[]>([]);
+  const [projects, setProjects] = useState<ProjectSelection[]>([]);
   const [result, setResult] = useState<ResumeImportConfirmResponse>();
 
   async function selectFile(file: File | undefined) {
@@ -126,6 +130,16 @@ export function ResumeImportFlow({ apiClient, onCancel, onConfirmed }: ResumeImp
           profileState.profile?.experience ?? [],
         ),
       );
+      setProjects(
+        refreshProjectDuplicates(
+          parsed.profileCandidates.projects.map((item) => ({
+            ...item,
+            possibleDuplicate: false,
+            selected: true,
+          })),
+          profileState.profile?.projects ?? [],
+        ),
+      );
       setPhase('preview');
     } catch (parseError) {
       setError(messageFor(parseError, '简历解析失败，请检查文件后重试。'));
@@ -152,12 +166,14 @@ export function ResumeImportFlow({ apiClient, onCancel, onConfirmed }: ResumeImp
         personal: selectedObject(personal, selectedPersonal),
         education: education.filter((item) => item.selected).map(withoutSelection),
         experience: experience.filter((item) => item.selected).map(withoutSelection),
+        projects: projects.filter((item) => item.selected).map(withoutSelection),
         links: selectedObject(links, selectedLinks),
       };
       if (
         Object.keys(profileImport.personal).length === 0 &&
         profileImport.education.length === 0 &&
         profileImport.experience.length === 0 &&
+        profileImport.projects.length === 0 &&
         Object.keys(profileImport.links).length === 0
       ) {
         setError('请选择至少一个要写入求职资料的字段或经历。');
@@ -410,6 +426,14 @@ export function ResumeImportFlow({ apiClient, onCancel, onConfirmed }: ResumeImp
               setExperience(refreshExperienceDuplicates(items, currentProfile?.experience ?? []))
             }
           />
+          <ImportProjectList
+            items={projects}
+            disabled={!updateProfile || submitting}
+            existing={currentProfile?.projects ?? []}
+            onChange={(items) =>
+              setProjects(refreshProjectDuplicates(items, currentProfile?.projects ?? []))
+            }
+          />
           {LINK_FIELDS.map(([key, label]) => {
             const imported = links[key];
             if (!imported) return null;
@@ -544,6 +568,15 @@ function isDuplicateExperience(
   return existing.some((item) => experienceKey(item) === key);
 }
 
+function isDuplicateProject(
+  candidate: AutofillProjectEntry,
+  existing: AutofillProjectEntry[],
+): boolean {
+  if (!candidate.name) return false;
+  const key = projectKey(candidate);
+  return existing.some((item) => projectKey(item) === key);
+}
+
 function refreshEducationDuplicates(
   items: EducationSelection[],
   existing: AutofillEducationEntry[],
@@ -556,6 +589,13 @@ function refreshExperienceDuplicates(
   existing: AutofillExperienceEntry[],
 ): ExperienceSelection[] {
   return items.map((item) => withDuplicateState(item, isDuplicateExperience(item, existing)));
+}
+
+function refreshProjectDuplicates(
+  items: ProjectSelection[],
+  existing: AutofillProjectEntry[],
+): ProjectSelection[] {
+  return items.map((item) => withDuplicateState(item, isDuplicateProject(item, existing)));
 }
 
 function withDuplicateState<T extends { selected: boolean; possibleDuplicate: boolean }>(
@@ -575,6 +615,10 @@ function educationKey(item: AutofillEducationEntry): string {
 
 function experienceKey(item: AutofillExperienceEntry): string {
   return [item.company, item.position, item.start, item.end].map(normalizedFact).join('|');
+}
+
+function projectKey(item: AutofillProjectEntry): string {
+  return [item.name, item.role, item.start, item.end].map(normalizedFact).join('|');
 }
 
 function normalizedFact(value: string | null): string {
