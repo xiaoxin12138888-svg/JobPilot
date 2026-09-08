@@ -11,4 +11,14 @@ describe('responsive page shell', () => {
     expect(bodyRule).toBeDefined();
     expect(bodyRule).toMatch(/min-width:\s*0/);
   });
+
+  it('keeps Resume sections in one reading column at every viewport width', () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/styles.css'), 'utf8');
+    const resumeDocumentRule = css.match(
+      /\.resume-document\s*\{(?<declarations>[^}]*)\}/,
+    )?.groups?.declarations;
+
+    expect(resumeDocumentRule).toBeDefined();
+    expect(resumeDocumentRule).toMatch(/grid-template-columns:\s*1fr/);
+  });
 });
