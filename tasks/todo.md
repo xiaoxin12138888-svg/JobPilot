@@ -5,13 +5,19 @@
 - [x] Receive owner approval to add project experience as an independent Profile/import collection.
 - [x] Freeze additive `projects[]` fields, append-only Confirm semantics and reversible migration plan.
 - [x] Keep Extension project mapping/filling, permissions and submit behavior unchanged.
-- [ ] RED/GREEN ProjectEntry validation, persistence migration and existing-data backfill.
-- [ ] RED/GREEN explicit PROJECT section parsing, editable candidates and conservative no-inference rules.
-- [ ] RED/GREEN Parse/Confirm/shared-client contracts, strict validation and atomic selected-only append.
-- [ ] RED/GREEN Web Profile maintenance, existing/imported project rows, duplicate hint and selection UX.
-- [ ] Run full Python/TypeScript/lint/format/typecheck/build/migration/security regressions.
+- [x] RED/GREEN ProjectEntry validation, persistence migration and existing-data backfill.
+- [x] RED/GREEN explicit PROJECT section parsing, editable candidates and conservative no-inference rules.
+- [x] RED/GREEN Parse/Confirm/shared-client contracts, strict validation and atomic selected-only append.
+- [x] RED/GREEN Web Profile maintenance, existing/imported project rows, duplicate hint and selection UX.
+- [x] Run full Python/TypeScript/lint/format/typecheck/build/migration/security regressions.
 - [ ] Obtain owner confirmation of real project candidates, selected save and restart persistence.
 - [ ] Record the real Bad Case and remain stopped before Phase 11.
+
+Isolated project-experience evidence (2026-09-08): temporary API/Web services exposed the Profile project
+editor with add/delete, name, role, month and description controls; 320/768/1024/1440 widths had no
+horizontal overflow and the browser console stayed clean. Automated project parse/preview/Confirm,
+duplicate, rollback, migration and restart-persistence regressions all passed. This does not replace the
+unchecked real-file candidate/save/restart acceptance items above.
 
 ## Contract and dependency gate
 

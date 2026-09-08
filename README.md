@@ -22,14 +22,16 @@ Phase 8 不调用 LLM：用户可在已有 Application 下记录多轮面试、�
 面试、题目、结果、来源和简历版本事实；不存派生统计，不给 AI 分数、推荐或因果结论。面试动作
 不会自动改变 Application 状态。
 
-Phase 9 同样不调用 LLM：用户在 Web 的“求职资料”中维护最小结构化事实；只有点击 Extension 的
+Phase 9 同样不调用 LLM：用户在 Web 的“求职资料”中维护最小结构化事实；Profile 现含独立的
+教育、工作/实习与项目经历，但 Extension 仍只消费原有安全 Autofill 字段，不映射或填写项目经历。只有点击 Extension 的
 “扫描当前表单”后，当前页面才被一次性扫描。确定性规则把精确/规范化字段设为“可填写”，把唯一
 模糊候选设为“需确认”，敏感、文件、单选/复选、缺值和未知字段分别保持手动或未识别。只有用户
 在 Preview 中确认并点击“填写已确认字段”后才写入页面；JobPilot 永不点击 Submit/Continue，
 也不创建或推进 Application。Profile 和 Fill Plan 只存在于本机 SQLite 与当次 Popup 内存。
 
 Phase 10 在无 LLM 配置下工作：用户选择 10 MiB 内的文字型 PDF 或 DOCX 后，文件只发送到本机
-loopback API，先生成可编辑的纯文本、section 与 Profile 候选预览。Parse 不保存；只有用户明确
+loopback API，先生成可编辑的纯文本、section 与 Profile 候选预览，明确项目 section 可形成独立
+项目候选。Parse 不保存；只有用户明确
 选择创建 Resume Version、更新部分 Profile 或两者并点击确认后才以单一事务写入。原文件和文件名
 不持久化，不执行 OCR、宏、外部链接或远程解析。自动化和虚构文件浏览器链路已完成，真实简历内容
 质量仍等待负责人确认。

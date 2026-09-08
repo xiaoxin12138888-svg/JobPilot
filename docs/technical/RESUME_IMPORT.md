@@ -45,7 +45,9 @@ AWARDS、OTHER。正文只出现“项目”等词不会切 section。phone/emai
 存在可识别学校/公司与明确月份时才保守生成候选。明确教育/经历 section 下的同行标题还可按
 “行首明确月份范围 + 机构后缀 + 学历/职位”生成候选：教育必须出现批准的学历值，经历必须出现
 明确单位后缀和独立职位，并拒绝以“参与/负责/协助”等叙述动词开头的伪机构。绝不推断学历、
-毕业年份、培养年限、公司或职位；不确定内容保留在 section text。
+毕业年份、培养年限、公司或职位；不确定内容保留在 section text。明确 PROJECT section 中以月份
+范围开头的项目标题会生成独立 `projects[]` 候选；冒号前作为项目名，后续连续行只作为可编辑描述，
+不从叙述推断角色或其他事实。
 
 ## Confirm and merge
 
@@ -53,8 +55,8 @@ AWARDS、OTHER。正文只出现“项目”等词不会切 section。phone/emai
 phone/email 默认遮罩并由用户主动展开编辑。
 
 Profile import 是 patch-like command：只发送用户选择的 scalar 和新增 rows。Web 明确列出当前
-教育/经历的事实内容和导入候选，而不是只显示计数。服务端在事务内加载当前 Profile，未选择
-scalar 与所有既有 rows 原样保留。相同教育/经历只提示“可能重复”，不自动删除；用户仍决定
+教育、工作/实习和项目经历的事实内容和导入候选，而不是只显示计数。服务端在事务内加载当前
+Profile，未选择 scalar 与所有既有 rows 原样保留。相同教育/工作/项目经历只提示“可能重复”，不自动删除；用户仍决定
 是否追加。Resume + Profile 使用一个 SQLAlchemy transaction，失败全部回滚。
 
 ## Dependencies and license review

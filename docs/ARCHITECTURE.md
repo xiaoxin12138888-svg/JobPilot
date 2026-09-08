@@ -142,8 +142,9 @@ domain 层确定性生成 funnel 和弱项排序。结果不持久化、不调�
 ## 8. Profile 与 Autofill boundary
 
 Web 通过 api-client 的 GET/PUT 管理一个 `AutofillProfile`；API domain 负责长度、`YYYY-MM`、
-HTTP(S) URL、非空条目和最多 20 条教育/经历验证，repository 只操作 singleton row。Profile 与
-Resume/Application 没有关联、导入或隐式状态更新。
+HTTP(S) URL、非空条目和教育/工作/项目各最多 20 条验证，repository 只操作 singleton row。
+Profile 与 Resume/Application 没有关联或隐式状态更新；只有 Phase 10 Confirm 可按用户选择追加
+导入资料。Extension Resolver/Executor 不消费或填写 projects。
 
 Popup 打开时不读页面或 Profile。用户点击 Scan 后，Extension 并行读取精确 loopback Profile 并
 通过 `activeTab` 一次性注入自包含 Scanner。Resolver 在 Extension 内使用有限规则创建临时
@@ -162,8 +163,9 @@ endpoint。API 在内存中验证 extension/MIME/magic，PDF 与 DOCX extractor 
 ZIP/XML 等资源安全检查，再把按序 block 交给无 LLM 的 deterministic structure parser。文件名和
 正文不写日志，原始文件不落库、不保留；Extension 不参与。
 
-Web 只用 text node/textarea 展示 preview，并加载当前 Profile 做 Current vs Imported 选择。Confirm
-只接收用户选择的 scalar updates 和 row additions；repository 在一个 transaction 中重新读取当前
+Web 只用 text node/textarea 展示 preview，并加载当前 Profile 做 Current vs Imported 选择。明确
+PROJECT section 可产生独立、可编辑、可勾选和可查重的 projects candidates。Confirm 只接收用户
+选择的 scalar updates 和 row additions；repository 在一个 transaction 中重新读取当前
 Profile，再创建可选 Resume Version 与更新 Profile。Parse、Preview、取消均不修改 SQLite。
 
 ## 10. Local-first 与后续边界

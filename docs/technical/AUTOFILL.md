@@ -22,14 +22,16 @@ Continue、协议或隐私授权，不创建 Application，也不改变 Applicat
 - `personal`：name、phone、email、currentCity；
 - `education[]`：school、major、degree、start、end；
 - `experience[]`：company、position、start、end、description；
+- `projects[]`：name、role、start、end、description；
 - `links`：github、portfolio、homepage。
 
-教育和经历各最多 20 条，月份使用 `YYYY-MM`，链接只接受无 userinfo 的 HTTP(S)。整个 Profile
-至少有一个事实；空教育/经历条目拒绝。默认不收集身份证、护照、银行卡、民族、婚姻、政治面貌、
+教育、工作/实习和项目经历各最多 20 条，月份使用 `YYYY-MM`，链接只接受无 userinfo 的 HTTP(S)。整个 Profile
+至少有一个事实；空经历条目拒绝。默认不收集身份证、护照、银行卡、民族、婚姻、政治面貌、
 家庭成员、详细住址等没有高频 Autofill 价值的敏感事实。
 
-Web 的“求职资料”页面支持查看、编辑、保存和多教育/经历条目。Profile 只写本机 SQLite 的
-`autofill_profiles` row 1；不从 Resume 导入，不写 Extension storage，不同步云端。
+Web 的“求职资料”页面支持查看、编辑、保存和多条教育、工作/实习及项目经历。Phase 10 的本地
+Resume Import 只有在用户预览并明确勾选后才会追加所选资料。Profile 只写本机 SQLite 的
+`autofill_profiles` row 1；不写 Extension storage，不同步云端。
 
 ## API 与浏览器安全
 
@@ -81,6 +83,7 @@ homepage。匹配层级固定：
 不显示数字置信度，不调用 LLM。页面已有多组同类教育/经历字段时，同一 canonical key 按 DOM
 顺序取 Profile 对应条目；Extension 不点击“添加教育/经历”。Preview 只把 phone/email 显示为
 遮罩值，真实值仅保留在内存 Fill Plan。用户可取消 READY，也可明确勾选 REVIEW_REQUIRED。
+`projects[]` 不属于 Resolver canonical keys；Extension 不扫描、映射或填写项目字段。
 
 ## Fill Executor
 

@@ -149,7 +149,7 @@ Application 表示一个 Job 的真实求职进度。一个 Job 最多一个 App
 - 面试轮次创建、编辑、完成、取消/删除，实际问题 CRUD、回答摘要、表现自评和手动复盘；
 - Application 结果说明与用户填写的淘汰原因；
 - `求职复盘` 的 loading/error/retry/empty/populated 状态和事实统计；
-- `求职资料` 的 loading/error/empty/edit/save、多教育/经历条目和本机隐私说明；
+- `求职资料` 的 loading/error/empty/edit/save、多条教育、工作/实习及项目经历和本机隐私说明；
 - Job Detail 的 JD Analysis 与 Evidence Map 前置、确认、loading、success、stale、error/retry；
 - 320/768/1024/1440 响应式布局与键盘可访问控件。
 
@@ -227,9 +227,9 @@ Application 状态。
 ## 12. Profile Vault 与安全自动填写
 
 `AutofillProfile` 是 single-user singleton 本地资源，与 Resume Version 和 Application 独立。
-字段仅包含 name/phone/email/currentCity，多条 education 与 experience，以及 GitHub/作品集/
+字段仅包含 name/phone/email/currentCity，多条 education、experience 与 projects，以及 GitHub/作品集/
 个人主页链接；默认不收集身份证、护照、银行卡、婚姻、民族、政治面貌、家庭地址等低价值敏感
-事实。Web 可查看、编辑并完整替换，Extension 不持久化 Profile。
+事实。Web 可查看、编辑并完整替换，Extension 不持久化 Profile，也不消费或填写 projects。
 
 用户点击“扫描当前表单”后，Scanner 只返回有界的 `FormFieldDescriptor`；password、验证码、
 hidden、disabled、submit 与 JobPilot 自身控件被忽略。Ref 依次使用唯一 id、唯一 name 或可回溯
@@ -251,8 +251,8 @@ setter 和 focus/input/change/blur；native select、month/date 与 combobox 只
 任何数据；解析结果、候选 section/Profile 与 warnings 在 Web 内存中供用户检查和编辑。PDF
 加密/无文字、损坏 DOCX、MIME/magic 不匹配与资源限制使用稳定脱敏错误，不做 OCR fallback。
 
-Confirm 保持 JSON-only，至少选择 Resume Version 或 Profile。Profile scalar 逐字段选择，教育/
-经历逐条选择并只追加；Current vs Imported 冲突和 deterministic duplicate hint 必须在 Preview
+Confirm 保持 JSON-only，至少选择 Resume Version 或 Profile。Profile scalar 逐字段选择，教育、
+工作/实习和项目经历逐条选择并只追加；Current vs Imported 冲突和 deterministic duplicate hint 必须在 Preview
 展示。Resume + Profile 通过一个 SQLite transaction 写入，失败全部回滚。导入不修改 Job、
 Application、Evidence Map、Extension 或现有 Resume Version。
 
