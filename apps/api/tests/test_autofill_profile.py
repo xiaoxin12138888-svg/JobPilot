@@ -60,6 +60,15 @@ def test_profile_starts_empty_and_put_replaces_the_single_local_profile(
     }
     assert profile["education"][0]["start"] == "2022-09"
     assert profile["experience"][0]["description"] == "梳理需求\n跟进验收。"
+    assert profile["projects"] == [
+        {
+            "name": "示例项目",
+            "role": "产品负责人",
+            "start": "2025-07",
+            "end": "2025-09",
+            "description": "完成需求分析\n推动版本验收。",
+        }
+    ]
     assert profile["createdAt"]
     assert profile["updatedAt"]
 
@@ -70,6 +79,7 @@ def test_profile_starts_empty_and_put_replaces_the_single_local_profile(
             "personal": {"name": "另一位示例用户"},
             "education": [],
             "experience": [],
+            "projects": [],
             "links": {},
         },
     )
@@ -198,6 +208,15 @@ def _profile_payload(*, name: str = "示例用户") -> dict[str, object]:
                 "start": "2025-01",
                 "end": "2025-06",
                 "description": " 梳理需求\r\n跟进验收。 ",
+            }
+        ],
+        "projects": [
+            {
+                "name": "示例项目",
+                "role": "产品负责人",
+                "start": "2025-07",
+                "end": "2025-09",
+                "description": " 完成需求分析\r\n推动版本验收。 ",
             }
         ],
         "links": {

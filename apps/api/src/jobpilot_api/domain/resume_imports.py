@@ -12,6 +12,7 @@ from jobpilot_api.domain.autofill_profiles import (
     ExperienceEntry,
     PersonalDetails,
     ProfileLinks,
+    ProjectEntry,
 )
 from jobpilot_api.domain.errors import DomainError
 from jobpilot_api.domain.resume_versions import ResumeVersion
@@ -86,6 +87,7 @@ class ResumeProfileCandidates:
     personal: PersonalDetails
     education: tuple[EducationEntry, ...]
     experience: tuple[ExperienceEntry, ...]
+    projects: tuple[ProjectEntry, ...]
     links: ProfileLinks
 
 
@@ -114,6 +116,7 @@ class ResumeProfileImportPatch:
         education: Sequence[Mapping[str, object]],
         experience: Sequence[Mapping[str, object]],
         links: Mapping[str, object],
+        projects: Sequence[Mapping[str, object]] = (),
     ) -> ResumeProfileImportPatch:
         personal_keys = frozenset(personal)
         link_keys = frozenset(links)
@@ -130,6 +133,7 @@ class ResumeProfileImportPatch:
             personal=personal,
             education=education,
             experience=experience,
+            projects=projects,
             links=links,
         )
         selected_personal = frozenset(
@@ -174,6 +178,7 @@ def merge_autofill_profile(
 
     existing_education = list(current.education) if current else []
     existing_experience = list(current.experience) if current else []
+    existing_projects = list(current.projects) if current else []
     return AutofillProfileDraft.create(
         personal=personal,
         education=[
@@ -182,6 +187,7 @@ def merge_autofill_profile(
         experience=[
             _experience_mapping(item) for item in (*existing_experience, *patch.values.experience)
         ],
+        projects=[_project_mapping(item) for item in (*existing_projects, *patch.values.projects)],
         links=links,
     )
 
@@ -200,6 +206,16 @@ def _experience_mapping(item: ExperienceEntry) -> dict[str, object]:
     return {
         "company": item.company,
         "position": item.position,
+        "start": item.start,
+        "end": item.end,
+        "description": item.description,
+    }
+
+
+def _project_mapping(item: ProjectEntry) -> dict[str, object]:
+    return {
+        "name": item.name,
+        "role": item.role,
         "start": item.start,
         "end": item.end,
         "description": item.description,
@@ -296,6 +312,7 @@ def build_resume_import_preview(document: ParsedResumeDocument) -> ResumeImportP
         personal=_personal_candidates(sections, blocks),
         education=_education_candidates(sections),
         experience=_experience_candidates(sections),
+        projects=_project_candidates(sections),
         links=_link_candidates(document.raw_text),
     )
     warnings = list(document.warnings)
@@ -305,6 +322,11 @@ def build_resume_import_preview(document: ParsedResumeDocument) -> ResumeImportP
         warnings.append(
             ResumeImportWarning("EXPERIENCE_NOT_DETECTED", "未识别到明确的工作或实习经历")
         )
+    if (
+        any(section.kind == ResumeSectionKind.PROJECT for section in sections)
+        and not candidates.projects
+    ):
+        warnings.append(ResumeImportWarning("PROJECT_NOT_DETECTED", "未识别到明确的项目经历"))
     if not any((candidates.personal.name, candidates.personal.phone, candidates.personal.email)):
         warnings.append(ResumeImportWarning("BASIC_NOT_DETECTED", "未识别到明确的基本资料"))
     return ResumeImportPreview(
@@ -421,6 +443,14 @@ def _experience_candidates(sections: tuple[ResumeSection, ...]) -> tuple[Experie
     return tuple(entries)
 
 
+def _project_candidates(sections: tuple[ResumeSection, ...]) -> tuple[ProjectEntry, ...]:
+    entries: list[ProjectEntry] = []
+    for section in sections:
+        if section.kind == ResumeSectionKind.PROJECT:
+            entries.extend(_dated_project_entries(section.text))
+    return tuple(entries)
+
+
 def _unlabeled_education_entries(text: str) -> tuple[EducationEntry, ...]:
     entries: list[EducationEntry] = []
     for segments in _unlabeled_table_rows(text):
@@ -521,6 +551,50 @@ def _dated_unlabeled_lines(text: str) -> tuple[tuple[str, str], ...]:
         date_text = " ".join(value for value in (match.group("start"), match.group("end")) if value)
         rows.append((date_text, match.group("body").strip()))
     return tuple(rows)
+
+
+def _dated_project_entries(text: str) -> tuple[ProjectEntry, ...]:
+    entries: list[ProjectEntry] = []
+    current_date: str | None = None
+    current_body: str | None = None
+    current_description: list[str] = []
+
+    def flush() -> None:
+        if current_date is None or current_body is None:
+            return
+        name, separator, introduction = current_body.partition("：")
+        if not separator:
+            name, separator, introduction = current_body.partition(":")
+        name = name.strip()
+        if not name or len(name) > 300 or name.startswith(_INLINE_ORGANIZATION_NARRATIVE_PREFIXES):
+            return
+        description_lines = [introduction.strip()] if separator and introduction.strip() else []
+        description_lines.extend(value for value in current_description if value)
+        start, end = _months(current_date)
+        entries.append(
+            ProjectEntry(
+                name,
+                None,
+                start,
+                end,
+                "\n".join(description_lines) or None,
+            )
+        )
+
+    for line in text.splitlines():
+        match = _DATED_LINE_PATTERN.fullmatch(line)
+        if match is None:
+            if current_date is not None and line.strip():
+                current_description.append(line.strip())
+            continue
+        flush()
+        current_date = " ".join(
+            value for value in (match.group("start"), match.group("end")) if value
+        )
+        current_body = match.group("body").strip()
+        current_description = []
+    flush()
+    return tuple(entries)
 
 
 def _unlabeled_table_rows(text: str) -> tuple[tuple[str, ...], ...]:

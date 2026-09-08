@@ -44,6 +44,15 @@ class ExperienceEntry:
 
 
 @dataclass(frozen=True, slots=True)
+class ProjectEntry:
+    name: str | None
+    role: str | None
+    start: str | None
+    end: str | None
+    description: str | None
+
+
+@dataclass(frozen=True, slots=True)
 class ProfileLinks:
     github: str | None
     portfolio: str | None
@@ -55,6 +64,7 @@ class AutofillProfileDraft:
     personal: PersonalDetails
     education: tuple[EducationEntry, ...]
     experience: tuple[ExperienceEntry, ...]
+    projects: tuple[ProjectEntry, ...]
     links: ProfileLinks
 
     @classmethod
@@ -65,16 +75,19 @@ class AutofillProfileDraft:
         education: Sequence[Mapping[str, object]],
         experience: Sequence[Mapping[str, object]],
         links: Mapping[str, object],
+        projects: Sequence[Mapping[str, object]] = (),
     ) -> AutofillProfileDraft:
         personal_details = _personal_details(personal)
         education_entries = _education_entries(education)
         experience_entries = _experience_entries(experience)
+        project_entries = _project_entries(projects)
         profile_links = _profile_links(links)
 
         draft = cls(
             personal=personal_details,
             education=education_entries,
             experience=experience_entries,
+            projects=project_entries,
             links=profile_links,
         )
         if not _has_facts(draft):
@@ -87,6 +100,7 @@ class AutofillProfile:
     personal: PersonalDetails
     education: tuple[EducationEntry, ...]
     experience: tuple[ExperienceEntry, ...]
+    projects: tuple[ProjectEntry, ...]
     links: ProfileLinks
     created_at: datetime
     updated_at: datetime
@@ -143,6 +157,27 @@ def _experience_entries(value: Sequence[Mapping[str, object]]) -> tuple[Experien
             ),
         )
         if not any((entry.company, entry.position, entry.start, entry.end, entry.description)):
+            raise DomainValidationError(f"{field}: must contain at least one fact")
+        entries.append(entry)
+    return tuple(entries)
+
+
+def _project_entries(value: Sequence[Mapping[str, object]]) -> tuple[ProjectEntry, ...]:
+    items = _require_collection("projects", value)
+    entries: list[ProjectEntry] = []
+    for index, item in enumerate(items):
+        field = f"projects[{index}]"
+        _require_mapping(field, item)
+        entry = ProjectEntry(
+            name=_optional_text(f"{field}.name", item.get("name"), MAX_SHORT_TEXT_LENGTH),
+            role=_optional_text(f"{field}.role", item.get("role"), MAX_SHORT_TEXT_LENGTH),
+            start=_optional_month(f"{field}.start", item.get("start")),
+            end=_optional_month(f"{field}.end", item.get("end")),
+            description=_optional_text(
+                f"{field}.description", item.get("description"), MAX_DESCRIPTION_LENGTH
+            ),
+        )
+        if not any((entry.name, entry.role, entry.start, entry.end, entry.description)):
             raise DomainValidationError(f"{field}: must contain at least one fact")
         entries.append(entry)
     return tuple(entries)
@@ -227,6 +262,7 @@ def _has_facts(draft: AutofillProfileDraft) -> bool:
             draft.personal.current_city,
             draft.education,
             draft.experience,
+            draft.projects,
             draft.links.github,
             draft.links.portfolio,
             draft.links.homepage,

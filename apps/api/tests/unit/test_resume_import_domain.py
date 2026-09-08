@@ -6,6 +6,7 @@ from jobpilot_api.domain.autofill_profiles import (
     AutofillProfileDraft,
     EducationEntry,
     ExperienceEntry,
+    ProjectEntry,
 )
 from jobpilot_api.domain.resume_imports import (
     DocumentBlock,
@@ -177,7 +178,13 @@ def test_dated_unlabeled_lines_map_clear_education_and_internship_facts() -> Non
             "参与系统验收并跟进问题闭环。\n"
             "教育经历\n"
             "2025.09 — 至今 示例理工大学 硕士｜电子信息\n"
-            "2021.09 — 2025.07 示例师范大学 本科｜计算机科学与技术"
+            "2021.09 — 2025.07 示例师范大学 本科｜计算机科学与技术\n"
+            "项目经历\n"
+            "2026.06 — 2026.08 JobPilot：本地求职工作台\n"
+            "产品设计：完成需求分析与交互原型。\n"
+            "项目推进：完成阶段验收。\n"
+            "2025.10 — 2025.12 K-Chat：个人知识库问答助手\n"
+            "方案落地：实现文档检索与问答链路。"
         ),
         blocks=tuple(
             DocumentBlock(DocumentBlockKind.TEXT, line)
@@ -188,6 +195,12 @@ def test_dated_unlabeled_lines_map_clear_education_and_internship_facts() -> Non
                 "教育经历",
                 "2025.09 — 至今 示例理工大学 硕士｜电子信息",
                 "2021.09 — 2025.07 示例师范大学 本科｜计算机科学与技术",
+                "项目经历",
+                "2026.06 — 2026.08 JobPilot：本地求职工作台",
+                "产品设计：完成需求分析与交互原型。",
+                "项目推进：完成阶段验收。",
+                "2025.10 — 2025.12 K-Chat：个人知识库问答助手",
+                "方案落地：实现文档检索与问答链路。",
             )
         ),
     )
@@ -200,6 +213,22 @@ def test_dated_unlabeled_lines_map_clear_education_and_internship_facts() -> Non
     assert candidates.education == (
         EducationEntry("示例理工大学", "电子信息", "硕士", "2025-09", None),
         EducationEntry("示例师范大学", "计算机科学与技术", "本科", "2021-09", "2025-07"),
+    )
+    assert candidates.projects == (
+        ProjectEntry(
+            "JobPilot",
+            None,
+            "2026-06",
+            "2026-08",
+            "本地求职工作台\n产品设计：完成需求分析与交互原型。\n项目推进：完成阶段验收。",
+        ),
+        ProjectEntry(
+            "K-Chat",
+            None,
+            "2025-10",
+            "2025-12",
+            "个人知识库问答助手\n方案落地：实现文档检索与问答链路。",
+        ),
     )
 
 
@@ -242,12 +271,14 @@ def test_profile_patch_changes_only_selected_scalars_and_appends_selected_rows()
         },
         education=[{"school": "既有大学", "major": "数学"}],
         experience=[{"company": "既有公司", "position": "助理"}],
+        projects=[{"name": "既有项目", "role": "成员"}],
         links={"github": "https://github.com/current"},
     )
     patch = ResumeProfileImportPatch.create(
         personal={"phone": "13800138000"},
         education=[{"school": "新增大学", "major": "信息管理"}],
         experience=[{"company": "新增公司", "position": "产品实习生"}],
+        projects=[{"name": "新增项目", "role": "负责人"}],
         links={},
     )
 
@@ -259,6 +290,7 @@ def test_profile_patch_changes_only_selected_scalars_and_appends_selected_rows()
     assert merged.personal.current_city == "北京"
     assert [item.school for item in merged.education] == ["既有大学", "新增大学"]
     assert [item.company for item in merged.experience] == ["既有公司", "新增公司"]
+    assert [item.name for item in merged.projects] == ["既有项目", "新增项目"]
     assert merged.links.github == "https://github.com/current"
 
 

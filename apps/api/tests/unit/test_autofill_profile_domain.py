@@ -33,6 +33,15 @@ def test_profile_draft_normalizes_minimal_structured_facts() -> None:
                 "description": " 梳理需求\r\n跟进验收。 ",
             }
         ],
+        projects=[
+            {
+                "name": " 示例项目 ",
+                "role": " 产品负责人 ",
+                "start": "2025-06",
+                "end": "2025-08",
+                "description": " 需求分析\r\n阶段验收。 ",
+            }
+        ],
         links={
             "github": " https://github.com/example-candidate ",
             "portfolio": None,
@@ -44,6 +53,8 @@ def test_profile_draft_normalizes_minimal_structured_facts() -> None:
     assert draft.personal.current_city == "示例市"
     assert [item.school for item in draft.education] == ["示例大学", "示例学院"]
     assert draft.experience[0].description == "梳理需求\n跟进验收。"
+    assert draft.projects[0].name == "示例项目"
+    assert draft.projects[0].description == "需求分析\n阶段验收。"
     assert draft.links.github == "https://github.com/example-candidate"
 
 
@@ -77,5 +88,14 @@ def test_profile_draft_rejects_empty_and_unbounded_collections() -> None:
             personal={"name": "示例用户"},
             education=[{"school": f"示例学校 {index}"} for index in range(21)],
             experience=[],
+            links={},
+        )
+
+    with pytest.raises(DomainValidationError, match="projects"):
+        AutofillProfileDraft.create(
+            personal={"name": "示例用户"},
+            education=[],
+            experience=[],
+            projects=[{"name": f"示例项目 {index}"} for index in range(21)],
             links={},
         )

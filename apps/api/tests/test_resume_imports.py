@@ -57,6 +57,15 @@ def test_parse_docx_returns_editable_preview_without_database_mutation(client: T
         "currentCity": None,
     }
     assert preview["profileCandidates"]["education"][0]["school"] == "示例大学"
+    assert preview["profileCandidates"]["projects"] == [
+        {
+            "name": "JobPilot",
+            "role": None,
+            "start": "2025-07",
+            "end": "2025-09",
+            "description": "本地求职工作台\n梳理需求并完成阶段验收",
+        }
+    ]
     assert preview["metrics"]["fileSizeBytes"] == len(_resume_docx())
     assert preview["metrics"]["extractedCharacterCount"] == len(preview["extractedText"])
     assert preview["metrics"]["pageCount"] is None
@@ -272,6 +281,7 @@ def test_confirm_both_is_atomic_and_profile_merge_is_selected_only(
             },
             "education": [{"school": "既有大学", "major": "数学"}],
             "experience": [{"company": "既有公司", "position": "助理"}],
+            "projects": [{"name": "既有项目", "role": "成员"}],
             "links": {"github": "https://github.com/current"},
         },
     )
@@ -286,6 +296,7 @@ def test_confirm_both_is_atomic_and_profile_merge_is_selected_only(
                 "personal": {"phone": "13800138000"},
                 "education": [{"school": "新增大学", "major": "信息管理"}],
                 "experience": [{"company": "新增公司", "position": "产品实习生"}],
+                "projects": [{"name": "新增项目", "role": "负责人"}],
                 "links": {},
             },
         },
@@ -303,6 +314,7 @@ def test_confirm_both_is_atomic_and_profile_merge_is_selected_only(
     }
     assert [item["school"] for item in profile["education"]] == ["既有大学", "新增大学"]
     assert [item["company"] for item in profile["experience"]] == ["既有公司", "新增公司"]
+    assert [item["name"] for item in profile["projects"]] == ["既有项目", "新增项目"]
     assert profile["links"]["github"] == "https://github.com/current"
 
 
@@ -341,7 +353,10 @@ def test_confirmed_resume_and_profile_persist_after_restart(database_path: Path)
             headers=WEB_HEADERS,
             json={
                 "resumeVersion": {"name": "重启持久化", "content": "确认后的正文"},
-                "profileImport": {"personal": {"name": "示例用户"}},
+                "profileImport": {
+                    "personal": {"name": "示例用户"},
+                    "projects": [{"name": "重启项目", "role": "负责人"}],
+                },
             },
         )
         assert confirmed.status_code == 200
@@ -352,6 +367,12 @@ def test_confirmed_resume_and_profile_persist_after_restart(database_path: Path)
         assert (
             restarted_client.get("/api/v1/autofill-profile").json()["profile"]["personal"]["name"]
             == "示例用户"
+        )
+        assert (
+            restarted_client.get("/api/v1/autofill-profile").json()["profile"]["projects"][0][
+                "name"
+            ]
+            == "重启项目"
         )
 
 
@@ -404,6 +425,9 @@ def _resume_docx(extra: str | None = None) -> bytes:
     table.cell(1, 0).text = "专业：信息管理"
     table.cell(2, 0).text = "学历：本科"
     table.cell(3, 0).text = "时间：2022.09 - 2026.06"
+    document.add_paragraph("项目经历")
+    document.add_paragraph("2025.07 — 2025.09 JobPilot：本地求职工作台")
+    document.add_paragraph("梳理需求并完成阶段验收")
     if extra:
         document.add_paragraph(extra)
     output = BytesIO()

@@ -25,7 +25,11 @@ def test_resume_and_profile_confirm_rolls_back_both_when_profile_write_fails(
     sessions = sessionmaker(engine, expire_on_commit=False)
     repository = SqlAlchemyResumeImportRepository(sessions)
     patch = ResumeProfileImportPatch.create(
-        personal={"name": "示例用户"}, education=[], experience=[], links={}
+        personal={"name": "示例用户"},
+        education=[],
+        experience=[],
+        projects=[{"name": "示例项目"}],
+        links={},
     )
 
     def fail_profile_write(_draft):

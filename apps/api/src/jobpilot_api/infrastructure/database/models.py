@@ -52,6 +52,7 @@ class AutofillProfileModel(Base):
     personal_json: Mapped[str] = mapped_column(Text, nullable=False)
     education_json: Mapped[str] = mapped_column(Text, nullable=False)
     experience_json: Mapped[str] = mapped_column(Text, nullable=False)
+    projects_json: Mapped[str] = mapped_column(Text, nullable=False)
     links_json: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

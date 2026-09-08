@@ -98,6 +98,14 @@ class ResumeImportExperienceCandidateResponse(ApiModel):
     description: str | None
 
 
+class ResumeImportProjectCandidateResponse(ApiModel):
+    name: str | None
+    role: str | None
+    start: str | None
+    end: str | None
+    description: str | None
+
+
 class ResumeImportLinksCandidateResponse(ApiModel):
     github: str | None
     portfolio: str | None
@@ -108,6 +116,7 @@ class ResumeImportProfileCandidatesResponse(ApiModel):
     personal: ResumeImportPersonalCandidateResponse
     education: list[ResumeImportEducationCandidateResponse]
     experience: list[ResumeImportExperienceCandidateResponse]
+    projects: list[ResumeImportProjectCandidateResponse]
     links: ResumeImportLinksCandidateResponse
 
 
@@ -167,6 +176,16 @@ class ResumeImportParseResponse(ApiModel):
                         description=item.description,
                     )
                     for item in candidates.experience
+                ],
+                projects=[
+                    ResumeImportProjectCandidateResponse(
+                        name=item.name,
+                        role=item.role,
+                        start=item.start,
+                        end=item.end,
+                        description=item.description,
+                    )
+                    for item in candidates.projects
                 ],
                 links=ResumeImportLinksCandidateResponse(
                     github=candidates.links.github,
@@ -770,6 +789,14 @@ class ExperienceEntryPayload(ApiModel):
     description: str | None = None
 
 
+class ProjectEntryPayload(ApiModel):
+    name: str | None = None
+    role: str | None = None
+    start: str | None = None
+    end: str | None = None
+    description: str | None = None
+
+
 class ProfileLinksPayload(ApiModel):
     github: str | None = None
     portfolio: str | None = None
@@ -780,6 +807,7 @@ class AutofillProfilePutRequest(ApiModel):
     personal: PersonalDetailsPayload
     education: list[EducationEntryPayload] = Field(max_length=20)
     experience: list[ExperienceEntryPayload] = Field(max_length=20)
+    projects: list[ProjectEntryPayload] = Field(default_factory=list, max_length=20)
     links: ProfileLinksPayload
 
 
@@ -787,6 +815,7 @@ class AutofillProfileDataResponse(ApiModel):
     personal: PersonalDetailsPayload
     education: list[EducationEntryPayload]
     experience: list[ExperienceEntryPayload]
+    projects: list[ProjectEntryPayload]
     links: ProfileLinksPayload
     created_at: datetime
     updated_at: datetime
@@ -820,6 +849,16 @@ class AutofillProfileDataResponse(ApiModel):
                 )
                 for item in profile.experience
             ],
+            projects=[
+                ProjectEntryPayload(
+                    name=item.name,
+                    role=item.role,
+                    start=item.start,
+                    end=item.end,
+                    description=item.description,
+                )
+                for item in profile.projects
+            ],
             links=ProfileLinksPayload(
                 github=profile.links.github,
                 portfolio=profile.links.portfolio,
@@ -846,6 +885,7 @@ class ResumeProfileImportRequest(ApiModel):
     personal: PersonalDetailsPayload = Field(default_factory=PersonalDetailsPayload)
     education: list[EducationEntryPayload] = Field(default_factory=list, max_length=20)
     experience: list[ExperienceEntryPayload] = Field(default_factory=list, max_length=20)
+    projects: list[ProjectEntryPayload] = Field(default_factory=list, max_length=20)
     links: ProfileLinksPayload = Field(default_factory=ProfileLinksPayload)
 
     def to_domain(self) -> ResumeProfileImportPatch:
@@ -853,6 +893,7 @@ class ResumeProfileImportRequest(ApiModel):
             personal=self.personal.model_dump(exclude_unset=True),
             education=[item.model_dump() for item in self.education],
             experience=[item.model_dump() for item in self.experience],
+            projects=[item.model_dump() for item in self.projects],
             links=self.links.model_dump(exclude_unset=True),
         )
 

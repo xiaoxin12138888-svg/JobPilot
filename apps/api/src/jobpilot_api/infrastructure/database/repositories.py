@@ -1065,6 +1065,18 @@ def _autofill_profile_draft_values(draft: AutofillProfileDraft) -> dict[str, str
                 for item in draft.experience
             ]
         ),
+        "projects_json": _canonical_json(
+            [
+                {
+                    "name": item.name,
+                    "role": item.role,
+                    "start": item.start,
+                    "end": item.end,
+                    "description": item.description,
+                }
+                for item in draft.projects
+            ]
+        ),
         "links_json": _canonical_json(
             {
                 "github": draft.links.github,
@@ -1160,12 +1172,14 @@ def _autofill_profile(model: AutofillProfileModel) -> AutofillProfile:
         personal=json.loads(model.personal_json),
         education=json.loads(model.education_json),
         experience=json.loads(model.experience_json),
+        projects=json.loads(model.projects_json),
         links=json.loads(model.links_json),
     )
     return AutofillProfile(
         personal=draft.personal,
         education=draft.education,
         experience=draft.experience,
+        projects=draft.projects,
         links=draft.links,
         created_at=_utc(model.created_at),
         updated_at=_utc(model.updated_at),
