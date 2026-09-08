@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 import type { ApiClient, ResumeVersion } from '@jobpilot/api-client';
 
+import { ResumeDocumentView } from './ResumeDocumentView';
 import { ResumeImportFlow } from './ResumeImportFlow';
 
 interface ResumeVersionsPageProps {
@@ -17,6 +18,7 @@ export function ResumeVersionsPage({ apiClient }: ResumeVersionsPageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
   const [editor, setEditor] = useState<EditorState>();
+  const [selectedResume, setSelectedResume] = useState<ResumeVersion>();
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
 
@@ -55,6 +57,7 @@ export function ResumeVersionsPage({ apiClient }: ResumeVersionsPageProps) {
       } else {
         const updated = await apiClient.updateResumeVersion(editor.resumeId, { name, content });
         setResumes((items) => items.map((item) => (item.id === updated.id ? updated : item)));
+        setSelectedResume(updated);
       }
       setEditor(undefined);
     } catch (saveError) {
@@ -112,9 +115,9 @@ export function ResumeVersionsPage({ apiClient }: ResumeVersionsPageProps) {
           <div>
             <p className="eyebrow">PLAIN TEXT RESUME</p>
             <h1 id="resume-editor-title">
-              {editor.mode === 'create' ? '新建简历版本' : '查看 / 编辑简历版本'}
+              {editor.mode === 'create' ? '新建简历版本' : '编辑简历版本'}
             </h1>
-            <p>正文只保存在本机 SQLite；可手动录入、粘贴，或从本机 PDF/DOCX 导入。</p>
+            <p>这里编辑完整原文；未修改的内容会原样保留在本机。</p>
           </div>
         </div>
         <div className="resume-editor content-card">
@@ -155,6 +158,46 @@ export function ResumeVersionsPage({ apiClient }: ResumeVersionsPageProps) {
             </button>
           </div>
         </div>
+      </section>
+    );
+  }
+
+  if (selectedResume) {
+    return (
+      <section className="page-section resume-reader-page" aria-labelledby="resume-reader-title">
+        <button type="button" className="back-button" onClick={() => setSelectedResume(undefined)}>
+          ← 返回简历版本
+        </button>
+        <div className="page-heading resume-reader-heading">
+          <div>
+            <p className="eyebrow">RESUME DOCUMENT</p>
+            <h1 id="resume-reader-title">{selectedResume.name}</h1>
+            <p>
+              更新于 {formatDate(selectedResume.updatedAt)} ·{' '}
+              {selectedResume.applicationCount > 0
+                ? `已关联 ${selectedResume.applicationCount} 条投递记录`
+                : '尚未关联投递记录'}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="button primary"
+            onClick={() =>
+              setEditor({
+                mode: 'edit',
+                resumeId: selectedResume.id,
+                name: selectedResume.name,
+                content: selectedResume.content,
+              })
+            }
+          >
+            编辑简历
+          </button>
+        </div>
+        <p className="resume-reader-note">
+          以下分区仅用于阅读，不改写简历内容。如需调整原文，请点击“编辑简历”。
+        </p>
+        <ResumeDocumentView content={selectedResume.content} />
       </section>
     );
   }
@@ -221,16 +264,9 @@ export function ResumeVersionsPage({ apiClient }: ResumeVersionsPageProps) {
                 <button
                   type="button"
                   className="button secondary"
-                  onClick={() =>
-                    setEditor({
-                      mode: 'edit',
-                      resumeId: resume.id,
-                      name: resume.name,
-                      content: resume.content,
-                    })
-                  }
+                  onClick={() => setSelectedResume(resume)}
                 >
-                  查看/编辑
+                  查看
                 </button>
                 <button
                   type="button"

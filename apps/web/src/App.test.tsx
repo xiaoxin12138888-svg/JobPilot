@@ -741,7 +741,9 @@ describe('App', () => {
     render(<App apiClient={apiClient} />);
 
     const feedback = await screen.findByRole('region', { name: '求职复盘' });
-    expect(within(feedback).getByRole('article', { name: '已保存岗位' })).toHaveTextContent('5');
+    expect(await within(feedback).findByRole('article', { name: '已保存岗位' })).toHaveTextContent(
+      '5',
+    );
     expect(within(feedback).getByRole('article', { name: '已投递岗位' })).toHaveTextContent('4');
     expect(within(feedback).getByRole('article', { name: '面试岗位' })).toHaveTextContent('3');
     expect(within(feedback).getByRole('article', { name: 'Offer' })).toHaveTextContent('1');
@@ -805,7 +807,9 @@ describe('App', () => {
       content: '使用 SQL 完成业务数据统计。',
     });
 
-    fireEvent.click(screen.getByRole('button', { name: '查看/编辑' }));
+    fireEvent.click(screen.getByRole('button', { name: '查看' }));
+    expect(screen.queryByLabelText('简历正文 *')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '编辑简历' }));
     fireEvent.change(screen.getByLabelText('版本名称 *'), {
       target: { value: 'AI 产品经理版 V2 定稿' },
     });
@@ -814,6 +818,7 @@ describe('App', () => {
       await screen.findByRole('heading', { name: 'AI 产品经理版 V2 定稿' }),
     ).toBeInTheDocument();
 
+    fireEvent.click(screen.getByRole('button', { name: /返回简历版本/ }));
     fireEvent.click(screen.getByRole('button', { name: '复制' }));
     expect(
       await screen.findByRole('heading', { name: 'AI 产品经理版 V2 定稿 副本' }),
@@ -824,6 +829,44 @@ describe('App', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: '删除' })[0]!);
     expect(deleteResumeVersion).toHaveBeenCalledWith('resume-2');
+  });
+
+  it('shows a Resume as readable sections and preserves the complete original text for editing', async () => {
+    const content = [
+      '示例候选人',
+      '求职方向：产品经理',
+      '教育经历',
+      '2022.09 - 至今  示例大学  信息管理  本科',
+      '荣誉：校级奖学金',
+      '实习经历',
+      '2025.03 - 2025.08  示例公司  产品实习生',
+      '项目经历',
+      'JobPilot：负责需求分析与版本验收',
+      '个人技能和证书',
+      'SQL、Python、Figma',
+    ].join('\n');
+    const resume = createResume({ content });
+    const apiClient = createApiClient({
+      listResumeVersions: vi.fn().mockResolvedValue(page([resume])),
+    });
+    render(<App apiClient={apiClient} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '简历版本' }));
+    fireEvent.click(await screen.findByRole('button', { name: '查看' }));
+
+    expect(screen.getByRole('region', { name: '基本信息' })).toHaveTextContent('示例候选人');
+    expect(screen.getByRole('region', { name: '教育经历' })).toHaveTextContent('示例大学');
+    expect(screen.getByRole('region', { name: '教育经历' })).toHaveTextContent('校级奖学金');
+    expect(screen.getByRole('region', { name: '工作 / 实习经历' })).toHaveTextContent('产品实习生');
+    expect(screen.getByRole('region', { name: '项目经历' })).toHaveTextContent('JobPilot');
+    expect(screen.getByRole('region', { name: '技能 / 证书' })).toHaveTextContent(
+      'SQL、Python、Figma',
+    );
+    expect(screen.queryByRole('region', { name: '荣誉 / 奖项' })).toBeNull();
+    expect(screen.queryByRole('textbox')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: '编辑简历' }));
+    expect(screen.getByLabelText('简历正文 *')).toHaveValue(content);
   });
 
   it('opens resume import from the Resume Versions view without parsing or saving early', async () => {
