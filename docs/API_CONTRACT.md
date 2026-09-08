@@ -385,6 +385,15 @@ JD Analysis 缺失、stale 或其他前置条件非法为 422；Provider 未配�
       }
     ],
     "experience": [],
+    "projects": [
+      {
+        "name": "示例项目",
+        "role": "产品负责人",
+        "start": "2025-06",
+        "end": "2025-08",
+        "description": "完成需求分析与阶段验收。"
+      }
+    ],
     "links": {
       "github": "https://github.com/example-candidate",
       "portfolio": null,
@@ -399,9 +408,10 @@ JD Analysis 缺失、stale 或其他前置条件非法为 422；Provider 未配�
 ### `PUT /api/v1/autofill-profile`
 
 请求体是完整替换对象，结构与上例 `profile` 相同但不含时间字段。`personal`、`education`、
-`experience`、`links` 四段必需；所有事实可为空，但整个 Profile 至少包含一个事实。教育与经历
-各最多 20 条，单条不得全空；月份只接受 `YYYY-MM`；链接只接受无 userinfo 的 HTTP(S)。短文本
-最多 300 字符，phone/email 最多 320，经历描述最多 20,000，URL 最多 2,048。成功返回上面的
+`experience`、`projects`、`links` 五段必需；所有事实可为空，但整个 Profile 至少包含一个事实。
+教育、经历与项目各最多 20 条，单条不得全空；月份只接受 `YYYY-MM`；链接只接受无 userinfo 的
+HTTP(S)。短文本最多 300 字符，phone/email 最多 320，经历/项目描述最多 20,000，URL 最多
+2,048。成功返回上面的
 `{"profile": {...}}`；非法输入为 422。
 
 该 PUT 只接受精确 loopback Web Origin、非 cross-site Fetch Metadata 与 `application/json`，不接受
@@ -433,6 +443,7 @@ magic/package structure 一致的 `.pdf` 与 `.docx`，文件上限 10 MiB；缺
     "personal": {"name": "示例候选人", "phone": null, "email": "candidate@example.invalid", "currentCity": null},
     "education": [],
     "experience": [],
+    "projects": [],
     "links": {"github": null, "portfolio": null, "homepage": null}
   },
   "warnings": [
@@ -468,13 +479,17 @@ JobPilot-owned code/message，不包含 parser traceback 或文件内容。Parse
       {"school": "示例大学", "major": "信息管理", "degree": "本科", "start": "2022-09", "end": "2026-06"}
     ],
     "experience": [],
+    "projects": [
+      {"name": "示例项目", "role": null, "start": "2025-06", "end": "2025-08", "description": "完成需求分析。"}
+    ],
     "links": {}
   }
 }
 ```
 
-`personal`/`links` 中省略的 scalar 和现有 education/experience 全部保留；数组只追加请求明确提交
-的行。请求不能用 null 清空 Profile 字段。两项同时提交时，在一个 SQLite transaction 中创建新
+`personal`/`links` 中省略的 scalar 和现有 education/experience/projects 全部保留；数组只追加
+请求明确提交的行。请求不能用 null 清空 Profile 字段。两项同时提交时，在一个 SQLite
+transaction 中创建新
 Resume Version 并更新 singleton Profile；任一失败全部回滚。成功响应字段为
 `resumeVersion: ResumeVersion|null` 与 `profile: AutofillProfile|null`；未选择的 target 为 null。
 

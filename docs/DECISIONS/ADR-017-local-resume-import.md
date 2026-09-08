@@ -52,6 +52,17 @@ PDF、DOCX、文件名和提取文本均是不可信私密输入。DOCX 是 ZIP/
     脱敏文件人工确认。在确认前只能报告
     `USER ACTION REQUIRED — REAL RESUME IMPORT ACCEPTANCE`，不能宣布 Phase 10 PASS。
 
+## 2026-09-08 owner amendment
+
+真实 DOCX 预览证明 PROJECT section 正文完整但没有结构化候选。负责人批准把项目经历作为独立
+`projects[]` 加入 Profile 与 Phase 10 Preview/Confirm：字段固定为 `name`、`role`、`start`、`end`、
+`description`；只解析明确 PROJECT section 中以月份范围开头的项目头，描述仅拼接该项目头之后、
+下一个项目头之前的原文。候选可编辑，Confirm 只追加勾选行并保留现有项目；可能重复只提示。
+
+该增量使用可逆 migration 为 singleton Profile 增加 `projects_json` 并把既有数据回填为空数组。
+Extension Autofill 不消费项目字段，不增加字段映射、页面写入、权限或提交能力；其余 Phase 9/10
+安全、隐私、Parse != Save、无 Provider/OCR/远端依赖及 Phase 11 stop 条件不变。
+
 ## Consequences
 
 - 不新增 ResumeImport 表或 migration；preview 生命周期只存在于 Web 内存。

@@ -11,6 +11,22 @@ loopback API, review and edit the preview in the Web, then explicitly create a R
 selected Autofill Profile facts, or do both atomically. `Parse != Save`; the installed flow requires no
 LLM, OCR, remote service or original-file persistence.
 
+## 2026-09-08 owner amendment: structured project experience
+
+The owner requested project experience as a third independent repeatable Profile collection during
+real DOCX acceptance. Add `projects[]` with `name`, optional `role`, start/end month and optional
+description. Parse only explicit PROJECT sections; Preview keeps every candidate editable and selected
+by the user; Confirm appends only selected rows and preserves existing projects.
+
+This is an additive Profile/API/database amendment. A reversible migration backfills existing singleton
+profiles with an empty project array. The Web Profile and import review expose projects, while the
+Extension resolver/executor intentionally ignores them: no new field mapping, permissions, page writes,
+submit behavior or Phase 9 recruitment-site capability is approved.
+
+Implementation order is contract → RED/GREEN domain/migration/API → RED/GREEN shared client/Web → full
+gates and real re-import review. Phase 10 remains pending until the owner confirms the real candidates,
+save and restart persistence; Phase 11 remains out of scope.
+
 ## Architecture decisions
 
 - ADR-017 owns the 10 MiB limit, parser/resource/privacy boundaries, stateless preview, patch-like
@@ -22,8 +38,9 @@ LLM, OCR, remote service or original-file persistence.
 - `POST /api/v1/resume-imports/confirm` accepts only explicitly selected updates/additions. The repository
   loads current Profile state inside the same transaction, preserves unselected values/rows and creates
   the optional Resume Version atomically.
-- No migration or ResumeImport table is needed. Preview state lives only in Web memory; original files are
-  never persisted.
+- No ResumeImport table is needed. Preview state lives only in Web memory; original files are never
+  persisted. The owner-approved project amendment adds only `projects_json` to the existing singleton
+  Profile through one reversible migration.
 
 ## Implementation status
 

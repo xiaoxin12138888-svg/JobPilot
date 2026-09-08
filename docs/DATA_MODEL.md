@@ -163,21 +163,24 @@ mappings；新生成固定为 schema 2，并包含当前分析的硬性要求、
 | `personal_json` | Text, NOT NULL，canonical JSON object |
 | `education_json` | Text, NOT NULL，canonical JSON array |
 | `experience_json` | Text, NOT NULL，canonical JSON array |
+| `projects_json` | Text, NOT NULL，canonical JSON array，existing rows backfilled as `[]` |
 | `links_json` | Text, NOT NULL，canonical JSON object |
 | `created_at` | DateTime, NOT NULL |
 | `updated_at` | DateTime, NOT NULL |
 
 固定 `id = 1` 表示一个安装实例只有一个当前 Profile，不创建 user/tenant/owner 或 profile list。
 PUT 原位完整替换并保留 created_at；GET 无行时返回 null。JSON 只承载批准的 personal、最多 20 条
-education、最多 20 条 experience 与 links 字段，并由 domain 在写入前完成长度、控制字符、月份、
-URL 和非空验证。它与 Resume Version、Application、Job 没有 FK，不从 Resume 自动导入，也不会
-因 Autofill 创建/推进 Application。Extension 不持久化副本。
+education、最多 20 条 experience、最多 20 条 projects 与 links 字段，并由 domain 在写入前完成
+长度、控制字符、月份、URL 和非空验证。项目字段为 name/role/start/end/description。它与 Resume
+Version、Application、Job 没有 FK，不从 Resume 自动导入，也不会因 Autofill 创建/推进
+Application。Extension 不持久化副本，且不消费或填写 projects。
 
 ## 10. Phase 10 atomic import
 
 Parse preview 不进入数据库。Confirm 可在一个 transaction 内新增一个 `resume_versions` row，并按
 用户明确选择的 scalar/row patch singleton `autofill_profiles`。未选择的 scalar 与全部既有数组行
-保留；数组只追加所选 imported rows。任一 validation/SQLite 错误回滚整个 transaction。
+保留；education/experience/projects 只追加所选 imported rows。任一 validation/SQLite 错误回滚
+整个 transaction。
 
 原文件、filename、parse token、warning、section/candidate payload 和 performance metrics 均不
 持久化。Phase 10 不修改现有 Resume Version、Application、Job 或 Evidence Map row。

@@ -76,6 +76,13 @@ Profile 含姓名、联系方式、教育与经历等私密信息；招聘页面
 - Phase 7 保持 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`。任何 Resume Import/Builder、
   AI Autofill、平台专用 Autofill Adapter 或 Phase 10 都必须另行批准。
 
+## 2026-09-08 Phase 10 amendment
+
+真实简历导入验收中，项目负责人批准 Profile 增加独立 `projects[]`，字段限于项目名称、可选角色、
+起止月份与可选描述。该数组只供本机 Profile 编辑与 Phase 10 导入确认；Extension 的 Scanner、
+Resolver、Fill Plan 和 Executor 不读取项目字段、不增加映射，也不改变权限或无自动提交边界。
+现有 Profile 经可逆 migration 得到空项目数组，其他四段事实原样保留。
+
 ## Acceptance evidence
 
 2026-09-07，真实 Chrome 中国移动校招表单检测 37 个字段（READY 1、REVIEW_REQUIRED 2、
