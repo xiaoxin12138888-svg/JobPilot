@@ -401,8 +401,30 @@ textarea {
 .danger-text {
   color: var(--danger);
 }
-.resume-editor textarea {
+.resume-editor > .field textarea {
   min-height: 28rem;
+}
+.resume-document-editor {
+  display: grid;
+  gap: 1rem;
+}
+.resume-section-editor {
+  display: grid;
+  gap: 0.65rem;
+  padding: 1rem 1.25rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  background: var(--surface-strong);
+}
+.resume-section-editor > span {
+  color: #1c5636;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+.resume-section-editor textarea {
+  min-height: 8rem;
+  resize: vertical;
 }
 .resume-reader-page {
   max-width: 76rem;
@@ -1689,7 +1711,7 @@ dd {
   .question-form-wide {
     grid-column: auto;
   }
-  .resume-editor textarea {
+  .resume-editor > .field textarea {
     min-height: 20rem;
   }
   .danger-zone {

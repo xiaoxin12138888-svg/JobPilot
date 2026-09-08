@@ -846,8 +846,16 @@ describe('App', () => {
       'SQL、Python、Figma',
     ].join('\n');
     const resume = createResume({ content });
+    const updateResumeVersion = vi.fn(
+      async (_id: string, input: { name?: string; content?: string }) => ({
+        ...resume,
+        ...input,
+        updatedAt: '2026-09-08T08:00:00Z',
+      }),
+    );
     const apiClient = createApiClient({
       listResumeVersions: vi.fn().mockResolvedValue(page([resume])),
+      updateResumeVersion,
     });
     render(<App apiClient={apiClient} />);
 
@@ -866,7 +874,29 @@ describe('App', () => {
     expect(screen.queryByRole('textbox')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: '编辑简历' }));
-    expect(screen.getByLabelText('简历正文 *')).toHaveValue(content);
+    expect(screen.queryByLabelText('简历正文 *')).toBeNull();
+    expect(screen.getByLabelText('基本信息')).toHaveValue('示例候选人\n求职方向：产品经理');
+    expect(screen.getByLabelText('教育经历')).toHaveValue(
+      '2022.09 - 至今  示例大学  信息管理  本科\n荣誉：校级奖学金',
+    );
+    expect(screen.getByLabelText('工作 / 实习经历')).toHaveValue(
+      '2025.03 - 2025.08  示例公司  产品实习生',
+    );
+    expect(screen.getByLabelText('项目经历')).toHaveValue('JobPilot：负责需求分析与版本验收');
+    expect(screen.getByLabelText('技能 / 证书')).toHaveValue('SQL、Python、Figma');
+
+    fireEvent.change(screen.getByLabelText('项目经历'), {
+      target: { value: 'JobPilot：负责需求分析、版本验收与用户测试' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '保存修改' }));
+
+    expect(updateResumeVersion).toHaveBeenCalledWith('resume-1', {
+      name: resume.name,
+      content: content.replace(
+        'JobPilot：负责需求分析与版本验收',
+        'JobPilot：负责需求分析、版本验收与用户测试',
+      ),
+    });
   });
 
   it('opens resume import from the Resume Versions view without parsing or saving early', async () => {

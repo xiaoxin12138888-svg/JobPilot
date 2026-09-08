@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 import type { ApiClient, ResumeVersion } from '@jobpilot/api-client';
 
+import { ResumeDocumentEditor } from './ResumeDocumentEditor';
 import { ResumeDocumentView } from './ResumeDocumentView';
 import { ResumeImportFlow } from './ResumeImportFlow';
 
@@ -129,16 +130,25 @@ export function ResumeVersionsPage({ apiClient }: ResumeVersionsPageProps) {
               onChange={(event) => setEditor({ ...editor, name: event.target.value })}
             />
           </label>
-          <label className="field">
-            <span>简历正文 *</span>
-            <textarea
-              maxLength={100_000}
-              rows={20}
-              value={editor.content}
-              onChange={(event) => setEditor({ ...editor, content: event.target.value })}
-              placeholder="建议粘贴简历经历、项目、技能等正文。"
+          {editor.mode === 'create' ? (
+            <label className="field">
+              <span>简历正文 *</span>
+              <textarea
+                maxLength={100_000}
+                rows={20}
+                value={editor.content}
+                disabled={saving}
+                onChange={(event) => setEditor({ ...editor, content: event.target.value })}
+                placeholder="建议粘贴简历经历、项目、技能等正文。"
+              />
+            </label>
+          ) : (
+            <ResumeDocumentEditor
+              content={editor.content}
+              disabled={saving}
+              onChange={(content) => setEditor({ ...editor, content })}
             />
-          </label>
+          )}
           {error && (
             <p className="form-error" role="alert">
               {error}

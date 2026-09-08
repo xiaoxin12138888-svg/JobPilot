@@ -14,9 +14,8 @@ describe('responsive page shell', () => {
 
   it('keeps Resume sections in one reading column at every viewport width', () => {
     const css = readFileSync(resolve(process.cwd(), 'src/styles.css'), 'utf8');
-    const resumeDocumentRule = css.match(
-      /\.resume-document\s*\{(?<declarations>[^}]*)\}/,
-    )?.groups?.declarations;
+    const resumeDocumentRule = css.match(/\.resume-document\s*\{(?<declarations>[^}]*)\}/)?.groups
+      ?.declarations;
 
     expect(resumeDocumentRule).toBeDefined();
     expect(resumeDocumentRule).toMatch(/grid-template-columns:\s*1fr/);
