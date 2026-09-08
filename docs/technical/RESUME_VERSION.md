@@ -10,6 +10,10 @@
 显示，测试只用虚构数据。正文只保存在 `runtime-data/jobpilot.db`；不进入 Extension、日志、
 telemetry、错误、Git 或文档。
 
+Web 将阅读和编辑分开：默认查看页仅按原文中明确的标题行生成确定性阅读分区，不显示 textarea；
+标题无法识别时仍以一张完整正文卡片显示。只有用户点击“编辑简历”后才显示完整原文输入框。分区结果
+不保存、不调用 LLM、不改变 API 或 Resume Schema，也不影响后续 Evidence Map 使用的完整原文。
+
 ## Lifecycle
 
 - 创建需要非空 `name` 和 `content`；服务端裁剪首尾空白并拒绝越界输入。

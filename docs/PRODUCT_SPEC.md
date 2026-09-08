@@ -177,6 +177,10 @@ Application 正在引用该版本，删除返回稳定
 
 简历正文按不可信纯文本处理，不写日志、Extension、telemetry、Git、文档或真实测试 fixture。
 
+Web 查看态根据原文中明确的中英文标题行，确定性地分为基本信息、教育、工作/实习、项目、技能/证书、
+荣誉/奖项和其他阅读卡片；无明确标题时回退为完整“简历正文”卡片。该分区不持久化、不调用 AI、不改写或删减原文；
+只有用户明确点击“编辑简历”后才显示完整原文输入框。
+
 ## 9. Evidence Map
 
 生成前要求 Job、当前非 stale JD Analysis、用户所选 Resume Version、已配置 Provider，以及
