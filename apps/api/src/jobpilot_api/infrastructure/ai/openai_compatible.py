@@ -6,10 +6,12 @@ from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, OpenerDirector, ProxyHandler, Request, build_opener
 
 from jobpilot_api.config import LLMSettings
+from jobpilot_api.domain.copilot import CopilotInput
 from jobpilot_api.domain.errors import (
     AnalysisInvalidResponseDiagnostic,
     AnalysisInvalidResponseError,
     AnalysisProviderUnavailableError,
+    AnalysisTimeoutError,
 )
 from jobpilot_api.domain.evidence_maps import EvidenceMapInput
 from jobpilot_api.domain.jd_analysis import JDAnalysisInput
@@ -32,13 +34,30 @@ class OpenAICompatibleJDAnalysisProvider:
         self._settings = settings
         self._opener = opener or build_opener(ProxyHandler({}), _RejectRedirectHandler())
 
+    @property
+    def model(self) -> str:
+        return self._settings.model
+
     def analyze(self, analysis_input: JDAnalysisInput, *, system_instruction: str) -> str:
         return self._complete(analysis_input.as_provider_data(), system_instruction)
 
     def map_evidence(self, evidence_input: EvidenceMapInput, *, system_instruction: str) -> str:
         return self._complete(evidence_input.as_provider_data(), system_instruction)
 
-    def _complete(self, provider_data: object, system_instruction: str) -> str:
+    def generate_copilot(self, copilot_input: CopilotInput, *, system_instruction: str) -> str:
+        return self._complete(
+            copilot_input.as_provider_data(),
+            system_instruction,
+            expose_timeout=True,
+        )
+
+    def _complete(
+        self,
+        provider_data: object,
+        system_instruction: str,
+        *,
+        expose_timeout: bool = False,
+    ) -> str:
         request_body = json.dumps(
             {
                 "model": self._settings.model,
@@ -72,7 +91,11 @@ class OpenAICompatibleJDAnalysisProvider:
         try:
             with self._opener.open(request, timeout=self._settings.timeout_seconds) as response:
                 body = response.read(MAX_PROVIDER_RESPONSE_BYTES + 1)
-        except (HTTPError, URLError, TimeoutError, OSError):
+        except (TimeoutError, URLError) as error:
+            if expose_timeout and _is_timeout(error):
+                raise AnalysisTimeoutError("AI 生成超时，请稍后重试") from None
+            raise AnalysisProviderUnavailableError("AI 分析暂时不可用，请稍后重试") from None
+        except (HTTPError, OSError):
             raise AnalysisProviderUnavailableError("AI 分析暂时不可用，请稍后重试") from None
         if len(body) > MAX_PROVIDER_RESPONSE_BYTES:
             raise _invalid_response()
@@ -92,3 +115,7 @@ def _invalid_response() -> AnalysisInvalidResponseError:
         "AI 返回的分析结果无法验证，请稍后重试",
         diagnostic_code=AnalysisInvalidResponseDiagnostic.PROVIDER_ENVELOPE,
     )
+
+
+def _is_timeout(error: TimeoutError | URLError) -> bool:
+    return isinstance(error, TimeoutError) or isinstance(error.reason, TimeoutError)

@@ -11,6 +11,13 @@ from sqlalchemy.orm import Session, sessionmaker
 from jobpilot_api.application.repositories import ApplicationListEntry, JobListEntry
 from jobpilot_api.domain.applications import Application, ApplicationStatus, RejectionReason
 from jobpilot_api.domain.autofill_profiles import AutofillProfile, AutofillProfileDraft
+from jobpilot_api.domain.copilot import (
+    COPILOT_SCHEMA_VERSION,
+    CopilotKind,
+    CopilotRecord,
+    CopilotResult,
+    copilot_result_from_stored_json,
+)
 from jobpilot_api.domain.errors import (
     ApplicationAlreadyExistsError,
     DatabaseBusyError,
@@ -57,6 +64,7 @@ from jobpilot_api.domain.resume_versions import ResumeVersion, ResumeVersionDraf
 from jobpilot_api.infrastructure.database.models import (
     ApplicationModel,
     AutofillProfileModel,
+    CopilotRecordModel,
     EvidenceMapRecordModel,
     InterviewQuestionModel,
     InterviewRoundModel,
@@ -609,6 +617,73 @@ class SqlAlchemyEvidenceMapRepository:
         except OperationalError as error:
             raise _database_error(error) from error
         return _evidence_map_record(model)
+
+
+class SqlAlchemyCopilotRepository:
+    def __init__(self, sessions: sessionmaker[Session]) -> None:
+        self._sessions = sessions
+
+    def create(
+        self,
+        *,
+        job_id: str,
+        resume_version_id: str | None,
+        kind: CopilotKind,
+        result: CopilotResult,
+        input_fingerprint: str,
+        model: str,
+        prompt_version: str,
+    ) -> CopilotRecord:
+        record = CopilotRecordModel(
+            id=str(uuid4()),
+            job_id=job_id,
+            resume_version_id=resume_version_id,
+            kind=kind.value,
+            schema_version=COPILOT_SCHEMA_VERSION,
+            result_json=_canonical_json(result.as_dict()),
+            input_fingerprint=input_fingerprint,
+            model=model,
+            prompt_version=prompt_version,
+            created_at=datetime.now(UTC),
+        )
+        try:
+            with self._sessions.begin() as session:
+                session.add(record)
+        except OperationalError as error:
+            raise _database_error(error) from error
+        return _copilot_record(record)
+
+    def get(self, record_id: str) -> CopilotRecord | None:
+        try:
+            with self._sessions() as session:
+                model = session.get(CopilotRecordModel, record_id)
+                return _copilot_record(model) if model is not None else None
+        except OperationalError as error:
+            raise _database_error(error) from error
+
+    def get_latest(
+        self,
+        *,
+        job_id: str,
+        resume_version_id: str | None,
+        kind: CopilotKind,
+    ) -> CopilotRecord | None:
+        statement = (
+            select(CopilotRecordModel)
+            .where(
+                CopilotRecordModel.job_id == job_id,
+                CopilotRecordModel.resume_version_id == resume_version_id,
+                CopilotRecordModel.kind == kind.value,
+            )
+            .order_by(CopilotRecordModel.created_at.desc(), CopilotRecordModel.id.desc())
+            .limit(1)
+        )
+        try:
+            with self._sessions() as session:
+                model = session.scalar(statement)
+                return _copilot_record(model) if model is not None else None
+        except OperationalError as error:
+            raise _database_error(error) from error
 
 
 class SqlAlchemyInterviewRepository:
@@ -1212,6 +1287,22 @@ def _evidence_map_record(model: EvidenceMapRecordModel) -> EvidenceMapRecord:
         resume_content_fingerprint=model.resume_content_fingerprint,
         created_at=_utc(model.created_at),
         updated_at=_utc(model.updated_at),
+    )
+
+
+def _copilot_record(model: CopilotRecordModel) -> CopilotRecord:
+    kind = CopilotKind(model.kind)
+    return CopilotRecord(
+        id=model.id,
+        job_id=model.job_id,
+        resume_version_id=model.resume_version_id,
+        kind=kind,
+        schema_version=model.schema_version,
+        result=copilot_result_from_stored_json(kind, model.result_json),
+        input_fingerprint=model.input_fingerprint,
+        model=model.model,
+        prompt_version=model.prompt_version,
+        created_at=_utc(model.created_at),
     )
 
 

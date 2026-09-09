@@ -139,6 +139,37 @@ class EvidenceMapRecordModel(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class CopilotRecordModel(Base):
+    __tablename__ = "copilot_records"
+    __table_args__ = (
+        CheckConstraint(
+            "kind IN ('MATCH','RESUME_ADVICE','INTERVIEW_PREP')",
+            name="ck_copilot_records_kind",
+        ),
+        CheckConstraint("schema_version = 1", name="ck_copilot_records_schema_version"),
+        Index(
+            "ix_copilot_records_context_created",
+            "job_id",
+            "kind",
+            "resume_version_id",
+            "created_at",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    job_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False
+    )
+    resume_version_id: Mapped[str | None] = mapped_column(String(36))
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    schema_version: Mapped[int] = mapped_column(nullable=False)
+    result_json: Mapped[str] = mapped_column(Text, nullable=False)
+    input_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    model: Mapped[str] = mapped_column(String(200), nullable=False)
+    prompt_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class InterviewRoundModel(Base):
     __tablename__ = "interview_rounds"
     __table_args__ = (

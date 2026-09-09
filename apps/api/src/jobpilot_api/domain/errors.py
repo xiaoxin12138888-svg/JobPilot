@@ -56,6 +56,11 @@ class AnalysisProviderUnavailableError(DomainError):
     status_code = 503
 
 
+class AnalysisTimeoutError(DomainError):
+    code = "AI_TIMEOUT"
+    status_code = 503
+
+
 class AnalysisInvalidResponseDiagnostic(StrEnum):
     INVALID_JSON = "INVALID_JSON"
     PROVIDER_ENVELOPE = "PROVIDER_ENVELOPE"

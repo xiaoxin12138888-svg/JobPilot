@@ -7,9 +7,14 @@ from fastapi import Request
 from sqlalchemy import Engine
 from sqlalchemy.orm import sessionmaker
 
+from jobpilot_api.application.copilot import CopilotService
 from jobpilot_api.application.evidence_maps import EvidenceMapService
 from jobpilot_api.application.jd_analysis import JDAnalysisService
-from jobpilot_api.application.providers import EvidenceMapProvider, JDAnalysisProvider
+from jobpilot_api.application.providers import (
+    CopilotProvider,
+    EvidenceMapProvider,
+    JDAnalysisProvider,
+)
 from jobpilot_api.application.resume_imports import ResumeImportService
 from jobpilot_api.application.services import (
     ApplicationService,
@@ -27,6 +32,7 @@ from jobpilot_api.infrastructure.database.engine import create_database_engine
 from jobpilot_api.infrastructure.database.repositories import (
     SqlAlchemyApplicationRepository,
     SqlAlchemyAutofillProfileRepository,
+    SqlAlchemyCopilotRepository,
     SqlAlchemyEvidenceMapRepository,
     SqlAlchemyFeedbackSummaryRepository,
     SqlAlchemyInterviewRepository,
@@ -44,6 +50,7 @@ class ServiceProvider:
         llm_settings: LLMSettings | None,
         analysis_provider: JDAnalysisProvider | None = None,
         evidence_map_provider: EvidenceMapProvider | None = None,
+        copilot_provider: CopilotProvider | None = None,
     ) -> None:
         self._database_path = database_path
         self._lock = Lock()
@@ -57,11 +64,13 @@ class ServiceProvider:
         self._feedback: FeedbackSummaryService | None = None
         self._autofill_profile: AutofillProfileService | None = None
         self._resume_import: ResumeImportService | None = None
+        self._copilot: CopilotService | None = None
         configured_provider = (
             OpenAICompatibleJDAnalysisProvider(llm_settings) if llm_settings is not None else None
         )
         self._analysis_provider = analysis_provider or configured_provider
         self._evidence_map_provider = evidence_map_provider or configured_provider
+        self._copilot_provider = copilot_provider or configured_provider
 
     def services(
         self,
@@ -107,6 +116,7 @@ class ServiceProvider:
                     feedback_repository = SqlAlchemyFeedbackSummaryRepository(sessions)
                     autofill_profile_repository = SqlAlchemyAutofillProfileRepository(sessions)
                     resume_import_repository = SqlAlchemyResumeImportRepository(sessions)
+                    copilot_repository = SqlAlchemyCopilotRepository(sessions)
                     self._engine = engine
                     self._jobs = JobService(job_repository)
                     self._applications = ApplicationService(
@@ -134,6 +144,15 @@ class ServiceProvider:
                     self._feedback = FeedbackSummaryService(feedback_repository)
                     self._autofill_profile = AutofillProfileService(autofill_profile_repository)
                     self._resume_import = ResumeImportService(resume_import_repository)
+                    self._copilot = CopilotService(
+                        copilot_repository,
+                        job_repository,
+                        resume_repository,
+                        self._analysis,
+                        application_repository,
+                        interview_repository,
+                        self._copilot_provider,
+                    )
         return (
             self._jobs,
             self._applications,
@@ -153,6 +172,11 @@ class ServiceProvider:
         self.services()
         assert self._resume_import is not None
         return self._resume_import
+
+    def copilot_service(self) -> CopilotService:
+        self.services()
+        assert self._copilot is not None
+        return self._copilot
 
 
 def get_job_service(request: Request) -> JobService:
@@ -197,3 +221,7 @@ def get_autofill_profile_service(request: Request) -> AutofillProfileService:
 
 def get_resume_import_service(request: Request) -> ResumeImportService:
     return request.app.state.service_provider.resume_import_service()
+
+
+def get_copilot_service(request: Request) -> CopilotService:
+    return request.app.state.service_provider.copilot_service()

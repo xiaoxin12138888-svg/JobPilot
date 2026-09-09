@@ -9,9 +9,11 @@ from typing import Any
 import pytest
 
 from jobpilot_api.config import LLMSettings
+from jobpilot_api.domain.copilot import CopilotInput, CopilotKind, CopilotSource
 from jobpilot_api.domain.errors import (
     AnalysisInvalidResponseError,
     AnalysisProviderUnavailableError,
+    AnalysisTimeoutError,
 )
 from jobpilot_api.domain.evidence_maps import (
     EvidenceMapInput,
@@ -146,6 +148,24 @@ def test_provider_sanitizes_timeout_after_sixty_second_budget() -> None:
         provider.analyze(_input("岗位描述"), system_instruction="system")
 
     assert opener.timeout == 60.0
+    assert "raw provider timeout details" not in str(captured.value)
+    assert "local-test-key" not in str(captured.value)
+
+
+def test_copilot_provider_uses_stable_timeout_error_without_raw_details() -> None:
+    provider = OpenAICompatibleJDAnalysisProvider(
+        _settings(), opener=StubOpener(TimeoutError("raw provider timeout details"))
+    )
+    copilot_input = CopilotInput.create(
+        kind=CopilotKind.MATCH,
+        title="产品经理",
+        job_sources=(CopilotSource("job-id", "负责产品需求分析"),),
+        resume_source=CopilotSource("resume-id", "参与需求分析"),
+    )
+
+    with pytest.raises(AnalysisTimeoutError, match="生成超时") as captured:
+        provider.generate_copilot(copilot_input, system_instruction="system")
+
     assert "raw provider timeout details" not in str(captured.value)
     assert "local-test-key" not in str(captured.value)
 

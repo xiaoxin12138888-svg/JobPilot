@@ -5,12 +5,14 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from jobpilot_api.application.copilot import CopilotState
 from jobpilot_api.application.evidence_maps import EvidenceMapState
 from jobpilot_api.application.jd_analysis import JDAnalysisState
 from jobpilot_api.application.repositories import ApplicationListEntry, JobListEntry
 from jobpilot_api.application.resume_imports import ResumeImportParseResult
 from jobpilot_api.domain.applications import Application, ApplicationStatus, RejectionReason
 from jobpilot_api.domain.autofill_profiles import AutofillProfile
+from jobpilot_api.domain.copilot import CopilotRecord
 from jobpilot_api.domain.evidence_maps import (
     EvidenceMap,
     EvidenceMapping,
@@ -1011,6 +1013,61 @@ class JobEvidenceMapResponse(ApiModel):
             is_configured=state.is_configured,
             evidence_map=(
                 EvidenceMapRecordResponse.from_domain(state.record, is_stale=state.is_stale)
+                if state.record is not None
+                else None
+            ),
+        )
+
+
+class CopilotResumeGenerateRequest(ApiModel):
+    resume_version_id: str = Field(max_length=36)
+    confirm_external_ai: Literal[True]
+
+
+class CopilotInterviewGenerateRequest(ApiModel):
+    confirm_external_ai: Literal[True]
+
+
+class CopilotRecordResponse(ApiModel):
+    id: str
+    job_id: str
+    resume_version_id: str | None
+    kind: Literal["MATCH", "RESUME_ADVICE", "INTERVIEW_PREP"]
+    schema_version: int
+    result: dict[str, object]
+    input_fingerprint: str
+    model: str
+    prompt_version: str
+    is_stale: bool
+    created_at: datetime
+
+    @classmethod
+    def from_domain(cls, record: CopilotRecord, *, is_stale: bool) -> CopilotRecordResponse:
+        return cls(
+            id=record.id,
+            job_id=record.job_id,
+            resume_version_id=record.resume_version_id,
+            kind=record.kind.value,
+            schema_version=record.schema_version,
+            result=record.result.as_dict(),
+            input_fingerprint=record.input_fingerprint,
+            model=record.model,
+            prompt_version=record.prompt_version,
+            is_stale=is_stale,
+            created_at=record.created_at,
+        )
+
+
+class CopilotResponse(ApiModel):
+    is_configured: bool
+    record: CopilotRecordResponse | None
+
+    @classmethod
+    def from_state(cls, state: CopilotState) -> CopilotResponse:
+        return cls(
+            is_configured=state.is_configured,
+            record=(
+                CopilotRecordResponse.from_domain(state.record, is_stale=state.is_stale)
                 if state.record is not None
                 else None
             ),

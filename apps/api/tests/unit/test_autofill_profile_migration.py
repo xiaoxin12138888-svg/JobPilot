@@ -17,7 +17,7 @@ def test_profile_model_and_migration_have_one_head() -> None:
     script = ScriptDirectory.from_config(config)
 
     assert "autofill_profiles" in Base.metadata.tables
-    assert script.get_current_head() == "0010_profile_projects"
+    assert script.get_current_head() == "0011_copilot_records"
 
 
 def test_project_migration_backfills_existing_profile_and_is_reversible(tmp_path: Path) -> None:

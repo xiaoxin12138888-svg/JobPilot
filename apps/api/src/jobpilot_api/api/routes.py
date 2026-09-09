@@ -9,6 +9,7 @@ from jobpilot_api.api.dependencies import (
     get_analysis_service,
     get_application_service,
     get_autofill_profile_service,
+    get_copilot_service,
     get_evidence_map_service,
     get_feedback_summary_service,
     get_interview_service,
@@ -25,6 +26,9 @@ from jobpilot_api.api.schemas import (
     ApplicationUpdateRequest,
     AutofillProfilePutRequest,
     AutofillProfileResponse,
+    CopilotInterviewGenerateRequest,
+    CopilotResponse,
+    CopilotResumeGenerateRequest,
     EvidenceMapGenerateRequest,
     FeedbackSummaryResponse,
     InterviewQuestionCreateRequest,
@@ -50,6 +54,7 @@ from jobpilot_api.api.schemas import (
     ResumeVersionResponse,
     ResumeVersionUpdateRequest,
 )
+from jobpilot_api.application.copilot import CopilotService
 from jobpilot_api.application.evidence_maps import EvidenceMapService
 from jobpilot_api.application.jd_analysis import JDAnalysisService
 from jobpilot_api.application.resume_imports import ResumeImportService
@@ -63,6 +68,7 @@ from jobpilot_api.application.services import (
 )
 from jobpilot_api.domain.applications import ApplicationStatus
 from jobpilot_api.domain.autofill_profiles import AutofillProfileDraft
+from jobpilot_api.domain.copilot import CopilotKind
 from jobpilot_api.domain.interviews import InterviewQuestionDraft, InterviewRoundDraft
 from jobpilot_api.domain.jobs import JobDraft
 from jobpilot_api.domain.resume_imports import MAX_RESUME_FILE_BYTES, ResumeImportError
@@ -229,6 +235,103 @@ def generate_job_evidence_map(
     service: Annotated[EvidenceMapService, Depends(get_evidence_map_service)],
 ) -> JobEvidenceMapResponse:
     return JobEvidenceMapResponse.from_state(service.generate(job_id, request.resume_version_id))
+
+
+@router.get("/jobs/{job_id}/copilot/match", response_model=CopilotResponse)
+def get_job_match(
+    job_id: str,
+    service: Annotated[CopilotService, Depends(get_copilot_service)],
+    resume_version_id: Annotated[str, Query(alias="resumeVersionId", max_length=36)],
+) -> CopilotResponse:
+    return CopilotResponse.from_state(
+        service.get_latest(
+            job_id,
+            CopilotKind.MATCH,
+            resume_version_id=resume_version_id,
+        )
+    )
+
+
+@router.post("/jobs/{job_id}/copilot/match", response_model=CopilotResponse)
+def generate_job_match(
+    job_id: str,
+    request: CopilotResumeGenerateRequest,
+    service: Annotated[CopilotService, Depends(get_copilot_service)],
+) -> CopilotResponse:
+    return CopilotResponse.from_state(
+        service.generate(
+            job_id,
+            CopilotKind.MATCH,
+            resume_version_id=request.resume_version_id,
+        )
+    )
+
+
+@router.get("/jobs/{job_id}/copilot/resume-advice", response_model=CopilotResponse)
+def get_resume_advice(
+    job_id: str,
+    service: Annotated[CopilotService, Depends(get_copilot_service)],
+    resume_version_id: Annotated[str, Query(alias="resumeVersionId", max_length=36)],
+) -> CopilotResponse:
+    return CopilotResponse.from_state(
+        service.get_latest(
+            job_id,
+            CopilotKind.RESUME_ADVICE,
+            resume_version_id=resume_version_id,
+        )
+    )
+
+
+@router.post("/jobs/{job_id}/copilot/resume-advice", response_model=CopilotResponse)
+def generate_resume_advice(
+    job_id: str,
+    request: CopilotResumeGenerateRequest,
+    service: Annotated[CopilotService, Depends(get_copilot_service)],
+) -> CopilotResponse:
+    return CopilotResponse.from_state(
+        service.generate(
+            job_id,
+            CopilotKind.RESUME_ADVICE,
+            resume_version_id=request.resume_version_id,
+        )
+    )
+
+
+@router.get("/jobs/{job_id}/copilot/interview-prep", response_model=CopilotResponse)
+def get_interview_prep(
+    job_id: str,
+    service: Annotated[CopilotService, Depends(get_copilot_service)],
+) -> CopilotResponse:
+    return CopilotResponse.from_state(
+        service.get_latest(
+            job_id,
+            CopilotKind.INTERVIEW_PREP,
+            resume_version_id=None,
+        )
+    )
+
+
+@router.post("/jobs/{job_id}/copilot/interview-prep", response_model=CopilotResponse)
+def generate_interview_prep(
+    job_id: str,
+    _request: CopilotInterviewGenerateRequest,
+    service: Annotated[CopilotService, Depends(get_copilot_service)],
+) -> CopilotResponse:
+    return CopilotResponse.from_state(
+        service.generate(
+            job_id,
+            CopilotKind.INTERVIEW_PREP,
+            resume_version_id=None,
+        )
+    )
+
+
+@router.get("/copilot/{record_id}", response_model=CopilotResponse)
+def get_copilot_record(
+    record_id: str,
+    service: Annotated[CopilotService, Depends(get_copilot_service)],
+) -> CopilotResponse:
+    return CopilotResponse.from_state(service.get(record_id))
 
 
 @router.post(

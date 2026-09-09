@@ -5,6 +5,7 @@ from typing import Protocol
 
 from jobpilot_api.domain.applications import Application, ApplicationStatus, RejectionReason
 from jobpilot_api.domain.autofill_profiles import AutofillProfile, AutofillProfileDraft
+from jobpilot_api.domain.copilot import CopilotKind, CopilotRecord, CopilotResult
 from jobpilot_api.domain.evidence_maps import EvidenceMap, EvidenceMapRecord
 from jobpilot_api.domain.feedback import FeedbackSummary
 from jobpilot_api.domain.interviews import (
@@ -129,6 +130,30 @@ class EvidenceMapRepository(Protocol):
         job_analysis_fingerprint: str,
         resume_content_fingerprint: str,
     ) -> EvidenceMapRecord: ...
+
+
+class CopilotRepository(Protocol):
+    def create(
+        self,
+        *,
+        job_id: str,
+        resume_version_id: str | None,
+        kind: CopilotKind,
+        result: CopilotResult,
+        input_fingerprint: str,
+        model: str,
+        prompt_version: str,
+    ) -> CopilotRecord: ...
+
+    def get(self, record_id: str) -> CopilotRecord | None: ...
+
+    def get_latest(
+        self,
+        *,
+        job_id: str,
+        resume_version_id: str | None,
+        kind: CopilotKind,
+    ) -> CopilotRecord | None: ...
 
 
 class InterviewRepository(Protocol):
