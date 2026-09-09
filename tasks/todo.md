@@ -1,4 +1,30 @@
-# Phase 10 — Local PDF / DOCX Resume Import Checklist
+# Phase 11 — AI Job Copilot Checklist
+
+## Contract and foundation
+
+- [x] Owner approval, branch and Phase 12 stop boundary confirmed.
+- [x] ADR-018 and technical contract freeze minimal inputs, outputs, evidence and stale behavior.
+- [ ] RED/GREEN domain parser, contact redaction and deterministic fingerprints.
+- [ ] RED/GREEN `copilot_records` migration, repository and service.
+
+## P0 features
+
+- [ ] Job Match API, Provider prompt and Web state.
+- [ ] Resume Advice API, Provider prompt and Web state.
+- [ ] Interview Prep API, Provider prompt and Web state.
+- [ ] Strict shared client validation and duplicate-generation prevention.
+
+## Evaluation and acceptance
+
+- [ ] Run 20 fictional samples and record real output metrics only.
+- [ ] Cover BC-01 unsupported strength, BC-02 inability wording, BC-03 fabricated experience and BC-04 certainty.
+- [ ] Run API, Web, Extension, lint, format, type, build, security and migration regressions.
+- [ ] Obtain real BOSS and Nowcoder human review from the owner.
+- [ ] Synchronize canonical docs and stop before Phase 12.
+
+---
+
+# Historical Phase 10 — Local PDF / DOCX Resume Import Checklist
 
 ## 2026-09-08 project experience amendment
 

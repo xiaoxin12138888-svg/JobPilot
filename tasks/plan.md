@@ -1,4 +1,35 @@
-# Implementation Plan: Phase 10 — Local PDF / DOCX Resume Import
+# Implementation Plan: Phase 11 — AI Job Copilot
+
+> Owner-approved on 2026-09-09 from Phase 10 commit `8609dee`. Phase 7 remains
+> `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`. Preserve the protected untracked `操作手册.txt` and stop
+> before Phase 12.
+
+## Objective
+
+Add explicit, optional and grounded Job Match, Resume Advice and Interview Preparation to Job Detail by
+reusing the existing Provider and local Job/Resume/Interview context. Results are append-only,
+fingerprinted and stale-aware; no model output mutates source data or performs an action.
+
+## Ordered slices
+
+1. Freeze ADR-018, API/storage/prompt/grounding/privacy contracts and this checklist.
+2. RED/GREEN strict result parser, source quote verification, contact redaction and fingerprints.
+3. RED/GREEN append-only migration/repository/service plus latest/by-id reads and stale rules.
+4. RED/GREEN Provider method and API contracts for Match, Resume Advice and Interview Prep.
+5. RED/GREEN shared wire validation/client and Job Detail Copilot tabs/states.
+6. Add 20 fictional evaluation samples and record only real Provider outputs/metrics/bad cases.
+7. Run full gates, security/code review and isolated browser regression, then request real BOSS/Nowcoder
+   owner acceptance. Do not claim PASS before that review.
+
+## Stop conditions
+
+- Never read/log/fixture real resume, Profile, interview content, Provider key or live SQLite.
+- Never accept an ungrounded quote, imply “用户不会”, state an interview certainty or invent experience.
+- Never add scores, auto-decisions/actions, Chat/RAG/Agent infrastructure or Phase 12 work.
+
+---
+
+# Historical Implementation Plan: Phase 10 — Local PDF / DOCX Resume Import
 
 > Owner-approved on 2026-09-07 from clean Phase 9 commit `0189314`. Phase 7 remains
 > `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`; this phase must not change Evidence Map or Phase 9

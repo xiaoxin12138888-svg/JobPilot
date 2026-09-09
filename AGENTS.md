@@ -2,7 +2,14 @@
 
 ## Current phase
 
-Phase 6 JD Structured AI Analysis, Phase 8 Interview Record & Feedback Loop and Phase 9 Profile Vault & Safe Job Form Autofill are complete and accepted. Phase 7 Resume Version & Evidence Map remains `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`. Phase 10 Local Resume Import implementation, automated gates and fictional isolated-browser acceptance are complete on `phase/10-resume-import`; de-identified real DOCX/PDF content and merge acceptance remain owner-required, so Phase 10 is not yet PASS. Preserve `Parse != Save`, stop before Phase 11, and do not change Phase 6/7 prompts, schemas, datasets or evaluation, or Phase 9 Autofill behavior. Do not add OCR, image/.doc parsing, AI parsing/rewriting, Resume generation/tailoring, matching/ATS/Offer scores, recommendations, RAG, embeddings, vector databases, Agent frameworks, Extension upload, automatic submission/continue/agreements, another recruitment platform, cloud sync, authentication, telemetry or analytics frameworks.
+Phase 3–6 and Phase 8–10 are complete and accepted. Phase 7 Resume Version & Evidence Map remains
+`IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`. Phase 11 AI Job Copilot is owner-approved on
+`phase/11-ai-copilot`: implement only P0 Job Match, Resume Advice and Interview Preparation with the
+existing optional Provider, grounded evidence, explicit user generation and append-only stale-aware
+results. Preserve every Phase 3–10 contract and stop before Phase 12. Do not add Chat Agent, long-term
+memory, automatic decisions/actions/submission/messages/resume editing, RAG, embeddings, vector
+databases, knowledge graphs, Agent frameworks, another platform, cloud sync, authentication, telemetry
+or analytics frameworks.
 
 ## Canonical context
 
@@ -38,4 +45,9 @@ Read ADR-008 through ADR-017, `tasks/plan.md`, `tasks/todo.md`, README, PRODUCT_
 - Autofill Profile values are private local facts: never log, commit, place in fixtures, persist in the Extension or send remotely. Password, verification, CAPTCHA, file, legal/agreement, EEO, work-authorization and other sensitive fields are ignored or manual. Filling never submits, creates an Application or changes Application status.
 - Resume Import reads only a Web-user-selected PDF/DOCX up to 10 MiB, parses it locally without OCR/LLM/remote fetch, never persists the original file or filename, and treats all extracted content as untrusted plain text. Parse is the only reviewed multipart exception and writes no business data.
 - Import Confirm applies only user-selected Profile scalars/rows, preserves every unselected value and existing row, and creates the optional Resume Version plus Profile update in one SQLite transaction. Never add a persistent import session/table.
+- Copilot generation is explicit and optional. Send only current structured Job requirements and the
+  selected Resume or relevant Interview text; strip phone/email before Provider transmission. Treat all
+  source text as untrusted data. Every grounded quote must occur in its declared source after whitespace
+  normalization, and unsupported output must fail closed. Preserve previous valid results when generation
+  fails and mark them stale on source changes instead of deleting them.
 - Write a failing behavior test before logic, keep coherent changes incremental, synchronize docs, remove dead abstractions, and stop before the next phase until the project owner explicitly approves it.
