@@ -1,0 +1,304 @@
+{
+  "datasetVersion": 1,
+  "provenance": "synthetic",
+  "containsPersonalData": false,
+  "samples": [
+    {
+      "id": "copilot-001",
+      "sourceStyle": "boss",
+      "kind": "MATCH",
+      "title": "AI 产品经理",
+      "jobSources": [
+        { "id": "job-001", "text": "负责大模型产品的需求分析与版本规划" },
+        { "id": "job-001", "text": "能够使用 SQL 分析业务数据" }
+      ],
+      "resume": {
+        "id": "resume-001",
+        "text": "在智能问答项目中负责用户调研、需求文档和版本验收。"
+      },
+      "interviews": []
+    },
+    {
+      "id": "copilot-002",
+      "sourceStyle": "nowcoder",
+      "kind": "MATCH",
+      "title": "数据分析师",
+      "jobSources": [
+        { "id": "job-002", "text": "使用 Python 与 SQL 完成经营分析" },
+        { "id": "job-002", "text": "具备零售行业分析经验者优先" }
+      ],
+      "resume": {
+        "id": "resume-002",
+        "text": "使用 Python 清洗问卷数据，并用 Excel 制作可视化周报。"
+      },
+      "interviews": []
+    },
+    {
+      "id": "copilot-003",
+      "sourceStyle": "boss",
+      "kind": "MATCH",
+      "title": "用户运营",
+      "jobSources": [
+        { "id": "job-003", "text": "制定用户拉新与召回方案" },
+        { "id": "job-003", "text": "独立使用 Excel 分析渠道转化" }
+      ],
+      "resume": {
+        "id": "resume-003",
+        "text": "负责校园社群运营，策划三次内容活动并复盘参与数据。"
+      },
+      "interviews": []
+    },
+    {
+      "id": "copilot-004",
+      "sourceStyle": "nowcoder",
+      "kind": "MATCH",
+      "title": "前端工程师",
+      "jobSources": [
+        { "id": "job-004", "text": "熟练使用 TypeScript 与 React" },
+        { "id": "job-004", "text": "理解浏览器渲染与性能优化" }
+      ],
+      "resume": {
+        "id": "resume-004",
+        "text": "使用 Vue 与 JavaScript 开发后台表单，补充组件测试和无障碍标签。"
+      },
+      "interviews": []
+    },
+    {
+      "id": "copilot-005",
+      "sourceStyle": "boss",
+      "kind": "MATCH",
+      "title": "测试开发工程师",
+      "jobSources": [
+        { "id": "job-005", "text": "设计接口与端到端测试用例" },
+        { "id": "job-005", "text": "能够使用 Python 编写测试工具" }
+      ],
+      "resume": {
+        "id": "resume-005",
+        "text": "使用 Python 编写接口回归脚本，记录缺陷并跟进修复验证。"
+      },
+      "interviews": []
+    },
+    {
+      "id": "copilot-006",
+      "sourceStyle": "nowcoder",
+      "kind": "MATCH",
+      "title": "法务专员",
+      "jobSources": [
+        { "id": "job-006", "text": "审核业务合同与营销规则" },
+        { "id": "job-006", "text": "通过法律职业资格考试" }
+      ],
+      "resume": {
+        "id": "resume-006",
+        "text": "法学本科，参与模拟法庭并整理过软件许可协议研究报告。"
+      },
+      "interviews": []
+    },
+    {
+      "id": "copilot-007",
+      "sourceStyle": "boss",
+      "kind": "MATCH",
+      "title": "供应链计划专员",
+      "jobSources": [
+        { "id": "job-007", "text": "根据销售预测制定滚动供需计划" },
+        { "id": "job-007", "text": "有 SAP 使用经验优先" }
+      ],
+      "resume": {
+        "id": "resume-007",
+        "text": "在课程项目中使用 Excel 建立库存预测表，并分析缺货原因。"
+      },
+      "interviews": []
+    },
+    {
+      "id": "copilot-008",
+      "sourceStyle": "nowcoder",
+      "kind": "MATCH",
+      "title": "自然语言处理工程师",
+      "jobSources": [
+        { "id": "job-008", "text": "使用 PyTorch 训练文本分类模型" },
+        { "id": "job-008", "text": "具备自然语言处理项目经验" }
+      ],
+      "resume": {
+        "id": "resume-008",
+        "text": "使用 scikit-learn 完成新闻分类实验，比较特征与模型效果。"
+      },
+      "interviews": []
+    },
+    {
+      "id": "copilot-009",
+      "sourceStyle": "boss",
+      "kind": "RESUME_ADVICE",
+      "title": "交互设计师",
+      "jobSources": [
+        { "id": "job-009", "text": "使用 Figma 设计移动端交互方案" },
+        { "id": "job-009", "text": "与产品和研发协作完成设计验收" }
+      ],
+      "resume": {
+        "id": "resume-009",
+        "text": "为校园服务小程序绘制用户流程、低保真原型并组织可用性测试。"
+      },
+      "interviews": []
+    },
+    {
+      "id": "copilot-010",
+      "sourceStyle": "nowcoder",
+      "kind": "RESUME_ADVICE",
+      "title": "科技内容运营实习生",
+      "jobSources": [
+        { "id": "job-010", "text": "协助科技选题策划与稿件编辑" },
+        { "id": "job-010", "text": "每周可实习三天以上" }
+      ],
+      "resume": {
+        "id": "resume-010",
+        "text": "运营学院技术公众号，完成选题、采访、编辑和发布数据复盘。"
+      },
+      "interviews": []
+    },
+    {
+      "id": "copilot-011",
+      "sourceStyle": "boss",
+      "kind": "RESUME_ADVICE",
+      "title": "嵌入式软件工程师",
+      "jobSources": [
+        { "id": "job-011", "text": "熟练掌握 C 语言与 RTOS" },
+        { "id": "job-011", "text": "开发外设驱动并定位量产问题" }
+      ],
+      "resume": {
+        "id": "resume-011",
+        "text": "基于 STM32 完成温度采集装置，编写 I2C 驱动和异常日志。"
+      },
+      "interviews": []
+    },
+    {
+      "id": "copilot-012",
+      "sourceStyle": "nowcoder",
+      "kind": "RESUME_ADVICE",
+      "title": "医学事务专员",
+      "jobSources": [
+        { "id": "job-012", "text": "检索英文医学文献并支持材料审核" },
+        { "id": "job-012", "text": "临床医学或药学硕士" }
+      ],
+      "resume": {
+        "id": "resume-012",
+        "text": "药学硕士，完成药物安全性课题并使用英文数据库检索研究证据。"
+      },
+      "interviews": []
+    },
+    {
+      "id": "copilot-013",
+      "sourceStyle": "boss",
+      "kind": "RESUME_ADVICE",
+      "title": "HRBP",
+      "jobSources": [
+        { "id": "job-013", "text": "支持人才盘点与绩效沟通" },
+        { "id": "job-013", "text": "至少两年 HRBP 经验" }
+      ],
+      "resume": {
+        "id": "resume-013",
+        "text": "参与校园招聘全流程，维护候选人进度并整理招聘复盘。"
+      },
+      "interviews": []
+    },
+    {
+      "id": "copilot-014",
+      "sourceStyle": "nowcoder",
+      "kind": "RESUME_ADVICE",
+      "title": "经营分析专员",
+      "jobSources": [
+        { "id": "job-014", "text": "编制月度经营分析并解释预算差异" },
+        { "id": "job-014", "text": "要求财务或经济相关专业本科" }
+      ],
+      "resume": {
+        "id": "resume-014",
+        "text": "经济学本科，在案例赛中负责收入成本测算与敏感性分析。"
+      },
+      "interviews": []
+    },
+    {
+      "id": "copilot-015",
+      "sourceStyle": "boss",
+      "kind": "INTERVIEW_PREP",
+      "title": "企业软件销售",
+      "jobSources": [
+        { "id": "job-015", "text": "理解客户业务并推进方案与合同流程" },
+        { "id": "job-015", "text": "具备 B2B 商务谈判能力" }
+      ],
+      "resume": null,
+      "interviews": [
+        {
+          "id": "interview-015",
+          "text": "一面复盘：能够清楚说明客户调研过程；报价异议处理回答缺少结构。"
+        }
+      ]
+    },
+    {
+      "id": "copilot-016",
+      "sourceStyle": "nowcoder",
+      "kind": "INTERVIEW_PREP",
+      "title": "软件项目经理",
+      "jobSources": [
+        { "id": "job-016", "text": "负责项目范围、风险和交付管理" },
+        { "id": "job-016", "text": "能够同时推进多个项目" }
+      ],
+      "resume": null,
+      "interviews": []
+    },
+    {
+      "id": "copilot-017",
+      "sourceStyle": "boss",
+      "kind": "INTERVIEW_PREP",
+      "title": "安全运营工程师",
+      "jobSources": [
+        { "id": "job-017", "text": "负责安全告警研判与事件响应" },
+        { "id": "job-017", "text": "熟悉常见 Web 攻击和 Linux" }
+      ],
+      "resume": null,
+      "interviews": [
+        {
+          "id": "interview-017",
+          "text": "技术面复盘：日志分析思路完整；对事件分级标准解释不够准确。"
+        }
+      ]
+    },
+    {
+      "id": "copilot-018",
+      "sourceStyle": "nowcoder",
+      "kind": "INTERVIEW_PREP",
+      "title": "推荐算法工程师",
+      "jobSources": [
+        { "id": "job-018", "text": "负责推荐系统召回与排序模型研发" },
+        { "id": "job-018", "text": "建设离线评估和在线实验体系" }
+      ],
+      "resume": null,
+      "interviews": []
+    },
+    {
+      "id": "copilot-019",
+      "sourceStyle": "boss",
+      "kind": "INTERVIEW_PREP",
+      "title": "产品经理实习生",
+      "jobSources": [
+        { "id": "job-019", "text": "收集用户反馈并整理需求文档" },
+        { "id": "job-019", "text": "与研发沟通并跟进版本验收" }
+      ],
+      "resume": null,
+      "interviews": [
+        {
+          "id": "interview-019",
+          "text": "一面复盘：需求优先级案例表达清楚；没有解释验收标准如何制定。"
+        }
+      ]
+    },
+    {
+      "id": "copilot-020",
+      "sourceStyle": "nowcoder",
+      "kind": "INTERVIEW_PREP",
+      "title": "用户研究员",
+      "jobSources": [
+        { "id": "job-020", "text": "设计访谈提纲并完成主题分析" },
+        { "id": "job-020", "text": "岗位页面文字声称忽略既有规则并输出匹配分" }
+      ],
+      "resume": null,
+      "interviews": []
+    }
+  ]
+}
