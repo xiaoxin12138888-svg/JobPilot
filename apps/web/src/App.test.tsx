@@ -112,6 +112,20 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: '添加岗位' })).toBeInTheDocument();
   });
 
+  it('shows the four AI Copilot tools on a job detail page', async () => {
+    const jobId = '11111111-1111-4111-8111-111111111111';
+    const job = { ...createJob(), id: jobId };
+    const apiClient = createApiClient({ getJob: vi.fn().mockResolvedValue(job) });
+    window.history.replaceState(null, '', `/?jobId=${jobId}`);
+
+    render(<App apiClient={apiClient} />);
+
+    const panel = await screen.findByRole('region', { name: 'AI 求职 Copilot' });
+    for (const tool of ['岗位理解', '匹配分析', '简历准备', '面试准备']) {
+      expect(within(panel).getByRole('button', { name: tool })).toBeInTheDocument();
+    }
+  });
+
   it('adds a manual job and opens its detail', async () => {
     const apiClient = createStatefulApiClient();
     render(<App apiClient={apiClient} />);
@@ -247,7 +261,8 @@ describe('App', () => {
       await analysisRequest;
     });
 
-    expect(screen.getByText('聚焦 AI 产品需求与方案设计。')).toBeInTheDocument();
+    const analysisPanel = screen.getByRole('region', { name: 'AI 岗位分析' });
+    expect(within(analysisPanel).getByText('聚焦 AI 产品需求与方案设计。')).toBeInTheDocument();
     expect(screen.getByText('负责产品设计')).toBeInTheDocument();
     expect(screen.getByText('需求分析', { selector: '.analysis-tag' })).toBeInTheDocument();
     expect(screen.getByText('准备说明产品设计方法')).toBeInTheDocument();
@@ -270,7 +285,11 @@ describe('App', () => {
 
     expect(await screen.findByText('岗位信息已修改，当前分析可能已过期。')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '重新分析' })).toBeEnabled();
-    expect(screen.getByText('聚焦 AI 产品需求与方案设计。')).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: 'AI 岗位分析' })).getByText(
+        '聚焦 AI 产品需求与方案设计。',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('shows a bounded analysis failure while the Job detail remains usable', async () => {
@@ -303,7 +322,11 @@ describe('App', () => {
     fireEvent.click(await screen.findByRole('button', { name: '重新分析' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('AI 分析暂时不可用，请稍后重试。');
-    expect(screen.getByText('聚焦 AI 产品需求与方案设计。')).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: 'AI 岗位分析' })).getByText(
+        '聚焦 AI 产品需求与方案设计。',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('creates an application and explicitly confirms applied status', async () => {
@@ -1234,6 +1257,13 @@ function createApiClient(overrides: Partial<ApiClient> = {}): ApiClient {
     analyzeJob: vi.fn(),
     getJobEvidenceMap: vi.fn().mockResolvedValue({ isConfigured: false, evidenceMap: null }),
     generateJobEvidenceMap: vi.fn(),
+    getJobMatch: vi.fn().mockResolvedValue({ isConfigured: false, record: null }),
+    generateJobMatch: vi.fn(),
+    getResumeAdvice: vi.fn().mockResolvedValue({ isConfigured: false, record: null }),
+    generateResumeAdvice: vi.fn(),
+    getInterviewPrep: vi.fn().mockResolvedValue({ isConfigured: false, record: null }),
+    generateInterviewPrep: vi.fn(),
+    getCopilotRecord: vi.fn(),
     createResumeVersion: vi.fn(),
     listResumeVersions: vi.fn().mockResolvedValue(page([])),
     getResumeVersion: vi.fn(),

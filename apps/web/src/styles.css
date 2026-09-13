@@ -996,6 +996,124 @@ dd {
   font-weight: 700;
   background: var(--accent-soft);
 }
+.copilot-card {
+  border-color: #b8cdbf;
+  background: #fbfdfb;
+}
+.copilot-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgb(21 93 60 / 14%);
+}
+.copilot-tab {
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 0.45rem;
+  color: var(--text);
+  font-weight: 700;
+  background: var(--surface-strong);
+  cursor: pointer;
+}
+.copilot-tab:hover {
+  border-color: #99b6a5;
+}
+.copilot-tab.active {
+  border-color: var(--accent);
+  color: white;
+  background: var(--accent);
+}
+.copilot-result {
+  display: grid;
+  gap: 1rem;
+}
+.copilot-generated-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgb(21 93 60 / 14%);
+}
+.copilot-generated-meta span {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.copilot-section {
+  display: grid;
+  gap: 0.65rem;
+}
+.copilot-section h3,
+.copilot-section h4,
+.copilot-section p,
+.copilot-section ul {
+  margin: 0;
+}
+.copilot-section h3 {
+  font-size: 0.95rem;
+}
+.copilot-section p,
+.copilot-section li {
+  line-height: 1.65;
+}
+.copilot-section ul {
+  display: grid;
+  gap: 0.4rem;
+  padding-left: 1.2rem;
+}
+.copilot-evidence-list,
+.copilot-question-list {
+  display: grid;
+  gap: 0.7rem;
+}
+.copilot-evidence-item {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 0.55rem;
+  background: var(--surface-strong);
+}
+.copilot-evidence {
+  display: grid;
+  gap: 0.35rem;
+}
+.copilot-evidence blockquote {
+  margin: 0;
+  padding-left: 0.7rem;
+  border-left: 2px solid #b8cdbf;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+.source-pill,
+.question-category {
+  width: fit-content;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  color: var(--accent-dark);
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: var(--accent-soft);
+}
+.source-job {
+  color: #604514;
+  background: #f3ead4;
+}
+.source-interview {
+  color: #31516d;
+  background: #e4edf4;
+}
+.source-advice {
+  color: #684622;
+  background: #f5e7d6;
+}
+.question-category {
+  color: var(--muted);
+  background: #eeece6;
+}
 .evidence-map-card {
   border-color: #ccc4ac;
   background: #fffdf8;
@@ -1661,6 +1779,18 @@ dd {
   }
   .analysis-header .button {
     width: 100%;
+  }
+  .copilot-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .copilot-tab {
+    width: 100%;
+  }
+  .copilot-generated-meta {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.25rem;
   }
   .resume-actions {
     align-items: stretch;

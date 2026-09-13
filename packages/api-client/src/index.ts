@@ -7,6 +7,7 @@ import type {
   AutofillProfileInput,
   AutofillProfileResponse,
   ConfirmResumeImportInput,
+  CopilotResponse,
   CreateInterviewQuestionInput,
   CreateInterviewRoundInput,
   CreateResumeVersionInput,
@@ -31,6 +32,10 @@ import type {
   UpdateJobInput,
   UpdateResumeVersionInput,
 } from '@jobpilot/shared-types';
+
+import { requireCopilotResponse } from './copilot-validation.ts';
+import { isDateString, isNullableString, isRecord, isRecordWithKeys } from './validation.ts';
+
 export {
   APPLICATION_STATUS_LABELS,
   INTERVIEW_STATUS_LABELS,
@@ -56,6 +61,14 @@ export type {
   AutofillProfileInput,
   AutofillProfileLinks,
   AutofillProfileResponse,
+  CopilotInterviewCategory,
+  CopilotInterviewQuestion,
+  CopilotInterviewReview,
+  CopilotKind,
+  CopilotRecord,
+  CopilotResponse,
+  CopilotSourceEvidence,
+  CopilotSourceType,
   CreateJobInput,
   CreateInterviewQuestionInput,
   CreateInterviewRoundInput,
@@ -73,20 +86,24 @@ export type {
   FeedbackTotals,
   FunnelStage,
   FunnelStageName,
+  GroundedCopilotItem,
   InterviewQuestion,
   InterviewRound,
   InterviewRoundListResponse,
   InterviewStatus,
   InterviewType,
+  InterviewPrepResult,
   JDAnalysis,
   JDAnalysisRecord,
   Job,
   JobAnalysisResponse,
+  JobMatchResult,
   JobEvidenceMapResponse,
   JobListItem,
   JobListResponse,
   JobSource,
   ResumeEvidence,
+  ResumeAdviceResult,
   ResumeVersion,
   ResumeVersionListResponse,
   ResumeImportBlock,
@@ -116,6 +133,7 @@ export type {
 const REQUEST_TIMEOUT_MILLISECONDS = 5_000;
 const ANALYSIS_REQUEST_TIMEOUT_MILLISECONDS = 35_000;
 const EVIDENCE_MAP_REQUEST_TIMEOUT_MILLISECONDS = 65_000;
+const COPILOT_REQUEST_TIMEOUT_MILLISECONDS = 65_000;
 const RESUME_PARSE_REQUEST_TIMEOUT_MILLISECONDS = 15_000;
 const APPLICATION_STATUSES = new Set<ApplicationStatus>([
   'planned',
@@ -176,6 +194,13 @@ export interface ApiClient {
   analyzeJob(jobId: string): Promise<JobAnalysisResponse>;
   getJobEvidenceMap(jobId: string, resumeVersionId: string): Promise<JobEvidenceMapResponse>;
   generateJobEvidenceMap(jobId: string, resumeVersionId: string): Promise<JobEvidenceMapResponse>;
+  getJobMatch(jobId: string, resumeVersionId: string): Promise<CopilotResponse>;
+  generateJobMatch(jobId: string, resumeVersionId: string): Promise<CopilotResponse>;
+  getResumeAdvice(jobId: string, resumeVersionId: string): Promise<CopilotResponse>;
+  generateResumeAdvice(jobId: string, resumeVersionId: string): Promise<CopilotResponse>;
+  getInterviewPrep(jobId: string): Promise<CopilotResponse>;
+  generateInterviewPrep(jobId: string): Promise<CopilotResponse>;
+  getCopilotRecord(recordId: string): Promise<CopilotResponse>;
   createApplication(jobId: string): Promise<Application>;
   listApplications(filters?: ApplicationListFilters): Promise<ApplicationListResponse>;
   getApplication(applicationId: string): Promise<Application>;
@@ -419,6 +444,64 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
           { resumeVersionId, confirmExternalAi: true },
           EVIDENCE_MAP_REQUEST_TIMEOUT_MILLISECONDS,
         ),
+      );
+    },
+    async getJobMatch(jobId, resumeVersionId): Promise<CopilotResponse> {
+      const query = new URLSearchParams({ resumeVersionId });
+      return requireCopilotResponse(
+        await request(
+          `/api/v1/jobs/${encodeURIComponent(jobId)}/copilot/match?${query.toString()}`,
+          'GET',
+        ),
+      );
+    },
+    async generateJobMatch(jobId, resumeVersionId): Promise<CopilotResponse> {
+      return requireCopilotResponse(
+        await request(
+          `/api/v1/jobs/${encodeURIComponent(jobId)}/copilot/match`,
+          'POST',
+          { resumeVersionId, confirmExternalAi: true },
+          COPILOT_REQUEST_TIMEOUT_MILLISECONDS,
+        ),
+      );
+    },
+    async getResumeAdvice(jobId, resumeVersionId): Promise<CopilotResponse> {
+      const query = new URLSearchParams({ resumeVersionId });
+      return requireCopilotResponse(
+        await request(
+          `/api/v1/jobs/${encodeURIComponent(jobId)}/copilot/resume-advice?${query.toString()}`,
+          'GET',
+        ),
+      );
+    },
+    async generateResumeAdvice(jobId, resumeVersionId): Promise<CopilotResponse> {
+      return requireCopilotResponse(
+        await request(
+          `/api/v1/jobs/${encodeURIComponent(jobId)}/copilot/resume-advice`,
+          'POST',
+          { resumeVersionId, confirmExternalAi: true },
+          COPILOT_REQUEST_TIMEOUT_MILLISECONDS,
+        ),
+      );
+    },
+    async getInterviewPrep(jobId): Promise<CopilotResponse> {
+      return requireCopilotResponse(
+        await request(`/api/v1/jobs/${encodeURIComponent(jobId)}/copilot/interview-prep`, 'GET'),
+      );
+    },
+    async generateInterviewPrep(jobId): Promise<CopilotResponse> {
+      return requireCopilotResponse(
+        await request(
+          `/api/v1/jobs/${encodeURIComponent(jobId)}/copilot/interview-prep`,
+          'POST',
+          { confirmExternalAi: true },
+          COPILOT_REQUEST_TIMEOUT_MILLISECONDS,
+        ),
+      );
+    },
+    async getCopilotRecord(recordId): Promise<CopilotResponse> {
+      return requireCopilotResponse(
+        await request(`/api/v1/copilot/${encodeURIComponent(recordId)}`, 'GET'),
       );
     },
     async createApplication(jobId): Promise<Application> {
@@ -1277,25 +1360,6 @@ function isApiErrorEnvelope(value: unknown): value is ApiErrorEnvelope {
   );
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isRecordWithKeys(
-  value: unknown,
-  keys: readonly string[],
-): value is Record<string, unknown> {
-  return (
-    isRecord(value) &&
-    Object.keys(value).length === keys.length &&
-    keys.every((key) => key in value)
-  );
-}
-
-function isNullableString(value: unknown): value is string | null {
-  return value === null || typeof value === 'string';
-}
-
 function isNullableMonth(value: unknown): boolean {
   return value === null || (typeof value === 'string' && /^[0-9]{4}-(0[1-9]|1[0-2])$/.test(value));
 }
@@ -1313,10 +1377,6 @@ function isNullableHttpUrl(value: unknown): boolean {
   } catch {
     return false;
   }
-}
-
-function isDateString(value: unknown): value is string {
-  return typeof value === 'string' && !Number.isNaN(Date.parse(value));
 }
 
 function isApplicationStatus(value: unknown): value is ApplicationStatus {

@@ -13,6 +13,7 @@ import type {
 } from '@jobpilot/api-client';
 
 import { ApplicationPanel } from './ApplicationPanel';
+import { CopilotPanel } from './CopilotPanel';
 import { JobForm } from './JobForm';
 import { JDAnalysisPanel } from './JDAnalysisPanel';
 import { EvidenceMapPanel } from './EvidenceMapPanel';
@@ -152,6 +153,13 @@ export function JobDetail({ apiClient, jobId, onBack, onDeleted }: JobDetailProp
             application={application}
           />
           <JDAnalysisPanel apiClient={apiClient} job={job} onStateChange={setAnalysisState} />
+          <CopilotPanel
+            apiClient={apiClient}
+            job={job}
+            analysisState={analysisState}
+            resumeVersions={resumeVersions}
+            resumeLoadError={resumeLoadError}
+          />
           <EvidenceMapPanel
             apiClient={apiClient}
             job={job}

@@ -481,6 +481,71 @@ export interface JobEvidenceMapResponse {
   evidenceMap: EvidenceMapRecord | null;
 }
 
+export type CopilotKind = 'MATCH' | 'RESUME_ADVICE' | 'INTERVIEW_PREP';
+export type CopilotSourceType = 'RESUME' | 'JOB' | 'INTERVIEW';
+export type CopilotInterviewCategory = 'PRODUCT' | 'AI' | 'PROJECT';
+
+export interface CopilotSourceEvidence {
+  text: string;
+  sourceType: CopilotSourceType;
+  sourceId: string;
+}
+
+export interface GroundedCopilotItem {
+  text: string;
+  sourceEvidence: CopilotSourceEvidence;
+}
+
+export interface JobMatchResult {
+  summary: string;
+  strengths: GroundedCopilotItem[];
+  gaps: GroundedCopilotItem[];
+  suggestions: string[];
+}
+
+export interface ResumeAdviceResult {
+  highlight: GroundedCopilotItem[];
+  possibleImprovement: string[];
+  interviewFocus: GroundedCopilotItem[];
+}
+
+export interface CopilotInterviewQuestion {
+  category: CopilotInterviewCategory;
+  question: string;
+  reason: string;
+  sourceEvidence: CopilotSourceEvidence;
+}
+
+export interface CopilotInterviewReview {
+  strengths: GroundedCopilotItem[];
+  weaknesses: GroundedCopilotItem[];
+  nextActions: string[];
+}
+
+export interface InterviewPrepResult {
+  possibleQuestions: CopilotInterviewQuestion[];
+  review: CopilotInterviewReview;
+}
+
+export interface CopilotRecord {
+  id: string;
+  jobId: string;
+  resumeVersionId: string | null;
+  kind: CopilotKind;
+  schemaVersion: 1;
+  result: JobMatchResult | ResumeAdviceResult | InterviewPrepResult;
+  inputFingerprint: string;
+  model: string;
+  promptVersion: string;
+  isStale: boolean;
+  createdAt: string;
+}
+
+export interface CopilotResponse {
+  isConfigured: boolean;
+  record: CopilotRecord | null;
+}
+
 export interface ApiErrorEnvelope {
   error: {
     code: string;
