@@ -7,6 +7,8 @@
 > 2026-09-07 完成自动化、安全门禁与真实中国移动校招表单人工验收，状态为 PASS。
 > Phase 10 — Local Resume Import 已完成实现、自动化门禁与虚构文件隔离浏览器验收；真实 DOCX/PDF
 > 内容与合并验收仍由项目负责人完成，在此之前不得标记 PASS。
+> Phase 11 — AI Job Copilot P0 已完成技术实现和自动化门禁；真实 Provider 评测及 BOSS/牛客
+> 人工内容验收仍未完成，因此不得标记 PASS 或进入 Phase 12。
 
 ## 1. 产品定位
 
@@ -85,6 +87,16 @@ Phase 10 增加完全本地的已有简历导入流程：
 文件、提取文本和候选结构均是不可信私密数据。V1 不做 OCR/LLM/远端解析，不保存原始文件；
 Profile 只应用用户明确选择的值和新增行，未选择的现有数据必须保留。
 
+Phase 11 在岗位详情增加受控 AI Copilot：
+
+```text
+岗位理解 -> 选择 Resume 后确认生成匹配/简历建议
+岗位条件 + 已有面试记录 -> 确认生成面试准备与复盘建议
+```
+
+Provider 未配置或生成失败时，本地 Job、Resume、Application 与 Interview 始终可用。所有来源
+引用必须经 JobPilot 验证；结果只辅助用户判断，不自动修改资料、打分、投递或发送消息。
+
 ## 3. Job
 
 Job 是用户主动保存的岗位快照，包含职位、公司、地点、薪资文本、来源、原平台 URL、
@@ -150,7 +162,7 @@ Application 表示一个 Job 的真实求职进度。一个 Job 最多一个 App
 - Application 结果说明与用户填写的淘汰原因；
 - `求职复盘` 的 loading/error/retry/empty/populated 状态和事实统计；
 - `求职资料` 的 loading/error/empty/edit/save、多条教育、工作/实习及项目经历和本机隐私说明；
-- Job Detail 的 JD Analysis 与 Evidence Map 前置、确认、loading、success、stale、error/retry；
+- Job Detail 的 JD Analysis、Evidence Map 与 AI Copilot 前置、确认、loading、success、stale、error/retry；
 - 320/768/1024/1440 响应式布局与键盘可访问控件。
 
 不建设复杂 Dashboard 或拖拽看板。
@@ -261,7 +273,23 @@ Confirm 保持 JSON-only，至少选择 Resume Version 或 Profile。Profile sca
 展示。Resume + Profile 通过一个 SQLite transaction 写入，失败全部回滚。导入不修改 Job、
 Application、Evidence Map、Extension 或现有 Resume Version。
 
-## 14. 本地与 no-proxy 边界
+## 14. AI 求职 Copilot
+
+Phase 11 P0 包含岗位匹配、简历准备和面试准备；岗位理解复用当前 JD Analysis。Match 的 strengths
+只引用 RESUME、gaps 只引用 JOB；Resume Advice 的 highlight 只引用 RESUME、interview focus
+只引用 JOB；Interview Prep 的三类问题只引用 JOB，复盘 strengths/weaknesses 只引用 INTERVIEW。
+quote 经空白规范化后必须存在于声明的 source id，任何 source type/id/quote 错误都使本次生成以
+`AI_INVALID_RESPONSE` 失败且不持久化。
+
+用户每次生成前必须明确确认。传输前确定性移除 email/phone，只发送当前任务所需的最小
+Job/Resume/Interview 文本。gap 只能表述“当前资料/简历未发现”，面试问题只能表示“可能关注
+方向”；建议不得伪装为用户已有经历。每次成功生成 append-only 写入 input fingerprint、model、
+prompt version、result 和 created time；来源变化把历史结果标为 stale，失败不删除上次有效结果。
+
+本阶段不实现 P1 求职策略、聊天 Agent、长期记忆、RAG、评分、Offer 概率、自动简历改写、投递、
+消息或其他行动。
+
+## 15. 本地与 no-proxy 边界
 
 - Web、Extension 与 API 只通过精确 loopback 通信；
 - installed runtime 不依赖账号、云服务、CDN、远程字体/脚本、telemetry、update 或境外 AI；
@@ -277,15 +305,17 @@ Application、Evidence Map、Extension 或现有 Resume Version。
 - 外部 LLM 只属于显式启用的可选增强，Key 仅存在 FastAPI 进程环境；Web/Extension 不持有 Key，
   本地核心不依赖 Provider，也不修改系统或浏览器代理。
 - 简历默认只在本机 SQLite；任何 Evidence Map 外发都要求用户在当次 Web 操作中确认。
+- Copilot 的 Resume/Interview 外发也逐次确认，传输前移除 phone/email，且生成结果不触发任何
+  本地或招聘网站写操作。
 - Autofill 不调用 LLM 或远程 parser；Profile 只从精确 loopback API 读取并保留在当次 Popup 内存。
 
-## 15. Phase 9 非目标
+## 16. 当前非目标
 
-PDF/DOCX/图片/OCR、自动上传简历、从 Resume 自动导入 Profile、开放题生成、AI 字段识别、
-Resume Tailoring、通用 ATS Engine、平台专用 Autofill Adapter、自动 Submit/Continue/协议同意、
-验证码绕过、批量投递、新招聘平台、云同步、账号、认证和多用户均不属于 Phase 9。
+图片/OCR、自动上传简历、开放题自动填写、AI 字段识别、Resume Tailoring、通用 ATS Engine、
+平台专用 Autofill Adapter、自动 Submit/Continue/协议同意、验证码绕过、批量投递、新招聘平台、
+云同步、账号、认证、多用户、Copilot P1 策略和聊天 Agent 均不属于当前范围。
 
-## 16. 成功标准
+## 17. 成功标准
 
 Phase 8 必须通过 Interview/Application/Feedback schema、CRUD、cascade、统计、API/UI、
 provider-free、privacy/security 自动测试和全部既有回归。浏览器验收必须录入至少一轮、三道
@@ -308,3 +338,7 @@ Phase 10 的 parser、Preview、selected-only merge、原子 Confirm、隐私/�
 自动化，并用虚构 PDF/DOCX 完成取消不保存、确认写入、重启持久化、重复提示、恶意文本纯文本
 渲染与 320/768/1024/1440 响应式检查。最终 PASS 仍要求负责人分别检查一份脱敏真实 DOCX/PDF
 的原文顺序、section、Profile 候选，以及一次真实 Resume 保存和少量 Profile 合并。
+
+Phase 11 P0 只有在三类 Copilot API/UI、append-only/stale、严格 evidence、Provider 未配置降级、
+隐私/安全、20 条真实 Provider 输出评测和完整回归均通过，且项目负责人分别确认真实 BOSS 与
+牛客岗位内容后，才能标记 PASS。技术实现完成不等于真实内容验收。

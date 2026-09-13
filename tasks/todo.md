@@ -4,23 +4,31 @@
 
 - [x] Owner approval, branch and Phase 12 stop boundary confirmed.
 - [x] ADR-018 and technical contract freeze minimal inputs, outputs, evidence and stale behavior.
-- [ ] RED/GREEN domain parser, contact redaction and deterministic fingerprints.
-- [ ] RED/GREEN `copilot_records` migration, repository and service.
+- [x] RED/GREEN domain parser, contact redaction and deterministic fingerprints.
+- [x] RED/GREEN `copilot_records` migration, repository and service.
 
 ## P0 features
 
-- [ ] Job Match API, Provider prompt and Web state.
-- [ ] Resume Advice API, Provider prompt and Web state.
-- [ ] Interview Prep API, Provider prompt and Web state.
-- [ ] Strict shared client validation and duplicate-generation prevention.
+- [x] Job Match API, Provider prompt and Web state.
+- [x] Resume Advice API, Provider prompt and Web state.
+- [x] Interview Prep API, Provider prompt and Web state.
+- [x] Strict shared client validation and duplicate-generation prevention.
 
 ## Evaluation and acceptance
 
-- [ ] Run 20 fictional samples and record real output metrics only.
-- [ ] Cover BC-01 unsupported strength, BC-02 inability wording, BC-03 fabricated experience and BC-04 certainty.
-- [ ] Run API, Web, Extension, lint, format, type, build, security and migration regressions.
+- [x] Add and validate 20 fictional BOSS/Nowcoder-style samples plus the real-output-only runner.
+- [ ] Run the 20 samples against a configured real Provider and record only actual metrics.
+- [x] Cover BC-01 unsupported strength, BC-02 inability wording, BC-03 fabricated experience and BC-04 certainty with deterministic rejection regressions.
+- [x] Run API, Web, Extension, lint, format, type, build, security and migration regressions.
 - [ ] Obtain real BOSS and Nowcoder human review from the owner.
-- [ ] Synchronize canonical docs and stop before Phase 12.
+- [x] Synchronize canonical docs and stop before Phase 12.
+
+Provider validation (2026-09-13): `NOT_CONFIGURED`. Real output metrics, actual Provider Bad Cases and
+human content review remain `NOT RUN`; no Fake Provider result is counted as evaluation evidence.
+
+Technical closure (2026-09-13): Python 274、API client 69、Web 62、Extension 112 tests PASS；
+type/lint/format/import/build、isolated migration、security scans 和真实 Chrome 四工具/console/
+responsive 验收通过。只有 Provider 真实 20 样本与 BOSS/牛客负责人内容验收继续未勾选。
 
 ---
 

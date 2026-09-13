@@ -5,7 +5,8 @@
 > `0006_evidence_map_records` 新增 Phase 7 本地简历版本、Application 关联和当前 Evidence Map；
 > `0007_evidence_map_schema_v2` 允许旧 schema 1 与当前 schema 2 共存；
 > `0008_interview_feedback` 增加本地面试记录与 Application 结果字段；
-> `0009_autofill_profile` 增加 single-user 当前求职资料。
+> `0009_autofill_profile` 增加 single-user 当前求职资料，`0010_profile_projects` 增加项目经历；
+> `0011_copilot_records` 增加 Phase 11 append-only Copilot 结果。
 > Phase 10 Local Resume Import 已完成实现和自动化，复用 `resume_versions` 与
 > `autofill_profiles`，不新增表或 migration；真实简历人工验收仍待完成。
 
@@ -175,7 +176,31 @@ education、最多 20 条 experience、最多 20 条 projects 与 links 字段�
 Version、Application、Job 没有 FK，不从 Resume 自动导入，也不会因 Autofill 创建/推进
 Application。Extension 不持久化副本，且不消费或填写 projects。
 
-## 10. Phase 10 atomic import
+## 10. `copilot_records`
+
+| 列 | 类型/约束 |
+| --- | --- |
+| `id` | String(36), PK |
+| `job_id` | String(36), NOT NULL, FK jobs.id ON DELETE CASCADE |
+| `resume_version_id` | String(36), nullable，不建立 FK |
+| `kind` | String(32), CHECK IN (`MATCH`, `RESUME_ADVICE`, `INTERVIEW_PREP`) |
+| `schema_version` | Integer, NOT NULL, CHECK = 1 |
+| `result_json` | Text, NOT NULL，已验证的 canonical JSON |
+| `input_fingerprint` | String(64), NOT NULL，最小 Provider input 的 SHA-256 |
+| `model` | String(200), NOT NULL |
+| `prompt_version` | String(64), NOT NULL |
+| `created_at` | DateTime, NOT NULL |
+
+索引：`(job_id, kind, resume_version_id, created_at)`。表为 append-only，每次成功生成都创建新 id；
+context endpoint 按 `created_at`、`id` 倒序读取最新记录，by-id endpoint 可读取历史记录。Job 删除
+级联 Copilot 历史。`resume_version_id` 是生成时的上下文标识而非所有权 FK：Resume 删除后记录仍可
+按 id 审计并被判 stale，不允许旧结果阻止 Resume 生命周期。
+
+`isStale` 不持久化。读取时重建当前最小输入并比较 fingerprint；Job、JD Analysis、所选 Resume
+或 Interview 内容变化/缺失都会使旧记录 stale。Provider raw response、输入正文、错误详情和 API
+Key 不进入本表；只有通过 source type/id/quote grounding 与语言规则验证的结果可以写入。
+
+## 11. Phase 10 atomic import
 
 Parse preview 不进入数据库。Confirm 可在一个 transaction 内新增一个 `resume_versions` row，并按
 用户明确选择的 scalar/row patch singleton `autofill_profiles`。未选择的 scalar 与全部既有数组行
@@ -185,7 +210,7 @@ Parse preview 不进入数据库。Confirm 可在一个 transaction 内新增一
 原文件、filename、parse token、warning、section/candidate payload 和 performance metrics 均不
 持久化。Phase 10 不修改现有 Resume Version、Application、Job 或 Evidence Map row。
 
-## 11. Application state machine
+## 12. Application state machine
 
 显式允许表（同状态更新为 no-op）：
 
@@ -201,12 +226,12 @@ Parse preview 不进入数据库。Confirm 可在一个 transaction 内新增一
 
 任何目标为 applied 的流转都要求显式确认。不创建 event sourcing 或 audit table。
 
-## 12. Deletion and deferred models
+## 13. Deletion and deferred models
 
-Web 明确确认后真实删除 Job，SQLite 级联其 Application、Interview Round/Question、JD analysis
-与 Evidence Map；当前无 archive/restore。删除 Interview Round 级联其 Question。被 Application
+Web 明确确认后真实删除 Job，SQLite 级联其 Application、Interview Round/Question、JD analysis、
+Evidence Map 与 Copilot 历史；当前无 archive/restore。删除 Interview Round 级联其 Question。被 Application
 引用的 Resume Version 不可删除；未引用版本删除时级联其 Evidence Map。
 
-Phase 9 不创建 Resume 文件/文档、Profile history、Feedback/Insight/Analytics/Event、
-Recommendation、Score、Embedding、Vector、User、Identity、Session 或云 Profile。任何新表
+当前不创建 Resume 文件/文档、Profile history、Feedback/Insight/Analytics/Event、Score、
+Embedding、Vector、User、Identity、Session、云 Profile、Chat memory 或 Agent state。任何新表
 必须在对应 Phase 获批后设计 migration 与生命周期。

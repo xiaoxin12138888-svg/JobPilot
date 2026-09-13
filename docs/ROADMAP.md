@@ -7,6 +7,8 @@
 > 中国移动校招表单人工验收并标记 PASS。BOSS 与牛客保持 `SUPPORTED — V1`。
 > Phase 10 — Local Resume Import 已完成实现、自动化门禁和虚构文件隔离浏览器验收，等待真实
 > DOCX/PDF 人工内容与合并验收；此前不得标记 PASS。
+> Phase 11 — AI Job Copilot P0 已完成技术实现、严格 grounding 和 20 条虚构评测数据；Provider
+> 当前未配置，真实评测与 BOSS/牛客人工内容验收均为 NOT RUN，因此不得标记 PASS 或进入 Phase 12。
 
 ## 1. Global gates
 
@@ -151,20 +153,38 @@ Application、Evidence Map 和 Phase 9 Autofill 保持不变。
 顺序、section、候选字段，以及真实保存/合并/重启结果。此前只能报告
 `USER ACTION REQUIRED — REAL RESUME IMPORT ACCEPTANCE`。
 
-## 11. Later phases
+## 11. Phase 11 — AI Job Copilot
 
-AI 面试、模拟面试、Personal Knowledge Base、其余招聘平台、策略建议与发布加固必须由负责人
+状态：`IMPLEMENTED — PROVIDER EVALUATION AND HUMAN ACCEPTANCE REQUIRED`。
+
+P0 只在 Job Detail 交付岗位匹配、简历准备与面试准备；岗位理解复用 JD Analysis。用户逐次确认
+后，系统才把当前任务需要的最小 Job/Resume/Interview 文本发送到其配置的 Phase 6 Provider，
+并在发送前移除 phone/email。所有事实结论必须引用真实本地 source；非法 quote、能力断言、
+虚构经历或确定性面试问题稳定拒绝。结果 append-only、fingerprinted、stale-aware；失败保留上次
+有效结果且不影响任何本地核心。
+
+20 条 BOSS/牛客风格虚构数据与 real-output-only runner 已就绪。当前 Provider 为
+`NOT_CONFIGURED`，所以 Schema、Evidence、Hallucination、内容质量和 latency 指标均保持
+`NOT RUN`，不以 Fake Provider 或 schema 单测冒充真实评测。只有真实 run 和负责人对真实 BOSS/
+牛客内容验收完成后才能标记 Phase 11 PASS。
+
+Phase 11 不包含 P1 求职策略、Chat Agent、长期记忆、RAG/embedding/vector DB、评分/Offer 概率、
+自动改写简历、自动投递、自动消息或招聘网站操作。
+
+## 12. Later phases
+
+模拟面试、Personal Knowledge Base、其余招聘平台、P1 策略建议与发布加固必须由负责人
 另行明确批准。远程能力必须显式启用、可替换、可降级，不能成为本地
 Job/Application/Resume/Interview 核心依赖。
 
-## 12. P0 no-proxy gate
+## 13. P0 no-proxy gate
 
 installed runtime 不访问远程身份、公共 CDN、远程字体/脚本、GitHub runtime/raw、telemetry、
 update 或强制境外 AI。未来每个 Adapter 必须分别记录招聘页、Extension、识别、解析、
 确认保存和岗位库的真实关闭代理结果；任一核心步骤依赖代理就不能标为支持。
 
-## 13. Stop boundary
+## 14. Stop boundary
 
-不得把暂停中的 Phase 7 写成 PASS，也不得自动开始 Phase 11、实现 AI Autofill、OCR/AI Resume
-Parser、Resume Builder/Tailoring、AI 面试、策略推荐或
+不得把暂停中的 Phase 7 或未完成真实验收的 Phase 11 写成 PASS，也不得进入 Phase 12、实现 AI
+Autofill、OCR/AI Resume Parser、Resume Builder/Tailoring、模拟面试、策略推荐或
 智联/实习僧/猎聘/国聘等其他平台。

@@ -9,9 +9,12 @@ JobPilot 不替代招聘网站，不建设职位数据库，也不代表用户�
 
 项目已通过 **Phase 3 — Job & Application Domain Foundation**、**Phase 4 — BOSS Direct Job Capture**、**Phase 5 — Nowcoder Adapter & Shared Capture Contract**、**Phase 6 — JD Structured AI Analysis**、**Phase 8 — Interview Record & Feedback Loop** 与 **Phase 9 — Profile Vault & Safe Job Form Autofill**。Phase 9 已在真实中国移动校招表单完成 Scan → Preview → Confirm → Fill → 人工检查，填写 1/1 个确认字段且未触发 Submit/Continue。**Phase 10 — Local Resume Import** 已完成实现、自动化门禁和虚构文件隔离浏览器验收，当前等待项目负责人使用脱敏真实 DOCX/PDF 完成人工内容与合并验收，因此尚未标记 PASS。**Phase 7 — Resume Version & Evidence Map** 已实现，但真实语义质量验收仍为 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`。核心能力包括：
 
-- React Web：本机 API 状态、岗位库、纯文本简历版本、本地 PDF/DOCX 导入预览、本地求职资料、岗位详情/编辑/删除、投递状态/使用简历记录、面试轮次与题目、自我复盘、Application 结果记录、事实型求职复盘，以及可选 JD Analysis/Evidence Map；
+**Phase 11 — AI Job Copilot** 的 P0 技术实现、严格 grounding、Web 状态与 20 条虚构评测集已完成；
+真实 Provider 评测和 BOSS/牛客内容人工验收尚未完成，因此尚未标记 PASS。
+
+- React Web：本机 API 状态、岗位库、纯文本简历版本、本地 PDF/DOCX 导入预览、本地求职资料、岗位详情/编辑/删除、投递状态/使用简历记录、面试轮次与题目、自我复盘、Application 结果记录、事实型求职复盘，以及可选 JD Analysis/Evidence Map/AI Copilot；
 - Chrome Extension：使用 `activeTab` + `scripting` 的用户主动 Popup，支持 BOSS/牛客岗位采集与当前申请表的 Scan → Preview → Confirm → Fill；无后台进程，唯一 host permission 是 `http://127.0.0.1:8000/*`；
-- FastAPI：公开 `GET /health`、Job/Application/Resume Version、Autofill Profile、Web-only Resume Import、Interview 与事实型 Feedback Summary，以及每个 Job 的可选分析/Evidence Map API，默认绑定 `127.0.0.1`；
+- FastAPI：公开 `GET /health`、Job/Application/Resume Version、Autofill Profile、Web-only Resume Import、Interview 与事实型 Feedback Summary，以及每个 Job 的可选分析/Evidence Map/Copilot API，默认绑定 `127.0.0.1`；
 - SQLite、SQLAlchemy 与 Alembic：launcher 启动前自动升级 `runtime-data/jobpilot.db`，业务表另含 single-user singleton `autofill_profiles`；
 - `packages/shared-types` 与 `packages/api-client`：提供 camelCase 业务契约、credential-free 请求和不可信响应校验。
 
@@ -35,6 +38,13 @@ loopback API，先生成可编辑的纯文本、section 与 Profile 候选预览
 选择创建 Resume Version、更新部分 Profile 或两者并点击确认后才以单一事务写入。原文件和文件名
 不持久化，不执行 OCR、宏、外部链接或远程解析。自动化和虚构文件浏览器链路已完成，真实简历内容
 质量仍等待负责人确认。
+
+Phase 11 P0 在岗位详情提供岗位理解、岗位匹配、简历准备和面试准备。只有用户选择简历并当次确认
+后，或明确确认面试准备后，最小 Job/Resume/Interview 文本才会发送至 Phase 6 的可选 Provider；
+email/phone 会在传输前删除。grounded 结论必须引用对应本地原文，非法 quote、错误 source、
+能力断言或确定性面试问题不会持久化。每次重新生成追加一条带 input fingerprint、model、prompt
+version 和时间的记录；来源变化只标 stale，失败保留上一次有效结果。Copilot 不修改任何本地事实
+或执行求职动作。
 
 ## 本地优先意味着什么
 
@@ -101,7 +111,7 @@ uv sync --project apps/api --locked
 
 默认首次运行不需要 `.env`、PostgreSQL、Docker、数据库账号、Extension ID、VPN 或代理。可选 `.env` 只供 Vite 读取 `VITE_*` 本机开发覆盖并已被 Git 忽略；API override 必须设置为启动进程的环境变量。不得提交 `.env` 或其他 secret。
 
-JD 分析与 Evidence Map 是可选增强。要启用它们，只在启动 FastAPI 的本地进程环境中设置
+JD 分析、Evidence Map 与 AI Copilot 是可选增强。要启用它们，只在启动 FastAPI 的本地进程环境中设置
 `JOBPILOT_LLM_BASE_URL`、`JOBPILOT_LLM_API_KEY`、`JOBPILOT_LLM_MODEL`；三项不完整或非法时
 Web 显示“AI 服务未配置”，API 与本地核心仍正常启动。真实 Key 不得写入 `.env.example`、Git、
 Web 或 Extension。
@@ -148,7 +158,7 @@ Web origin。Extension 读取 `GET /api/v1/autofill-profile` 也要求同一精�
 - `JOBPILOT_CORS_ORIGINS`：逗号分隔的精确 loopback Web origins；
 - `JOBPILOT_LLM_BASE_URL`：可选 OpenAI-compatible `/v1` base URL；
 - `JOBPILOT_LLM_API_KEY`：只存在于 API 进程环境的可选 secret；
-- `JOBPILOT_LLM_MODEL`：可选模型名；三项必须同时有效才启用 JD 分析与 Evidence Map。
+- `JOBPILOT_LLM_MODEL`：可选模型名；三项必须同时有效才启用 JD 分析、Evidence Map 与 AI Copilot。
 
 数据库固定为本地 SQLite 文件，不读取 database URL。默认路径是 `runtime-data/jobpilot.db`；整个目录被 Git 忽略，并且测试、clean、build 和格式化流程都不得删除、替换或写入真实数据库。测试与 Alembic 验证必须显式使用临时 SQLite 路径。
 
@@ -185,8 +195,11 @@ pnpm run api:import:check
 - [事实反馈闭环](docs/technical/FEEDBACK_LOOP.md)
 - [求职资料与安全自动填写](docs/technical/AUTOFILL.md)
 - [本地 PDF / DOCX 简历导入](docs/technical/RESUME_IMPORT.md)
+- [AI Job Copilot](docs/technical/AI_COPILOT.md)
 - [自动填写第三方研究与许可](docs/technical/THIRD_PARTY_AUTOFILL_RESEARCH.md)
 - [JD 分析评测状态](docs/evaluation/JD_ANALYSIS_RESULTS.md)
+- [AI Copilot 评测状态](docs/evaluation/COPILOT_RESULTS.md)
+- [AI Copilot Bad Case 状态](docs/evaluation/COPILOT_BAD_CASES.md)
 - [自动填写 Bad Cases](docs/evaluation/AUTOFILL_BAD_CASES.md)
 - [架构决策记录](docs/DECISIONS/README.md)
 

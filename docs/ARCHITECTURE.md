@@ -7,6 +7,8 @@
 > Phase 10 本地 PDF/DOCX Parse → Preview → Confirm 已完成实现、自动化门禁与虚构文件隔离浏览器
 > 验证；真实简历内容和合并验收仍等待项目负责人，尚未标记 PASS。
 
+> Phase 11 AI Job Copilot P0 已完成技术实现；真实 Provider 评测与 BOSS/牛客人工内容验收待完成。
+
 ## 1. 运行时
 
 ```mermaid
@@ -70,8 +72,9 @@ Alembic revision `0001_job_application` 创建 `jobs` 和 `applications`；`0002
 唯一当前结果与两份输入指纹；`0007_evidence_map_schema_v2` 扩展其 CHECK 以兼容 schema 1/2，
 存在 schema 2 记录时拒绝降级；`0008_interview_feedback` 为 Application 增加结果说明/淘汰原因，
 并新增 `interview_rounds` 与 `interview_questions`；`0009_autofill_profile` 新增 id 固定为 1 的
-`autofill_profiles`，以四段 canonical JSON 保存当前最小 Profile。Job 删除级联 Application、Interview、Question、
-JD Analysis 和 Evidence；Round 删除级联 Question。被 Application 引用的 Resume 通过 RESTRICT
+`autofill_profiles`，`0010_profile_projects` 增加独立 projects JSON；`0011_copilot_records`
+增加 append-only Copilot 历史。Job 删除级联 Application、Interview、Question、JD Analysis、
+Evidence 和 Copilot；Round 删除级联 Question。被 Application 引用的 Resume 通过 RESTRICT
 和 service guard 保留，未引用 Resume 删除时级联其 Evidence。自动化测试必须显式传入临时数据库
 路径。
 
@@ -101,21 +104,27 @@ CORS/Host 不是对同一操作系统账户下恶意进程的认证。若以后�
 ## 5. Web architecture
 
 Web 不引入路由或状态框架。App 只协调 health 和 library/create/resumes/profile/detail/feedback 视图；
-岗位库、表单、简历版本、求职资料、详情、Application、Interview、Feedback、JDAnalysisPanel 与
-EvidenceMapPanel 为聚焦组件。所有业务 I/O 经过 api-client，不自行拼 HTTP。Interview UI 只记录
+岗位库、表单、简历版本、求职资料、详情、Application、Interview、Feedback、JDAnalysisPanel、
+EvidenceMapPanel 与 CopilotPanel 为聚焦组件。所有业务 I/O 经过 api-client，不自行拼 HTTP。Interview UI 只记录
 用户输入的本地事实且不改变 Application；Feedback UI 只呈现 API 的确定性统计。Evidence Map 按
 六类条件呈现逐项明确结论、判断依据和原文证据，并在 Web 端确定性计算全图计数、待确认项与主要
-证据缺口。JD 分析请求使用 35 秒 client timeout，Evidence Map 生成使用 65 秒 client timeout，
-其余核心请求保持 5 秒。
+证据缺口。JD 分析请求使用 35 秒 client timeout，Evidence Map 与 Copilot 生成使用 65 秒 client
+timeout，其余核心请求保持 5 秒。
 
 “去原平台查看/投递”使用 `target="_blank"` 与 `rel="noreferrer"`，没有关联 mutation。
 
 ## 6. Optional AI boundary
 
-调用链固定为 Web → FastAPI → JDAnalysisService/EvidenceMapService → 对应小型 Provider port。
-同一个 OpenAI-compatible infrastructure adapter 实现两项职责，使用标准库 HTTP、60 秒 timeout、
+调用链固定为 Web → FastAPI → JDAnalysisService/EvidenceMapService/CopilotService → 对应小型
+Provider port。同一个 OpenAI-compatible infrastructure adapter 实现三项职责，使用标准库 HTTP、60 秒 timeout、
 禁用代理继承，不引入 SDK、factory、registry、LangChain 或 Agent。可选配置只来自 FastAPI
 进程环境；三项缺失/非法时服务仍启动并向 Web 返回未配置状态。
+
+Copilot 复用同一 adapter，通过独立 `CopilotService` 与三份小型 Prompt 生成 Match、
+Resume Advice 和 Interview Prep。输入只含当前结构化岗位条件、明确选择的一个 Resume，或该
+Job 已有 Interview 记录；phone/email 在 Provider data 构造前删除。所有 source type/id/quote
+经 domain parser 验证后才 append-only 写入 `copilot_records`。输入指纹变化只在读取时标 stale；
+重新生成失败不覆盖历史结果。Copilot 不修改 Job、Resume、Application 或 Interview。
 
 JD 服务仅构造 title/company/description/location/salaryText 输入。Evidence 服务只构造必要岗位
 上下文、当前非 stale 的硬性要求、加分项、职责、技能、经验、学历六类条件与用户当次确认的一个

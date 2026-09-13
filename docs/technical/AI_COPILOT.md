@@ -56,3 +56,15 @@ Job Detail 的 AI Copilot 区域含“岗位理解 / 匹配分析 / 简历准备
 system proxy 与脱敏错误。稳定错误包括 `AI_NOT_CONFIGURED`、`AI_TIMEOUT`、`AI_INVALID_RESPONSE`；
 既有非 timeout transport failure 为 `AI_PROVIDER_UNAVAILABLE`。日志不得包含 source text、raw model
 response、Provider URL 或 API Key。
+
+不存在后台或整份文件上传：JobPilot 不保存/上传原始 Resume 文件，也不把资料同步到 JobPilot
+远端。用户点击生成并再次确认后，当前任务所需的最小简历/面试纯文本会发送到用户自行配置的
+第三方 Provider；这是功能所需的显式外发，不能表述为“从不发送到第三方”。Provider 未配置或
+失败时，本地核心与历史结果仍可用。
+
+## 当前验收状态
+
+20 条 BOSS/牛客风格虚构 dataset、real-output-only runner、自动化 grounding/隐私/失败降级门禁
+已完成。2026-09-13 的评测进程未配置完整 Provider 三元组，因此真实 Provider run、latency、
+Schema/Evidence/Hallucination 内容指标和真实 BOSS/牛客人工验收均为 `NOT RUN`。不得填入推测值、
+以 Fake Provider 代替，或因此进入 Phase 12。

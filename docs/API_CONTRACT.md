@@ -1,8 +1,9 @@
 # JobPilot API Contract
 
 > 状态：`GET /health`、Job/Application、BOSS/牛客 capture、Job Analysis、Resume Version、
-> Evidence Map、Interview、Feedback Summary、Autofill Profile 与 Local Resume Import contract 已由
-> ADR-017 冻结。Resume Import 实现和自动化已完成，等待真实简历人工验收。JSON 字段使用
+> Evidence Map、Interview、Feedback Summary、Autofill Profile、Local Resume Import 与 AI Job
+> Copilot contract 已由 ADR-018 冻结。Resume Import 实现和自动化已完成，等待真实简历人工验收；
+> Copilot 技术实现已完成，等待真实 Provider 评测与人工内容验收。JSON 字段使用
 > camelCase。
 
 ## 1. Runtime boundary
@@ -10,7 +11,7 @@
 默认 API origin 为 `http://127.0.0.1:8000`，只支持 loopback。没有账号、cookie、token、
 session 或用户 endpoint。客户端请求使用 `credentials: omit`、`cache: no-store`、
 `redirect: error`。核心请求 timeout 为 5000 ms；显式 JD 分析请求使用 35000 ms 客户端 timeout，
-Evidence Map 生成使用 65000 ms 客户端 timeout，后端 LLM Provider request timeout 集中配置为
+Evidence Map 与 Copilot 生成使用 65000 ms 客户端 timeout，后端 LLM Provider request timeout 集中配置为
 60 秒。
 
 写入还要求 loopback Host、安全的 Origin/Fetch Metadata 与 `application/json`。
@@ -90,7 +91,7 @@ item 是 Job response，并增加 `applicationStatus`（可为 null）。
 
 ### `DELETE /api/v1/jobs/{jobId}`
 
-成功为 204；真实删除 Job 并由数据库级联 Application、JD analysis 与 Evidence Map。Web 必须在
+成功为 204；真实删除 Job 并由数据库级联 Application、JD analysis、Evidence Map 与 Copilot。Web 必须在
 调用前明确确认。
 
 Job response 字段为：`id`、`title`、`company`、`location`、`salaryText`、
@@ -496,7 +497,73 @@ Resume Version 并更新 singleton Profile；任一失败全部回滚。成功�
 Confirm 不接受 filename/parse token，不修改已有 Resume Version、Job、Application 或 Evidence
 Map。
 
-## 12. Errors
+## 12. AI Job Copilot endpoints
+
+读取 endpoint 不调用 Provider，并返回该 context 最新记录；没有记录时 `record` 为 null。Match 与
+Resume Advice 的 GET 要求 query `resumeVersionId`，Interview Prep 不使用 Resume：
+
+- `GET /api/v1/jobs/{jobId}/copilot/match?resumeVersionId={resumeVersionId}`
+- `GET /api/v1/jobs/{jobId}/copilot/resume-advice?resumeVersionId={resumeVersionId}`
+- `GET /api/v1/jobs/{jobId}/copilot/interview-prep`
+- `GET /api/v1/copilot/{recordId}`：按 id 读取一条历史记录。
+
+生成 endpoint 都要求当次显式确认。Match 与 Resume Advice 请求：
+
+```json
+{"resumeVersionId":"resume-id","confirmExternalAi":true}
+```
+
+Interview Prep 请求：
+
+```json
+{"confirmExternalAi":true}
+```
+
+- `POST /api/v1/jobs/{jobId}/copilot/match`
+- `POST /api/v1/jobs/{jobId}/copilot/resume-advice`
+- `POST /api/v1/jobs/{jobId}/copilot/interview-prep`
+
+所有 endpoint 返回：
+
+```json
+{
+  "isConfigured": true,
+  "record": {
+    "id": "copilot-record-id",
+    "jobId": "job-id",
+    "resumeVersionId": "resume-id",
+    "kind": "MATCH",
+    "schemaVersion": 1,
+    "result": {
+      "summary": "当前匹配判断",
+      "strengths": [],
+      "gaps": [],
+      "suggestions": []
+    },
+    "inputFingerprint": "64-char-sha256",
+    "model": "configured-model",
+    "promptVersion": "match-v1",
+    "isStale": false,
+    "createdAt": "2026-09-13T00:00:00Z"
+  }
+}
+```
+
+Match result 为 `summary/strengths/gaps/suggestions`；Resume Advice 为
+`highlight/possibleImprovement/interviewFocus`；Interview Prep 为
+`possibleQuestions/review`。grounded item 使用
+`{text, sourceEvidence:{text,sourceType,sourceId}}`。允许 source type 为
+`RESUME|JOB|INTERVIEW`，但每个字段有更窄的固定来源规则；quote 规范化空白后必须存在于声明的
+本地 source。任一 grounding、exact-key、条数/长度或语言规则失败均为 `AI_INVALID_RESPONSE`，
+且不写入记录。
+
+生成要求当前非 stale JD Analysis；Match/Resume Advice 还要求存在所选 Resume。每次成功生成
+append-only 新记录。GET 依据当前最小输入计算 `isStale`；来源缺失时历史 by-id 结果仍可读并标
+stale。未配置、timeout 或 Provider 失败不修改已有记录，也不影响本地 Job/Resume/Application/
+Interview。POST 继续接受精确 loopback Web Origin、非 cross-site Fetch Metadata 与 JSON-only，
+不向 Extension 开放。
+
+## 13. Errors
 
 所有公开错误保持：
 
@@ -516,12 +583,12 @@ Job，便于 Extension 打开本机详情；其他错误保持原有三字段 en
 
 主要状态：
 
-- 404：Job/Application/Interview/Interview Question/Resume Version 不存在；
+- 404：Job/Application/Interview/Interview Question/Resume Version/Copilot Record 不存在；
 - 409：重复 normalized URL、一个 Job 已有 Application，或 Resume Version 正被 Application 引用；
 - 422：request/domain validation、非法状态流转或 Evidence Map 前置条件失败；
 - 502：`AI_INVALID_RESPONSE`，Provider envelope/content/schema 无法验证；公开响应不增加诊断字段，
   本机日志只记录固定白名单失败分类，不记录任何输入或原始响应；
-- 503：SQLite 暂时 locked/busy，或 `AI_NOT_CONFIGURED` / `AI_PROVIDER_UNAVAILABLE`；
+- 503：SQLite 暂时 locked/busy，或 `AI_NOT_CONFIGURED` / `AI_PROVIDER_UNAVAILABLE` / `AI_TIMEOUT`；
 - 403/415：localhost Profile 读/写与通用 mutation 安全边界；
 - 500：统一未知错误，不返回 exception、SQL 或 traceback。
 

@@ -10,6 +10,13 @@ Add explicit, optional and grounded Job Match, Resume Advice and Interview Prepa
 reusing the existing Provider and local Job/Resume/Interview context. Results are append-only,
 fingerprinted and stale-aware; no model output mutates source data or performs an action.
 
+## Implementation status
+
+Slices 1–5, the synthetic dataset/real-output runner portion of Slice 6, and all technical closure work
+in Slice 7 are complete. Provider validation on 2026-09-13 returned `NOT_CONFIGURED`, so no real output
+metrics or Bad Cases were created. Automated regression, security/code review, documentation sync and
+isolated real-Chrome UI verification passed; real BOSS/Nowcoder content judgment remains owner-only.
+
 ## Ordered slices
 
 1. Freeze ADR-018, API/storage/prompt/grounding/privacy contracts and this checklist.
@@ -17,7 +24,8 @@ fingerprinted and stale-aware; no model output mutates source data or performs a
 3. RED/GREEN append-only migration/repository/service plus latest/by-id reads and stale rules.
 4. RED/GREEN Provider method and API contracts for Match, Resume Advice and Interview Prep.
 5. RED/GREEN shared wire validation/client and Job Detail Copilot tabs/states.
-6. Add 20 fictional evaluation samples and record only real Provider outputs/metrics/bad cases.
+6. Add 20 fictional evaluation samples and a real-output-only runner; record metrics/bad cases only when
+   Provider is configured. Current run state is NOT RUN.
 7. Run full gates, security/code review and isolated browser regression, then request real BOSS/Nowcoder
    owner acceptance. Do not claim PASS before that review.
 
@@ -26,6 +34,7 @@ fingerprinted and stale-aware; no model output mutates source data or performs a
 - Never read/log/fixture real resume, Profile, interview content, Provider key or live SQLite.
 - Never accept an ungrounded quote, imply “用户不会”, state an interview certainty or invent experience.
 - Never add scores, auto-decisions/actions, Chat/RAG/Agent infrastructure or Phase 12 work.
+- Never convert a missing Provider or deterministic Fake Provider coverage into real evaluation metrics.
 
 ---
 
