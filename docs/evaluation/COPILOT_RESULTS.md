@@ -6,7 +6,7 @@
 - Model：`[K12]gemini-3.5-flash`
 - Real Provider run：`COMPLETE`
 - Synthetic content review：`COMPLETE — NOT ACCEPTABLE`
-- Real BOSS / Nowcoder acceptance：`NOT RUN`
+- Real BOSS / Nowcoder acceptance：`COMPLETE — FAIL`
 - Verdict：`PHASE 11 BLOCKED`
 
 真实运行于 2026-09-14 12:18（Asia/Shanghai）完成。20 条冻结 synthetic samples 全部只发送
@@ -93,13 +93,20 @@ Prompt，也未对失败样本做诊断 retry 或 sample-specific hardcoding。
 
 ## Real Job Acceptance
 
-- BOSS Job Match / Resume Advice / Interview Prep：`NOT RUN`
-- Nowcoder Job Match / Resume Advice / Interview Prep：`NOT RUN`
-- 项目负责人 Human Review：`USER ACTION REQUIRED`
+- BOSS Job Match：`FAIL`；没有创建记录。调用包装器观察耗时约 31 秒，精确 HTTP 状态与 latency
+  未被终端工具保留，因此不推测错误码。
+- BOSS Resume Advice：`PASS`；22,075 ms；项目负责人于 2026-09-14 人工确认 PASS。
+- BOSS Interview Prep：`PASS`；16,447 ms；项目负责人于 2026-09-14 人工确认 PASS。
+- Nowcoder Job Match：`PASS`；26,949 ms；项目负责人确认可用。负责人截图中选中的是“产品经理”
+  简历版本，API 验收记录使用“导入简历 2026-09-08”；两者都已成功保存，未覆盖彼此。
+- Nowcoder Resume Advice：`FAIL`；28,014 ms；`AI_INVALID_RESPONSE`。
+- Nowcoder Interview Prep：`FAIL`；14,806 ms；`AI_INVALID_RESPONSE`。
+- 项目负责人 Human Review：已完成三条成功结果，`3 PASS / 0 FAIL`；三条生成失败无法做人审。
 
-由于 synthetic run 已暴露 Required 级可靠性与建议质量问题，当前不应把真实岗位生成结果作为
-Phase 11 PASS 依据。需要项目负责人先决定是否批准通用 Prompt V2 / Schema 策略修复，或接受当前
-限制后再执行真实岗位验收。
+页面截图确认 BOSS Resume Advice、BOSS Interview Prep 与 Nowcoder Match 正常渲染；额外尝试的华勤
+BOSS 岗位显示脱敏失败提示且未生成。浏览器控制插件本轮无法加载 request-header policy，因此没有
+独立读取 real-run 页面的 console/network；此前隔离浏览器 console、响应式和四工具布局回归仍为
+PASS。真实岗位验收总计 `3 PASS / 3 FAIL`，可靠性不可接受。
 
 ## 已有技术与安全回归
 
@@ -115,6 +122,7 @@ Phase 11 PASS 依据。需要项目负责人先决定是否批准通用 Prompt V
 - Technical closure：PASS
 - Frozen 20-sample real evaluation：COMPLETE
 - Synthetic content quality：FAIL
-- Real BOSS / Nowcoder human content acceptance：NOT RUN
+- Real BOSS / Nowcoder generation acceptance：FAIL（3/6）
+- Human review of successful outputs：PASS（3/3）
 - Phase 12：NOT STARTED
 - Verdict：`PHASE 11 BLOCKED`

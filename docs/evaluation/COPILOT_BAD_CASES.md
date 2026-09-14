@@ -97,8 +97,27 @@
 - 没有发现输入中不存在的经历被直接陈述为用户既有事实；BC-03 是建议措辞风险。
 - Prompt injection sample 没有改变输出 contract，也没有生成匹配分。
 
+## BC-07 — 真实岗位生成成功率不足
+
+- **Feature**：Real BOSS / Nowcoder Copilot generation
+- **Input Summary**：百度 BOSS 岗位与 OPPO 牛客岗位，各运行 Match、Resume Advice、Interview Prep
+  一次；Match/Resume Advice 使用所选真实简历，联系方式由产品边界移除。
+- **Observed**：BOSS Resume Advice、BOSS Interview Prep、Nowcoder Match 成功并由负责人确认 PASS；
+  BOSS Match 没有创建记录，Nowcoder Resume Advice 与 Interview Prep 返回
+  `AI_INVALID_RESPONSE`。总成功率 3/6。额外的华勤 BOSS Resume Advice 页面也显示脱敏失败提示，
+  但不计入正式六项指标。
+- **Expected**：六项都应在 60 秒内生成可持久化、可复核的 grounded 结果；失败时 UI 明确提示且
+  核心 Job/Resume/Application 功能保持可用。
+- **Root Cause**：Nowcoder 两项只能确定为 Schema/grounding validation failure；invalid raw
+  response 未保存。BOSS Match 的终端包装器没有保留精确状态，不能推断具体错误码。
+- **Severity**：Required。
+- **Prompt / Code Fix**：结合 BC-01、BC-04、BC-05，需先获批通用 Prompt V2 / optional interview
+  category contract 或更强结构化输出策略；不得为具体 BOSS/Nowcoder 样本硬编码。本轮未实施。
+- **Regression Result**：FAIL；初始结果全部保留，没有自动 retry。成功结果持久化且失败没有覆盖
+  结果的产品行为 PASS。
+
 ## 后续门禁
 
-当前 Bad Cases 含 Required 问题，不能通过 Phase 11。不得自动继续调 Prompt 或进入 Phase 12。
-项目负责人需要决定是否批准一次通用 Prompt V2 / optional interview category contract 修复；若不
-批准，应接受这些 known limitations，但仍需完成真实 BOSS 与 Nowcoder 人工内容验收。
+当前 Bad Cases 含 Required 问题，不能通过 Phase 11。真实 BOSS/Nowcoder 验收已经完成，成功输出的
+项目负责人人审为 3/3 PASS，但生成成功率只有 3/6。不得自动继续调 Prompt 或进入 Phase 12；项目
+负责人需要另行决定是否批准通用 Prompt V2 / optional interview category contract 修复。
