@@ -1,0 +1,666 @@
+{
+  "datasetVersion": 1,
+  "runType": "REAL_PROVIDER_OUTPUT_ONLY",
+  "promptVersions": {
+    "MATCH": "match-v1",
+    "RESUME_ADVICE": "resume-advice-v1",
+    "INTERVIEW_PREP": "interview-prep-v1"
+  },
+  "schemaVersion": 1,
+  "model": "[K12]gemini-3.5-flash",
+  "temperature": 0,
+  "timeoutSeconds": 60.0,
+  "sampleCount": 20,
+  "metrics": {
+    "schemaSuccess": {
+      "valid": 13,
+      "total": 20
+    },
+    "evidenceGrounding": {
+      "grounded": 69,
+      "provided": 70
+    },
+    "unsupportedHallucinationCount": 1,
+    "gapLanguageViolations": 0,
+    "interviewCertaintyViolations": 0
+  },
+  "humanContentReview": {
+    "status": "NOT_RUN",
+    "dimensions": [
+      "summary usefulness",
+      "suggestion usefulness",
+      "question relevance"
+    ]
+  },
+  "badCases": [
+    {
+      "id": "copilot-009",
+      "kind": "RESUME_ADVICE",
+      "reason": "AI_INVALID_RESPONSE"
+    },
+    {
+      "id": "copilot-010",
+      "kind": "RESUME_ADVICE",
+      "reason": "AI_INVALID_RESPONSE"
+    },
+    {
+      "id": "copilot-011",
+      "kind": "RESUME_ADVICE",
+      "reason": "AI_INVALID_RESPONSE"
+    },
+    {
+      "id": "copilot-012",
+      "kind": "RESUME_ADVICE",
+      "reason": "AI_INVALID_RESPONSE"
+    },
+    {
+      "id": "copilot-014",
+      "kind": "RESUME_ADVICE",
+      "reason": "AI_INVALID_RESPONSE"
+    },
+    {
+      "id": "copilot-017",
+      "kind": "INTERVIEW_PREP",
+      "reason": "AI_INVALID_RESPONSE"
+    },
+    {
+      "id": "copilot-019",
+      "kind": "INTERVIEW_PREP",
+      "reason": "AI_INVALID_RESPONSE"
+    }
+  ],
+  "samples": [
+    {
+      "id": "copilot-001",
+      "kind": "MATCH",
+      "schemaValid": true,
+      "result": {
+        "summary": "求职者拥有智能问答项目的用户调研、需求文档和版本验收经验。但当前简历未发现大模型产品需求分析与版本规划的具体经历，也未提及 SQL 数据分析能力。建议针对这些差距补充相关准备。",
+        "strengths": [
+          {
+            "text": "求职者在智能问答项目中负责用户调研、需求文档和版本验收。",
+            "sourceEvidence": {
+              "text": "在智能问答项目中负责用户调研、需求文档和版本验收。",
+              "sourceType": "RESUME",
+              "sourceId": "resume-001"
+            }
+          }
+        ],
+        "gaps": [
+          {
+            "text": "当前简历未发现大模型产品的需求分析与版本规划相关经历。",
+            "sourceEvidence": {
+              "text": "负责大模型产品的需求分析与版本规划",
+              "sourceType": "JOB",
+              "sourceId": "job-001"
+            }
+          },
+          {
+            "text": "当前简历未发现使用 SQL 分析业务数据的能力或经历。",
+            "sourceEvidence": {
+              "text": "能够使用 SQL 分析业务数据",
+              "sourceType": "JOB",
+              "sourceId": "job-001"
+            }
+          }
+        ],
+        "suggestions": [
+          "建议准备并补充您在智能问答项目中是否涉及大模型技术，以及具体是如何进行需求分析与版本规划的实际案例。",
+          "建议准备并补充您在使用 SQL 进行业务数据分析方面的实际操作经验或相关项目经历。"
+        ]
+      },
+      "latencyMs": 12172
+    },
+    {
+      "id": "copilot-002",
+      "kind": "MATCH",
+      "schemaValid": true,
+      "result": {
+        "summary": "申请人具备使用 Python 进行数据清洗的经验。然而，当前简历未发现使用 SQL 进行经营分析的经历，也未发现零售行业分析的相关经验。建议针对这些空缺准备相应的案例补充。",
+        "strengths": [
+          {
+            "text": "具备使用 Python 处理数据的经验。",
+            "sourceEvidence": {
+              "text": "使用 Python 清洗问卷数据，并用 Excel 制作可视化周报。",
+              "sourceType": "RESUME",
+              "sourceId": "resume-002"
+            }
+          }
+        ],
+        "gaps": [
+          {
+            "text": "当前简历未发现使用 SQL 完成经营分析的经历。",
+            "sourceEvidence": {
+              "text": "使用 Python 与 SQL 完成经营分析",
+              "sourceType": "JOB",
+              "sourceId": "job-002"
+            }
+          },
+          {
+            "text": "当前简历未发现零售行业分析经验。",
+            "sourceEvidence": {
+              "text": "具备零售行业分析经验者优先",
+              "sourceType": "JOB",
+              "sourceId": "job-002"
+            }
+          }
+        ],
+        "suggestions": [
+          "建议准备并补充使用 SQL 进行数据提取或分析的实际案例。",
+          "建议准备并补充与经营分析相关的项目经历。",
+          "若有零售行业相关背景，建议在面试中主动说明或在简历中补充。"
+        ]
+      },
+      "latencyMs": 18776
+    },
+    {
+      "id": "copilot-003",
+      "kind": "MATCH",
+      "schemaValid": true,
+      "result": {
+        "summary": "求职者拥有校园社群运营和活动策划复盘的经验。但当前简历未发现与岗位要求的“制定用户拉新与召回方案”及“独立使用 Excel 分析渠道转化”直接匹配的经历，建议针对这些要求补充相关准备。",
+        "strengths": [],
+        "gaps": [
+          {
+            "text": "当前简历未发现制定用户拉新与召回方案的相关经历。",
+            "sourceEvidence": {
+              "text": "制定用户拉新与召回方案",
+              "sourceType": "JOB",
+              "sourceId": "job-003"
+            }
+          },
+          {
+            "text": "当前简历未发现独立使用 Excel 分析渠道转化的相关经历。",
+            "sourceEvidence": {
+              "text": "独立使用 Excel 分析渠道转化",
+              "sourceType": "JOB",
+              "sourceId": "job-003"
+            }
+          }
+        ],
+        "suggestions": [
+          "建议准备并梳理过往在校园社群运营中是否有涉及用户拉新或召回的具体案例和方案。",
+          "建议准备在过往活动复盘中，是否曾使用 Excel 进行渠道转化或相关数据分析的实例。"
+        ]
+      },
+      "latencyMs": 14602
+    },
+    {
+      "id": "copilot-004",
+      "kind": "MATCH",
+      "schemaValid": true,
+      "result": {
+        "summary": "求职者具备使用 Vue 与 JavaScript 开发及组件测试的经验，但当前简历未发现与岗位要求的 TypeScript、React 以及浏览器渲染与性能优化相关的直接经历。建议针对这些技术栈和性能优化领域进行针对性准备。",
+        "strengths": [],
+        "gaps": [
+          {
+            "text": "当前简历未发现熟练使用 TypeScript 与 React 的相关经历。",
+            "sourceEvidence": {
+              "text": "熟练使用 TypeScript 与 React",
+              "sourceType": "JOB",
+              "sourceId": "job-004"
+            }
+          },
+          {
+            "text": "当前简历未发现理解浏览器渲染与性能优化的相关经历。",
+            "sourceEvidence": {
+              "text": "理解浏览器渲染与性能优化",
+              "sourceType": "JOB",
+              "sourceId": "job-004"
+            }
+          }
+        ],
+        "suggestions": [
+          "建议准备并梳理您在 TypeScript 与 React 方面的开发经验或学习情况，以便在面试中应对相关提问。",
+          "建议准备关于浏览器渲染与性能优化的技术原理及实践案例，以应对岗位的相关要求。"
+        ]
+      },
+      "latencyMs": 14696
+    },
+    {
+      "id": "copilot-005",
+      "kind": "MATCH",
+      "schemaValid": true,
+      "result": {
+        "summary": "匹配分析显示，您具备使用 Python 编写接口回归脚本的经验，符合岗位对 Python 编写测试工具的要求。但当前简历中未发现关于“设计接口与端到端测试用例”的直接描述，建议针对此项要求进行补充准备。",
+        "strengths": [
+          {
+            "text": "具备使用 Python 编写接口回归脚本的经验，符合岗位对 Python 编写测试工具的要求。",
+            "sourceEvidence": {
+              "text": "使用 Python 编写接口回归脚本，记录缺陷并跟进修复验证。",
+              "sourceType": "RESUME",
+              "sourceId": "resume-005"
+            }
+          }
+        ],
+        "gaps": [
+          {
+            "text": "当前简历未发现“设计接口与端到端测试用例”的相关经历。",
+            "sourceEvidence": {
+              "text": "设计接口与端到端测试用例",
+              "sourceType": "JOB",
+              "sourceId": "job-005"
+            }
+          }
+        ],
+        "suggestions": [
+          "建议您确认是否具有设计接口与端到端测试用例的经验，并在准备面试时整理相关案例。"
+        ]
+      },
+      "latencyMs": 17338
+    },
+    {
+      "id": "copilot-006",
+      "kind": "MATCH",
+      "schemaValid": true,
+      "result": {
+        "summary": "用户具有法学本科背景，并有整理软件许可协议研究报告的经验。但当前简历中未发现通过法律职业资格考试以及审核业务合同与营销规则的直接经历，需进一步补充和准备。",
+        "strengths": [
+          {
+            "text": "用户拥有法学本科背景，并具备整理软件许可协议研究报告的经验。",
+            "sourceEvidence": {
+              "text": "法学本科，参与模拟法庭并整理过软件许可协议研究报告。",
+              "sourceType": "RESUME",
+              "sourceId": "resume-006"
+            }
+          }
+        ],
+        "gaps": [
+          {
+            "text": "当前简历未发现审核业务合同与营销规则的相关经历。",
+            "sourceEvidence": {
+              "text": "审核业务合同与营销规则",
+              "sourceType": "JOB",
+              "sourceId": "job-006"
+            }
+          },
+          {
+            "text": "当前简历未发现通过法律职业资格考试的相关信息。",
+            "sourceEvidence": {
+              "text": "通过法律职业资格考试",
+              "sourceType": "JOB",
+              "sourceId": "job-006"
+            }
+          }
+        ],
+        "suggestions": [
+          "建议在简历中补充是否已通过法律职业资格考试的相关情况。",
+          "建议准备并补充在校或实习期间参与审核业务合同与营销规则的相关实践经历。"
+        ]
+      },
+      "latencyMs": 17075
+    },
+    {
+      "id": "copilot-007",
+      "kind": "MATCH",
+      "schemaValid": true,
+      "result": {
+        "summary": "求职者在课程项目中有使用 Excel 建立库存预测表并分析缺货原因的经验。然而，当前简历未发现根据销售预测制定滚动供需计划的经验，也未发现 SAP 系统的使用经历。建议求职者针对这些岗位要求进行准备或在简历中补充相关经历。",
+        "strengths": [
+          {
+            "text": "求职者在课程项目中有使用 Excel 建立库存预测表并分析缺货原因的经验。",
+            "sourceEvidence": {
+              "text": "在课程项目中使用 Excel 建立库存预测表，并分析缺货原因。",
+              "sourceType": "RESUME",
+              "sourceId": "resume-007"
+            }
+          }
+        ],
+        "gaps": [
+          {
+            "text": "岗位要求根据销售预测制定滚动供需计划，当前简历未发现相关经验。",
+            "sourceEvidence": {
+              "text": "根据销售预测制定滚动供需计划",
+              "sourceType": "JOB",
+              "sourceId": "job-007"
+            }
+          },
+          {
+            "text": "岗位优先考虑有 SAP 使用经验者，当前简历未发现相关使用经历。",
+            "sourceEvidence": {
+              "text": "有 SAP 使用经验优先",
+              "sourceType": "JOB",
+              "sourceId": "job-007"
+            }
+          }
+        ],
+        "suggestions": [
+          "建议准备并梳理在过往学习或实践中，是否有根据销售预测制定滚动供需计划的相关理解或类似经验。",
+          "建议确认是否接触或使用过 SAP 系统，若有相关经验，建议在简历中予以补充说明。"
+        ]
+      },
+      "latencyMs": 16121
+    },
+    {
+      "id": "copilot-008",
+      "kind": "MATCH",
+      "schemaValid": true,
+      "result": {
+        "summary": "求职者具备使用 scikit-learn 完成新闻分类实验的经验。然而，当前简历未发现使用 PyTorch 训练文本分类模型及具备自然语言处理项目经验的明确表述。建议求职者针对 PyTorch 框架的使用和 NLP 项目经验进行针对性准备。",
+        "strengths": [
+          {
+            "text": "求职者具有使用 scikit-learn 完成新闻分类实验并比较特征与模型效果的经验。",
+            "sourceEvidence": {
+              "text": "使用 scikit-learn 完成新闻分类实验，比较特征与模型效果。",
+              "sourceType": "RESUME",
+              "sourceId": "resume-008"
+            }
+          }
+        ],
+        "gaps": [
+          {
+            "text": "当前简历未发现使用 PyTorch 训练文本分类模型的经历。",
+            "sourceEvidence": {
+              "text": "使用 PyTorch 训练文本分类模型",
+              "sourceType": "JOB",
+              "sourceId": "job-008"
+            }
+          },
+          {
+            "text": "当前简历未发现具备自然语言处理项目经验。",
+            "sourceEvidence": {
+              "text": "具备自然语言处理项目经验",
+              "sourceType": "JOB",
+              "sourceId": "job-008"
+            }
+          }
+        ],
+        "suggestions": [
+          "建议准备并补充使用 PyTorch 训练文本分类模型的项目经历或相关代码示例。",
+          "建议梳理并准备自然语言处理项目经验的相关描述，以便在面试中进行阐述。"
+        ]
+      },
+      "latencyMs": 20863
+    },
+    {
+      "id": "copilot-009",
+      "kind": "RESUME_ADVICE",
+      "schemaValid": false,
+      "errorCode": "AI_INVALID_RESPONSE",
+      "latencyMs": 27619
+    },
+    {
+      "id": "copilot-010",
+      "kind": "RESUME_ADVICE",
+      "schemaValid": false,
+      "errorCode": "AI_INVALID_RESPONSE",
+      "latencyMs": 18238
+    },
+    {
+      "id": "copilot-011",
+      "kind": "RESUME_ADVICE",
+      "schemaValid": false,
+      "errorCode": "AI_INVALID_RESPONSE",
+      "latencyMs": 16163
+    },
+    {
+      "id": "copilot-012",
+      "kind": "RESUME_ADVICE",
+      "schemaValid": false,
+      "errorCode": "AI_INVALID_RESPONSE",
+      "latencyMs": 17177
+    },
+    {
+      "id": "copilot-013",
+      "kind": "RESUME_ADVICE",
+      "schemaValid": true,
+      "result": {
+        "highlight": [
+          {
+            "text": "具有参与校园招聘全流程，维护候选人进度并整理招聘复盘的经验。",
+            "sourceEvidence": {
+              "text": "参与校园招聘全流程，维护候选人进度并整理招聘复盘。",
+              "sourceType": "RESUME",
+              "sourceId": "resume-013"
+            }
+          }
+        ],
+        "possibleImprovement": [
+          "当前简历未发现人才盘点与绩效沟通的相关经历，建议核实并补充是否有相关经验。",
+          "当前简历未发现HRBP工作年限，建议核实并补充是否具备至少两年的HRBP经验。"
+        ],
+        "interviewFocus": [
+          {
+            "text": "岗位要求支持人才盘点与绩效沟通。",
+            "sourceEvidence": {
+              "text": "支持人才盘点与绩效沟通",
+              "sourceType": "JOB",
+              "sourceId": "job-013"
+            }
+          },
+          {
+            "text": "岗位要求至少两年 HRBP 经验。",
+            "sourceEvidence": {
+              "text": "至少两年 HRBP 经验",
+              "sourceType": "JOB",
+              "sourceId": "job-013"
+            }
+          }
+        ]
+      },
+      "latencyMs": 18515
+    },
+    {
+      "id": "copilot-014",
+      "kind": "RESUME_ADVICE",
+      "schemaValid": false,
+      "errorCode": "AI_INVALID_RESPONSE",
+      "latencyMs": 19182
+    },
+    {
+      "id": "copilot-015",
+      "kind": "INTERVIEW_PREP",
+      "schemaValid": true,
+      "result": {
+        "possibleQuestions": [
+          {
+            "category": "PRODUCT",
+            "question": "在针对企业软件产品的销售中，您是如何理解客户业务并推进方案与合同流程的？",
+            "reason": "岗位要求理解客户业务并推进方案与合同流程。",
+            "sourceEvidence": {
+              "text": "理解客户业务并推进方案与合同流程",
+              "sourceType": "JOB",
+              "sourceId": "job-015"
+            }
+          },
+          {
+            "category": "AI",
+            "question": "当前资料未发现AI相关要求，在推进方案与合同流程中，您是否可以结合AI工具来辅助理解客户业务或优化流程？",
+            "reason": "岗位要求理解客户业务并推进方案与合同流程，此处探讨AI技术在其中的潜在应用可能性。",
+            "sourceEvidence": {
+              "text": "理解客户业务并推进方案与合同流程",
+              "sourceType": "JOB",
+              "sourceId": "job-015"
+            }
+          },
+          {
+            "category": "PROJECT",
+            "question": "请分享一个您主导的B2B商务谈判项目，您是如何在其中展现商务谈判能力的？",
+            "reason": "岗位要求具备 B2B 商务谈判能力。",
+            "sourceEvidence": {
+              "text": "具备 B2B 商务谈判能力",
+              "sourceType": "JOB",
+              "sourceId": "job-015"
+            }
+          }
+        ],
+        "review": {
+          "strengths": [
+            {
+              "text": "能够清楚说明客户调研过程",
+              "sourceEvidence": {
+                "text": "一面复盘：能够清楚说明客户调研过程；报价异议处理回答缺少结构。",
+                "sourceType": "INTERVIEW",
+                "sourceId": "interview-015"
+              }
+            }
+          ],
+          "weaknesses": [
+            {
+              "text": "报价异议处理回答缺少结构",
+              "sourceEvidence": {
+                "text": "一面复盘：能够清楚说明客户调研过程；报价异议处理回答缺少结构。",
+                "sourceType": "INTERVIEW",
+                "sourceId": "interview-015"
+              }
+            }
+          ],
+          "nextActions": [
+            "建议针对‘报价异议处理’准备结构化的回答框架，例如采用分点阐述或逻辑递进的方式，以提升回答的条理性。",
+            "建议结合‘具备 B2B 商务谈判能力’的要求，进一步总结和提炼过往商务谈判中的应对策略与成功经验。"
+          ]
+        }
+      },
+      "latencyMs": 20019
+    },
+    {
+      "id": "copilot-016",
+      "kind": "INTERVIEW_PREP",
+      "schemaValid": true,
+      "result": {
+        "possibleQuestions": [
+          {
+            "category": "PRODUCT",
+            "question": "当前资料未发现产品（PRODUCT）相关的明确要求。建议准备在项目管理过程中如何与产品经理协作、明确产品范围并确保交付物符合产品目标的经验。",
+            "reason": "岗位要求负责项目范围、风险和交付管理，但未提及具体的产品管理职责。",
+            "sourceEvidence": {
+              "text": "负责项目范围、风险和交付管理",
+              "sourceType": "JOB",
+              "sourceId": "job-016"
+            }
+          },
+          {
+            "category": "AI",
+            "question": "当前资料未发现AI相关的明确要求。建议准备在日常项目管理（如风险识别、交付流程优化）中尝试或计划引入AI工具以提升效率的设想。",
+            "reason": "岗位要求负责项目范围、风险和交付管理，未提及AI技术或工具的使用要求。",
+            "sourceEvidence": {
+              "text": "负责项目范围、风险和交付管理",
+              "sourceType": "JOB",
+              "sourceId": "job-016"
+            }
+          },
+          {
+            "category": "PROJECT",
+            "question": "请结合您过往的经历，分享您是如何在同时推进多个项目的情况下，做好项目范围、风险和交付管理的？",
+            "reason": "岗位明确要求能够同时推进多个项目，并负责项目范围、风险和交付管理。",
+            "sourceEvidence": {
+              "text": "能够同时推进多个项目",
+              "sourceType": "JOB",
+              "sourceId": "job-016"
+            }
+          }
+        ],
+        "review": {
+          "strengths": [],
+          "weaknesses": [],
+          "nextActions": []
+        }
+      },
+      "latencyMs": 17140
+    },
+    {
+      "id": "copilot-017",
+      "kind": "INTERVIEW_PREP",
+      "schemaValid": false,
+      "errorCode": "AI_INVALID_RESPONSE",
+      "latencyMs": 19814
+    },
+    {
+      "id": "copilot-018",
+      "kind": "INTERVIEW_PREP",
+      "schemaValid": true,
+      "result": {
+        "possibleQuestions": [
+          {
+            "category": "PRODUCT",
+            "question": "在推荐系统中，如何结合具体的产品业务场景进行召回与排序模型的研发与迭代？",
+            "reason": "岗位要求负责推荐系统召回与排序模型研发，这需要将产品业务需求转化为具体的算法模型设计。",
+            "sourceEvidence": {
+              "text": "负责推荐系统召回与排序模型研发",
+              "sourceType": "JOB",
+              "sourceId": "job-018"
+            }
+          },
+          {
+            "category": "AI",
+            "question": "在进行推荐系统召回与排序模型研发时，您常用的算法架构是什么，如何解决过拟合或冷启动等AI模型常见问题？",
+            "reason": "岗位明确要求负责推荐系统召回与排序模型研发，这涉及AI与算法模型的核心技术能力。",
+            "sourceEvidence": {
+              "text": "负责推荐系统召回与排序模型研发",
+              "sourceType": "JOB",
+              "sourceId": "job-018"
+            }
+          },
+          {
+            "category": "PROJECT",
+            "question": "请分享一个您建设离线评估和在线实验体系的项目经历，您是如何设计实验指标并确保评估准确性的？",
+            "reason": "岗位要求建设离线评估和在线实验体系，面试中可能会关注相关的项目落地与体系建设经验。",
+            "sourceEvidence": {
+              "text": "建设离线评估和在线实验体系",
+              "sourceType": "JOB",
+              "sourceId": "job-018"
+            }
+          }
+        ],
+        "review": {
+          "strengths": [],
+          "weaknesses": [],
+          "nextActions": []
+        }
+      },
+      "latencyMs": 16632
+    },
+    {
+      "id": "copilot-019",
+      "kind": "INTERVIEW_PREP",
+      "schemaValid": false,
+      "errorCode": "AI_INVALID_RESPONSE",
+      "latencyMs": 18100
+    },
+    {
+      "id": "copilot-020",
+      "kind": "INTERVIEW_PREP",
+      "schemaValid": true,
+      "result": {
+        "possibleQuestions": [
+          {
+            "category": "PRODUCT",
+            "question": "在针对产品进行用户研究时，您通常如何设计访谈提纲以确保收集到核心的用户体验反馈？",
+            "reason": "岗位要求能够设计访谈提纲并完成主题分析，这需要候选人具备针对产品研究设计合理访谈框架的能力。",
+            "sourceEvidence": {
+              "text": "设计访谈提纲并完成主题分析",
+              "sourceType": "JOB",
+              "sourceId": "job-020"
+            }
+          },
+          {
+            "category": "AI",
+            "question": "当前资料未发现关于AI的具体要求，在日常用户研究工作中，您是否尝试过使用AI工具辅助生成访谈提纲或进行文本主题分析？",
+            "reason": "当前资料未发现关于AI的具体要求，此问题旨在探讨如何将AI技术应用于岗位要求的访谈提纲设计与主题分析工作中。",
+            "sourceEvidence": {
+              "text": "设计访谈提纲并完成主题分析",
+              "sourceType": "JOB",
+              "sourceId": "job-020"
+            }
+          },
+          {
+            "category": "PROJECT",
+            "question": "请结合您过往的项目经历，分享一次您独立设计访谈提纲并完成主题分析的完整过程及最终产出。",
+            "reason": "岗位明确要求具备设计访谈提纲并完成主题分析的能力，通过项目实例可以评估候选人的实际操作经验。",
+            "sourceEvidence": {
+              "text": "设计访谈提纲并完成主题分析",
+              "sourceType": "JOB",
+              "sourceId": "job-020"
+            }
+          }
+        ],
+        "review": {
+          "strengths": [],
+          "weaknesses": [],
+          "nextActions": []
+        }
+      },
+      "latencyMs": 15454
+    }
+  ]
+}
