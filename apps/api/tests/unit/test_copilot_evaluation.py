@@ -113,6 +113,57 @@ def test_copilot_evaluator_counts_grounding_and_unsafe_language_without_raw_outp
     assert functions["_unsafe_language_counts"](raw_content) == (1, 1)
 
 
+def test_copilot_evaluator_counts_all_sources_when_source_ids_repeat() -> None:
+    script_path = Path(__file__).resolve().parents[2] / "scripts" / "evaluate_copilot.py"
+    functions = runpy.run_path(str(script_path))
+    copilot_input = CopilotInput.create(
+        kind=CopilotKind.MATCH,
+        title="AI 产品经理",
+        job_sources=(
+            CopilotSource("job-1", "负责大模型产品的需求分析与版本规划"),
+            CopilotSource("job-1", "能够使用 SQL 分析业务数据"),
+        ),
+        resume_source=CopilotSource(
+            "resume-1", "在智能问答项目中负责用户调研、需求文档和版本验收。"
+        ),
+    )
+    raw_content = json.dumps(
+        {
+            "strengths": [
+                {
+                    "text": "有智能问答项目经验",
+                    "sourceEvidence": {
+                        "text": "负责用户调研、需求文档和版本验收",
+                        "sourceType": "RESUME",
+                        "sourceId": "resume-1",
+                    },
+                }
+            ],
+            "gaps": [
+                {
+                    "text": "当前简历未发现大模型产品规划经验",
+                    "sourceEvidence": {
+                        "text": "负责大模型产品的需求分析与版本规划",
+                        "sourceType": "JOB",
+                        "sourceId": "job-1",
+                    },
+                },
+                {
+                    "text": "当前简历未发现 SQL 分析经验",
+                    "sourceEvidence": {
+                        "text": "能够使用 SQL 分析业务数据",
+                        "sourceType": "JOB",
+                        "sourceId": "job-1",
+                    },
+                },
+            ],
+        },
+        ensure_ascii=False,
+    )
+
+    assert functions["_evidence_counts"](raw_content, copilot_input) == (3, 3)
+
+
 def test_unsafe_language_counts_tolerates_non_array_provider_fields() -> None:
     script_path = Path(__file__).resolve().parents[2] / "scripts" / "evaluate_copilot.py"
     functions = runpy.run_path(str(script_path))

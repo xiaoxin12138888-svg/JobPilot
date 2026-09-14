@@ -176,16 +176,21 @@ def _evidence_counts(raw_content: str, copilot_input: CopilotInput) -> tuple[int
     except (json.JSONDecodeError, TypeError):
         return 0, 0
     evidence = list(_source_evidence(payload))
-    sources = {("JOB", source.id): source.text for source in copilot_input.job_sources}
+    sources: dict[tuple[str, str], list[str]] = {}
+    for source in copilot_input.job_sources:
+        sources.setdefault(("JOB", source.id), []).append(source.text)
     if copilot_input.resume_source is not None:
-        sources[("RESUME", copilot_input.resume_source.id)] = copilot_input.resume_source.text
-    sources.update(
-        {("INTERVIEW", source.id): source.text for source in copilot_input.interview_sources}
-    )
+        sources.setdefault(("RESUME", copilot_input.resume_source.id), []).append(
+            copilot_input.resume_source.text
+        )
+    for source in copilot_input.interview_sources:
+        sources.setdefault(("INTERVIEW", source.id), []).append(source.text)
     grounded = sum(
         bool(_key(item.get("text")))
-        and _key(item.get("text", ""))
-        in _key(sources.get((item.get("sourceType"), item.get("sourceId")), ""))
+        and any(
+            _key(item.get("text", "")) in _key(source)
+            for source in sources.get((item.get("sourceType"), item.get("sourceId")), [])
+        )
         for item in evidence
         if isinstance(item, dict)
     )
