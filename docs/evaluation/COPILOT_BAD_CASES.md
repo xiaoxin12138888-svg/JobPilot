@@ -2,52 +2,103 @@
 
 ## 当前状态
 
-Provider：`NOT_CONFIGURED`。真实 Provider run：`NOT RUN`。因此当前没有真实 observed output，
-也没有可登记为真实 Bad Case 的样本；以下四项是预注册审查类别和已存在的确定性回归门禁，不能
-冒充真实模型失败。
+本文件只记录 2026-09-14 的真实 Provider preflight 与冻结 20-sample run 中实际观察到的问题。
+没有用 Fake Provider、schema fixture 或预期风险冒充真实 Bad Case。失败响应只保存脱敏错误码，
+因此不能观察到的内容明确标为 unknown，不推测 Provider raw response。
 
-## BC-01 — 无证据优势
+## BC-01 — Resume Advice 大面积 invalid response
 
-- ID：BC-01
-- Input：真实 run 未执行；预注册条件为模型输出 Resume 原文中不存在的 strength quote。
-- Observed：`NOT OBSERVED — PROVIDER NOT CONFIGURED`。
-- Expected：每条 strength 必须引用所选 Resume 中存在的原文。
-- Root Cause：真实 root cause 尚不可得；常见风险是模型把建议或岗位要求误写成候选人事实。
-- Fix：当前 parser 在持久化前校验 source type/id/quote，不满足时返回 `AI_INVALID_RESPONSE`。
-- Regression：自动化覆盖 unsupported Resume quote 被拒绝；真实样本待 Provider run 后补充。
+- **Feature**：Resume Advice
+- **Input Summary**：`copilot-009`、`010`、`011`、`012`、`014`，覆盖交互设计、科技内容运营、
+  嵌入式、医学事务与经营分析岗位。
+- **Observed**：5 条均收到 Provider 响应，但被产品 parser 拒绝为 `AI_INVALID_RESPONSE`；该功能
+  只有 `copilot-013` 成功，Schema success 为 1/6。
+- **Expected**：全部输出严格包含 `highlight`、`possibleImprovement`、`interviewFocus`，事实 evidence
+  必须来自声明的 Resume/Job source。
+- **Root Cause**：`UNKNOWN`。invalid raw response 按安全约束未持久化，仅凭统一错误码不能判断是
+  JSON、字段、类型、source type/id 还是 quote 不匹配。Feature 聚集说明 Prompt/model 格式遵循存在
+  系统性风险，但不是精确 root cause 证据。
+- **Severity**：Required。
+- **Prompt / Code Fix**：建议在获批的 Prompt V2 中减少结构歧义，或在 Provider 支持时采用严格
+  JSON schema；如需定位，应增加不保存 raw text 的脱敏诊断分类并进行一次获批 retry。本轮未实施。
+- **Regression Result**：NOT RUN；初始失败已完整保留，没有自动 retry。
 
-## BC-02 — 把“未发现”写成“不具备”
+## BC-02 — preflight 重复 sourceId 被评测器误计数
 
-- ID：BC-02
-- Input：真实 run 未执行；预注册条件为 gap 断言“用户不会/不具备”。
-- Observed：`NOT OBSERVED — PROVIDER NOT CONFIGURED`。
-- Expected：只能描述“当前资料/简历未发现…”，不能判断用户能力。
-- Root Cause：真实 root cause 尚不可得；风险来自模型把证据缺失升级为能力结论。
-- Fix：Prompt 与 parser 同时约束缺口语言，违规返回 `AI_INVALID_RESPONSE`。
-- Regression：自动化覆盖能力断言和缺少“未发现”的 gap 被拒绝。
+- **Feature**：Evaluation runner
+- **Input Summary**：`copilot-001` 的两段 Job source 共用 `job-001`。
+- **Observed**：Provider 输出先通过产品 parser，但旧评测器把三条正确 evidence 计为 2/3。
+- **Expected**：与产品 parser 一致，对同一 type/id 下的每段原文逐一匹配，结果为 3/3。
+- **Root Cause**：评测器使用 `(sourceType, sourceId) -> text` 字典，后一段文本覆盖前一段。
+- **Severity**：Required。
+- **Prompt / Code Fix**：`8174a45` 将每个 type/id 映射到全部来源文本，不改 Grounding 定义。
+- **Regression Result**：PASS；先由新测试稳定复现 3/2，再修复为 3/3；Copilot 专项 26/26 PASS，
+  Ruff 与 format PASS。
 
-## BC-03 — 生成不存在经历
+## BC-03 — 建议可能诱导补写不存在经历
 
-- ID：BC-03
-- Input：真实 run 未执行；预注册条件为模型把不存在的项目/经历作为已有事实。
-- Observed：`NOT OBSERVED — PROVIDER NOT CONFIGURED`。
-- Expected：事实型经历只能通过 RESUME/INTERVIEW 真实 quote 表达；无证据内容只能作为明确的
-  `AI建议`。
-- Root Cause：真实 root cause 尚不可得；风险来自模型根据岗位需要补全候选人背景。
-- Fix：grounded 字段验证真实 source；UI 把非事实建议单独标记为 `AI建议`。
-- Regression：自动化覆盖不存在 source/quote 被拒绝；建议语义仍须在真实 run 中人工检查。
+- **Feature**：Job Match / Suggestions
+- **Input Summary**：`copilot-008`；Resume 只包含 scikit-learn 新闻分类实验，JD 要求 PyTorch。
+- **Observed**：建议写“补充使用 PyTorch 训练文本分类模型的项目经历或相关代码示例”，没有“若
+  属实/如有”条件，也没有区分新建练习项目与已有经历。
+- **Expected**：只能建议核实已有资料，或明确建议未来学习、练习、创建可验证的新项目；不能暗示
+  用户把输入中不存在的经历直接补进简历。
+- **Root Cause**：Prompt V1 约束“不虚构”，但没有强制无 evidence 的补充建议使用条件式措辞。
+- **Severity**：Required。
+- **Prompt / Code Fix**：Prompt V2 方向应要求：无 Resume evidence 时只能写“如属实再补充”，否则
+  改为“学习/练习/创建后再记录”；不得宣称已有。本轮保持 Prompt V1 冻结，未实施。
+- **Regression Result**：NOT RUN；真实问题保留，等待负责人批准 Prompt V2。
 
-## BC-04 — 面试问题过度确定
+## BC-04 — 非 AI 岗位被强制生成 AI 问题
 
-- ID：BC-04
-- Input：真实 run 未执行；预注册条件为问题使用“必问/一定会问/面试官会问”等确定性表达。
-- Observed：`NOT OBSERVED — PROVIDER NOT CONFIGURED`。
-- Expected：只表达“可能关注方向”，每题引用真实 JOB 证据。
-- Root Cause：真实 root cause 尚不可得；风险来自模型把准备建议表述为招聘方确定行为。
-- Fix：Prompt 与 parser 拒绝确定性措辞，UI 标题固定为“可能关注方向”。
-- Regression：自动化覆盖确定性问题被拒绝与错误 JOB source/quote 被拒绝。
+- **Feature**：Interview Prep
+- **Input Summary**：`copilot-015` 企业软件销售、`016` 软件项目经理、`020` 用户研究员；JD 没有
+  明确 AI 要求。
+- **Observed**：三条结果仍生成 AI 类问题。`copilot-016` 的 PRODUCT 与 AI 字段写成“当前资料未
+  发现……建议准备……”的陈述/建议，不是可直接练习回答的面试问题。
+- **Expected**：问题与岗位证据直接相关、可回答，不为了满足类别而制造弱相关方向。
+- **Root Cause**：Prompt/产品 parser 强制每次必须同时包含 PRODUCT、AI、PROJECT 三类，与非 AI
+  岗位的“全部问题均应岗位相关”目标冲突。
+- **Severity**：Required。
+- **Prompt / Code Fix**：Prompt V2 / Schema 方向应允许不适用类别为空，或把 AI 改为可选类别；
+  这涉及冻结 contract，本轮未实施。
+- **Regression Result**：NOT RUN；等待负责人决定是否允许 contract 级通用调整。
 
-## 后续更新规则
+## BC-05 — Interview Prep invalid response
 
-Provider 配置后只运行冻结的 20 条 dataset。只有 `real-run.json` 中真实输出与人工复核事实可以新增
-Observed、Root Cause 和 Fix；不得依据 Fake Provider、schema fixture 或预期风险虚构 Bad Case。
+- **Feature**：Interview Prep
+- **Input Summary**：`copilot-017` 安全运营、`copilot-019` 产品经理实习生，均包含面试复盘。
+- **Observed**：两条 Provider 响应均为 `AI_INVALID_RESPONSE`，该功能 Schema success 为 4/6。
+- **Expected**：返回 PRODUCT/AI/PROJECT 问题与 grounded INTERVIEW review，且不使用确定性措辞。
+- **Root Cause**：`UNKNOWN`。原始 invalid response 未保存，不能从统一错误码确定具体失败字段。
+- **Severity**：Required。
+- **Prompt / Code Fix**：与 BC-01 一样，先增加脱敏诊断分类或在获批后单样本 retry，再决定是否是
+  Prompt V2 的通用格式问题；本轮未实施。
+- **Regression Result**：NOT RUN；初始失败已保留，没有自动 retry。
+
+## BC-06 — 一条 unsupported evidence 无法归因到具体失败样本
+
+- **Feature**：Evaluation observability / Grounding
+- **Input Summary**：20 条全量 run；7 条 invalid response 未保存 raw result。
+- **Observed**：评测器在 parse 前扫描到 70 条 evidence，其中 69 条能在声明来源中匹配；13 条产品
+  接受结果自身为 38/38，因此唯一不匹配 evidence 来自某条被拒绝响应，但现有记录无法定位 ID。
+- **Expected**：Grounding 70/70；若不匹配，应保留非敏感的 sample-level evidence 计数和诊断类别。
+- **Root Cause**：Provider 至少输出了一条无法按 type/id/quote 匹配的 evidence；runner 只持久化
+  汇总计数与错误码，缺少 per-sample 非敏感诊断，具体样本与语义不可得。
+- **Severity**：Required。
+- **Prompt / Code Fix**：后续可仅记录每个 sample 的 `provided/grounded` 计数和稳定 diagnostic enum，
+  不保存 raw invalid content。需要先批准评测工具变更；本轮未实施。
+- **Regression Result**：NOT RUN；没有为了定位而重发失败样本。
+
+## 未观察到的风险
+
+- 没有 gap “用户不会/没有能力”违规：0。
+- 没有“必问/一定会问/面试官会问”确定性措辞：0。
+- 没有发现输入中不存在的经历被直接陈述为用户既有事实；BC-03 是建议措辞风险。
+- Prompt injection sample 没有改变输出 contract，也没有生成匹配分。
+
+## 后续门禁
+
+当前 Bad Cases 含 Required 问题，不能通过 Phase 11。不得自动继续调 Prompt 或进入 Phase 12。
+项目负责人需要决定是否批准一次通用 Prompt V2 / optional interview category contract 修复；若不
+批准，应接受这些 known limitations，但仍需完成真实 BOSS 与 Nowcoder 人工内容验收。
