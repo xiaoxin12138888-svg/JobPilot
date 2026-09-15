@@ -121,3 +121,48 @@
 当前 Bad Cases 含 Required 问题，不能通过 Phase 11。真实 BOSS/Nowcoder 验收已经完成，成功输出的
 项目负责人人审为 3/3 PASS，但生成成功率只有 3/6。不得自动继续调 Prompt 或进入 Phase 12；项目
 负责人需要另行决定是否批准通用 Prompt V2 / optional interview category contract 修复。
+
+---
+
+## Phase 11.1 V2 追加记录
+
+> BC-01 至 BC-07 是冻结 V1 原始记录，不改写。以下只记录 V2 正式 run 中真实观察到的新结果。
+
+## BC-08 — Provider unavailable 批量中断
+
+- **ID**：`copilot-001`、`008`、`009`、`011`、`012`。
+- **Input**：原 dataset v1 的 3 条 Match 与 3 条 Resume Advice 中的 5 条；未改 Prompt/Schema/model/timeout。
+- **Observed**：2,029～13,587 ms 内返回脱敏 `AI_PROVIDER_UNAVAILABLE`，每条只发送一次，无结构修复。
+- **Expected**：Provider 在 60s 内返回可交给严格 parser 的 content。
+- **Root Cause**：Provider/transport 未可用；公开错误按安全边界脱敏，无法从本次记录判定上游 HTTP
+  状态或内部原因，不做猜测。
+- **Fix**：不应使用 Schema retry；由项目负责人决定更换/稳定 Provider，或接受当前可用性。本阶段不改 retry/
+  timeout，不重跑挑选结果。
+- **Regression**：PASS；transport failure 不重试，错误脱敏，上一次有效结果保留。产品验收门槛未达。
+
+## BC-09 — 60s Provider timeout
+
+- **ID**：`copilot-005`。
+- **Input**：测试开发工程师 Match 虚构样本。
+- **Observed**：60,536 ms 后返回 `AI_TIMEOUT`，没有第二次 Provider 请求。
+- **Expected**：60s 内返回并通过结构/evidence 验证。
+- **Root Cause**：真实 Provider 请求超过已冻结 60s 产品窗口；无证据表明业务 Schema 出错。
+- **Fix**：不自动增加 timeout，不对 timeout retry；如需变更 Provider 或 timeout，必须另行批准。
+- **Regression**：PASS；稳定 `AI_TIMEOUT`、不泄露 raw error，本地 Job/Resume/Application 仍可用。
+
+## BC-10 — Interview Prep 首轮结构失败被单次修复
+
+- **ID**：`copilot-017`。
+- **Input**：安全运营工程师 JD 与一条面试复盘。
+- **Observed**：首轮 29,274 ms 被 `AI_INVALID_RESPONSE` 拒绝；唯一修复后总计 43,520 ms，最终 Schema
+  PASS、Evidence 4/4，TECHNICAL 类别与非 AI JD 匹配。
+- **Expected**：最好首轮直接成功；若只有结构问题，允许一次不增加 claim/evidence 的修复。
+- **Root Cause**：首轮无效 raw 按安全边界未持久化，只能确认为严格 parser 拒绝，不猜测具体字段。
+- **Fix**：V2 单次 structure-only repair 已生效；不增加第三次请求。
+- **Regression**：PASS；每样本记录 first/final status、attempt/retry 和 latency，不保存无效原文。
+
+## V2 结论
+
+V1 的 string-array 错误和非 AI 岗位强制 AI 类别在已收到的 V2 有效 content 中未再出现；但新的
+Provider availability 失败使合并 final 只有 14/20，低于 19/20 门槛。未生成的 6 条不能进行 summary/
+建议/问题内容审核，不得用 0 违规冒充内容质量 PASS。Phase 11 保持 `BLOCKED`。

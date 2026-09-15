@@ -9,6 +9,74 @@
 - Real BOSS / Nowcoder acceptance：`COMPLETE — FAIL`
 - Verdict：`PHASE 11 BLOCKED`
 
+---
+
+## Phase 11.1 V2 reliability hardening（2026-09-15）
+
+> 本节是 V2 的追加记录；本文原有 V1 baseline 指标与判定保持原样。
+
+### 固定配置
+
+| 配置 | 值 |
+| --- | --- |
+| Dataset | 原 `dataset-v1.json` / 20 synthetic samples，未修改 |
+| Prompt | `match-v2` / `resume-advice-v2` / `interview-prep-v2` |
+| Schema | version 2；历史 version 1 保留可读 |
+| Model | `[K12]gemini-3.5-flash` |
+| Temperature | 0 |
+| Timeout | 60s |
+| Retry | 仅 `AI_INVALID_RESPONSE` 最多一次结构修复；transport/timeout 不重试 |
+
+V2 preflight 使用 `copilot-001`、`009`、`017` 覆盖三种功能：首轮/最终 Schema 3/3，
+Evidence 10/10，全部安全与类别相关性检查为 0 违规，未使用 retry。原始记录见
+[`copilot/v2-preflight.json`](copilot/v2-preflight.json)。
+
+### V2 正式 run 指标
+
+原始结构化记录见 [`copilot/v2-real-run.json`](copilot/v2-real-run.json)。无效 Provider 原文、API Key、
+Provider URL/envelope 均未持久化。
+
+| 指标 | 真实结果 |
+| --- | --- |
+| Samples attempted | 20/20 |
+| Provider calls | 21（1 条进行了一次结构修复） |
+| Provider completed usable content | 14/20（70%） |
+| First-pass schema | 13/20（65%） |
+| Final schema | 14/20（70%） |
+| First-pass schema / usable Provider content | 13/14（92.86%） |
+| Final schema / usable Provider content | 14/14（100%） |
+| Evidence grounding | 43/43（100%） |
+| Unsupported hallucination | 0 |
+| Gap language violations | 0 |
+| Interview certainty violations | 0 |
+| Suggestion safety violations | 0 |
+| Interview category relevance violations | 0 |
+| `AI_PROVIDER_UNAVAILABLE` | 5：001、008、009、011、012 |
+| `AI_TIMEOUT` | 1：005（60,536 ms） |
+
+Latency 使用全部 20 条的 total latency，不删除失败样本：均值 23,647.10 ms，中位数
+17,295.5 ms，P95 nearest-rank 56,035 ms，最小 2,029 ms，最大 60,536 ms。
+
+V1 与 V2 的合并 final 都是 13/20 与 14/20，但不能直接得出 Provider 退化或 Prompt 只提升 1 条：V1
+获得 20/20 Provider responses，V2 只获得 14/20。在真正收到可验证 content 的 V2 子集中，首轮
+13/14，经唯一一次修复后 14/14；Resume Advice 未再观察到 string-array Schema 错误，Interview
+Prep 未再强制非 AI 岗位使用 AI 类别。
+
+### 内容与真实岗位验收
+
+- Synthetic 成功结果的项目负责人内容复核：`NOT_RUN`。自动指标不代替 summary/建议/问题有用性人审。
+- V2 原 BOSS/Nowcoder 六项真实岗位复验：`USER ACTION REQUIRED`。V1 的 3/6 不冒充 V2 验收。
+- 浏览器自动验收：`BLOCKED — browser request-header policy unavailable`；重试后仍无法加载浏览器面，
+  未把工具失败记为页面 PASS/FAIL。
+
+### 回归和判定
+
+- Python 292/292、API client 70/70、Web 62/62、Extension 112/112：PASS。
+- Typecheck、ESLint、Ruff lint/format、Prettier、API import、Web/Extension build 和 Extension artifact security：PASS。
+- Copilot V2 相关聚焦回归 43/43；迁移保留 schema 1、允许 schema 2、拒绝 schema 3：PASS。
+- 合并 final schema 14/20，低于冻结的 19/20 门槛；不重跑失败样本来挑选更好结果。
+- Verdict：`PHASE 11 BLOCKED`。Phase 12 未开始。
+
 真实运行于 2026-09-14 12:18（Asia/Shanghai）完成。20 条冻结 synthetic samples 全部只发送
 一次，没有自动 retry、人工补结果或删除慢样本。原始结构化记录见
 [`copilot/real-run.json`](copilot/real-run.json)。
