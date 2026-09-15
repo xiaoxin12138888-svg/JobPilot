@@ -108,6 +108,70 @@ def test_valid_match_is_parsed_with_grounded_resume_and_job_evidence() -> None:
     assert result.as_dict()["gaps"][0]["sourceEvidence"]["sourceType"] == "JOB"
 
 
+def test_copilot_rejects_unconditional_advice_to_add_unwritten_experience() -> None:
+    input_data = _match_input()
+
+    with pytest.raises(AnalysisInvalidResponseError):
+        parse_copilot_result(
+            CopilotKind.MATCH,
+            _match_result(suggestion="建议在简历中补充大模型项目经验。"),
+            input_data,
+        )
+
+
+def test_copilot_accepts_resume_addition_only_when_conditioned_on_truth() -> None:
+    input_data = _match_input()
+
+    result = parse_copilot_result(
+        CopilotKind.MATCH,
+        _match_result(suggestion="如果你确实有大模型项目经历但当前简历未体现，可以补充相应证据。"),
+        input_data,
+    )
+
+    assert result.as_dict()["suggestions"] == [
+        "如果你确实有大模型项目经历但当前简历未体现，可以补充相应证据。"
+    ]
+
+
+def test_interview_prep_accepts_job_driven_v2_categories_without_forced_ai() -> None:
+    input_data = CopilotInput.create(
+        kind=CopilotKind.INTERVIEW_PREP,
+        title="安全运营工程师",
+        job_sources=(CopilotSource(JOB_ID, "负责安全告警研判与事件响应"),),
+    )
+    questions = [
+        {
+            "category": category,
+            "question": f"可能关注方向：{category} 场景。",
+            "reason": "岗位要求安全事件响应。",
+            "sourceEvidence": {
+                "text": "负责安全告警研判与事件响应",
+                "sourceType": "JOB",
+                "sourceId": JOB_ID,
+            },
+        }
+        for category in ("TECHNICAL", "PROJECT", "BEHAVIORAL")
+    ]
+
+    result = parse_copilot_result(
+        CopilotKind.INTERVIEW_PREP,
+        json.dumps(
+            {
+                "possibleQuestions": questions,
+                "review": {"strengths": [], "weaknesses": [], "nextActions": []},
+            },
+            ensure_ascii=False,
+        ),
+        input_data,
+    )
+
+    assert [item["category"] for item in result.as_dict()["possibleQuestions"]] == [
+        "TECHNICAL",
+        "PROJECT",
+        "BEHAVIORAL",
+    ]
+
+
 def _match_input() -> CopilotInput:
     return CopilotInput.create(
         kind=CopilotKind.MATCH,
@@ -124,6 +188,7 @@ def _match_result(
     *,
     resume_quote: str = "参与 AI 产品需求分析",
     gap_text: str = "当前简历未发现 SQL 实践证据。",
+    suggestion: str = "准备一个可验证的数据分析案例。",
 ) -> str:
     return json.dumps(
         {
@@ -148,7 +213,7 @@ def _match_result(
                     },
                 }
             ],
-            "suggestions": ["准备一个可验证的数据分析案例。"],
+            "suggestions": [suggestion],
         },
         ensure_ascii=False,
     )

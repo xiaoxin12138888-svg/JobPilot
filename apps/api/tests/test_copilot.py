@@ -188,9 +188,9 @@ def test_match_generation_is_append_only_grounded_and_uses_minimal_redacted_inpu
     assert by_id.json() == first.json()
     record = first.json()["record"]
     assert record["kind"] == "MATCH"
-    assert record["schemaVersion"] == 1
+    assert record["schemaVersion"] == 2
     assert record["model"] == "fictional-model"
-    assert record["promptVersion"] == "match-v1"
+    assert record["promptVersion"] == "match-v2"
     assert record["isStale"] is False
     assert len(record["inputFingerprint"]) == 64
 
@@ -201,6 +201,8 @@ def test_match_generation_is_append_only_grounded_and_uses_minimal_redacted_inpu
     assert "示例公司" not in serialized
     assert set(provider_data) == {"task", "job", "resume"}
     assert "不可信" in provider.copilot_calls[0][1]
+    assert "RETURN JSON ONLY" in provider.copilot_calls[0][1]
+    assert "ALLOWED_SOURCE_IDS" in provider.copilot_calls[0][1]
 
 
 def test_source_change_marks_old_result_stale_and_failed_regeneration_preserves_it(
@@ -283,7 +285,7 @@ def test_resume_advice_is_grounded_and_persisted(
     assert response.status_code == 200, response.text
     record = response.json()["record"]
     assert record["kind"] == "RESUME_ADVICE"
-    assert record["promptVersion"] == "resume-advice-v1"
+    assert record["promptVersion"] == "resume-advice-v2"
     assert record["result"]["highlight"][0]["sourceEvidence"]["sourceType"] == "RESUME"
     assert record["result"]["interviewFocus"][0]["sourceEvidence"]["sourceType"] == "JOB"
     provider_data = json.dumps(provider.copilot_calls[-1][0].as_provider_data())
@@ -314,6 +316,7 @@ def test_interview_prep_uses_rounds_and_becomes_stale_after_review_change(
     record = response.json()["record"]
     assert record["resumeVersionId"] is None
     assert record["kind"] == "INTERVIEW_PREP"
+    assert record["promptVersion"] == "interview-prep-v2"
     assert {item["category"] for item in record["result"]["possibleQuestions"]} == {
         "PRODUCT",
         "AI",

@@ -31,7 +31,7 @@ function isCopilotRecord(value: unknown): boolean {
     typeof value.id !== 'string' ||
     typeof value.jobId !== 'string' ||
     !isNullableString(value.resumeVersionId) ||
-    value.schemaVersion !== 1 ||
+    (value.schemaVersion !== 1 && value.schemaVersion !== 2) ||
     typeof value.inputFingerprint !== 'string' ||
     !/^[a-f0-9]{64}$/.test(value.inputFingerprint) ||
     typeof value.model !== 'string' ||
@@ -43,7 +43,8 @@ function isCopilotRecord(value: unknown): boolean {
   }
   if (value.kind === 'MATCH') return isJobMatchResult(value.result);
   if (value.kind === 'RESUME_ADVICE') return isResumeAdviceResult(value.result);
-  if (value.kind === 'INTERVIEW_PREP') return isInterviewPrepResult(value.result);
+  if (value.kind === 'INTERVIEW_PREP')
+    return isInterviewPrepResult(value.result, value.schemaVersion);
   return false;
 }
 
@@ -66,11 +67,11 @@ function isResumeAdviceResult(value: unknown): boolean {
   );
 }
 
-function isInterviewPrepResult(value: unknown): boolean {
+function isInterviewPrepResult(value: unknown, schemaVersion: 1 | 2): boolean {
   return (
     isRecordWithKeys(value, ['possibleQuestions', 'review']) &&
     Array.isArray(value.possibleQuestions) &&
-    value.possibleQuestions.every(isCopilotInterviewQuestion) &&
+    value.possibleQuestions.every((item) => isCopilotInterviewQuestion(item, schemaVersion)) &&
     isRecordWithKeys(value.review, ['strengths', 'weaknesses', 'nextActions']) &&
     isGroundedItems(value.review.strengths, 'INTERVIEW') &&
     isGroundedItems(value.review.weaknesses, 'INTERVIEW') &&
@@ -78,10 +79,16 @@ function isInterviewPrepResult(value: unknown): boolean {
   );
 }
 
-function isCopilotInterviewQuestion(value: unknown): boolean {
+function isCopilotInterviewQuestion(value: unknown, schemaVersion: 1 | 2): boolean {
   return (
     isRecordWithKeys(value, ['category', 'question', 'reason', 'sourceEvidence']) &&
-    (value.category === 'PRODUCT' || value.category === 'AI' || value.category === 'PROJECT') &&
+    (value.category === 'PRODUCT' ||
+      value.category === 'AI' ||
+      value.category === 'PROJECT' ||
+      (schemaVersion === 2 &&
+        (value.category === 'TECHNICAL' ||
+          value.category === 'BEHAVIORAL' ||
+          value.category === 'DOMAIN'))) &&
     typeof value.question === 'string' &&
     typeof value.reason === 'string' &&
     isCopilotSourceEvidence(value.sourceEvidence, 'JOB')

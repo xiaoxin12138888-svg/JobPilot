@@ -94,6 +94,44 @@ describe('Copilot API client', () => {
       'invalid Copilot response',
     );
   });
+
+  it('accepts schema v2 job-driven interview categories but keeps schema v1 strict', async () => {
+    const response = {
+      isConfigured: true,
+      record: {
+        ...matchResponse.record,
+        kind: 'INTERVIEW_PREP',
+        resumeVersionId: null,
+        schemaVersion: 2,
+        promptVersion: 'interview-prep-v2',
+        result: {
+          possibleQuestions: [
+            {
+              category: 'TECHNICAL',
+              question: '如何处理安全事件？',
+              reason: '岗位要求事件响应。',
+              sourceEvidence: {
+                text: '负责安全事件响应',
+                sourceType: 'JOB',
+                sourceId: 'job-1',
+              },
+            },
+          ],
+          review: { strengths: [], weaknesses: [], nextActions: [] },
+        },
+      },
+    };
+    const fetchImplementation = vi.fn().mockImplementation(() => jsonResponse(response));
+    const client = createApiClient({
+      baseUrl: 'http://127.0.0.1:8000',
+      fetchImplementation,
+    });
+
+    await expect(client.getInterviewPrep('job-1')).resolves.toEqual(response);
+
+    response.record.schemaVersion = 1;
+    await expect(client.getInterviewPrep('job-1')).rejects.toThrow('invalid Copilot response');
+  });
 });
 
 function jsonResponse(value: unknown): Response {

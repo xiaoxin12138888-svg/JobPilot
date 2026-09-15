@@ -13,7 +13,7 @@ from jobpilot_api.domain.errors import (
     AnalysisInvalidResponseError,
 )
 
-COPILOT_SCHEMA_VERSION = 1
+COPILOT_SCHEMA_VERSION = 2
 MAX_COPILOT_ITEMS = 20
 MAX_COPILOT_TEXT_LENGTH = 2_000
 CONTACT_REPLACEMENT = "[联系方式已移除]"
@@ -22,6 +22,10 @@ EMAIL = re.compile(r"(?<![\w.+-])[\w.+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}(?![\w.-])
 PHONE = re.compile(r"(?<!\d)(?:\+?86[-\s]?)?1[3-9]\d(?:[-\s]?\d){8}(?!\d)")
 INABILITY = re.compile(r"用户(?:不会|没有|不具备|无法)|候选人(?:不会|没有|不具备|无法)")
 CERTAINTY = re.compile(r"一定会问|肯定会问|必问|面试官会问")
+EXPERIENCE_ADDITION = re.compile(
+    r"(?:补充|添加|加入|写入|增加).{0,30}(?:项目|经历|经验|成果|业绩|指标|数据)"
+)
+TRUTH_CONDITION = re.compile(r"(?:如果|若|如)(?:你|您)?(?:确实|实际|曾经|有|具备)")
 
 
 class CopilotKind(StrEnum):
@@ -40,6 +44,9 @@ class InterviewQuestionCategory(StrEnum):
     PRODUCT = "PRODUCT"
     AI = "AI"
     PROJECT = "PROJECT"
+    TECHNICAL = "TECHNICAL"
+    BEHAVIORAL = "BEHAVIORAL"
+    DOMAIN = "DOMAIN"
 
 
 @dataclass(frozen=True, slots=True)
@@ -258,7 +265,7 @@ def _match_result(value: dict[str, Any], input_data: CopilotInput | None) -> Mat
         summary=_string(value["summary"]),
         strengths=strengths,
         gaps=gaps,
-        suggestions=_strings(value["suggestions"]),
+        suggestions=_suggestions(value["suggestions"], input_data),
     )
 
 
@@ -268,7 +275,7 @@ def _resume_advice_result(
     _require_keys(value, {"highlight", "possibleImprovement", "interviewFocus"})
     return ResumeAdviceResult(
         highlight=_grounded_items(value["highlight"], SourceType.RESUME, input_data),
-        possible_improvement=_strings(value["possibleImprovement"]),
+        possible_improvement=_suggestions(value["possibleImprovement"], input_data),
         interview_focus=_grounded_items(value["interviewFocus"], SourceType.JOB, input_data),
     )
 
@@ -278,9 +285,7 @@ def _interview_prep_result(
 ) -> InterviewPrepResult:
     _require_keys(value, {"possibleQuestions", "review"})
     questions = _possible_questions(value["possibleQuestions"], input_data)
-    if input_data is not None and {item.category for item in questions} != set(
-        InterviewQuestionCategory
-    ):
+    if input_data is not None and not questions:
         raise _invalid_response()
     review_value = value["review"]
     if not isinstance(review_value, dict):
@@ -390,6 +395,16 @@ def _strings(value: Any) -> tuple[str, ...]:
     if not isinstance(value, list) or len(value) > MAX_COPILOT_ITEMS:
         raise _invalid_response()
     return tuple(_string(item) for item in value)
+
+
+def _suggestions(value: Any, input_data: CopilotInput | None) -> tuple[str, ...]:
+    suggestions = _strings(value)
+    if input_data is not None and any(
+        EXPERIENCE_ADDITION.search(item) and not TRUTH_CONDITION.search(item)
+        for item in suggestions
+    ):
+        raise _invalid_response()
+    return suggestions
 
 
 def _string(value: Any) -> str:

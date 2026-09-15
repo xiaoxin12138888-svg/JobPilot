@@ -350,3 +350,40 @@ def test_copilot_failure_diagnostic_rejects_non_v1_or_unknown_baseline_samples()
         assert str(error) == "diagnostic source must be the frozen V1 run"
     else:
         raise AssertionError("invalid V1 diagnostic source must be rejected")
+
+
+def test_copilot_failure_diagnostic_keeps_v1_interview_category_contract() -> None:
+    script_path = Path(__file__).resolve().parents[2] / "scripts" / "evaluate_copilot.py"
+    functions = runpy.run_path(str(script_path))
+    copilot_input = CopilotInput.create(
+        kind=CopilotKind.INTERVIEW_PREP,
+        title="AI 产品经理",
+        job_sources=(CopilotSource("job-1", "负责 AI 产品需求分析"),),
+    )
+    questions = [
+        {
+            "category": category,
+            "question": f"可能关注方向：{category} 场景。",
+            "reason": "岗位要求 AI 产品需求分析。",
+            "sourceEvidence": {
+                "text": "负责 AI 产品需求分析",
+                "sourceType": "JOB",
+                "sourceId": "job-1",
+            },
+        }
+        for category in ("PRODUCT", "AI", "PROJECT")
+    ]
+    raw_content = json.dumps(
+        {
+            "possibleQuestions": questions,
+            "review": {"strengths": [], "weaknesses": [], "nextActions": []},
+        },
+        ensure_ascii=False,
+    )
+
+    assert (
+        functions["_failure_diagnostic"](raw_content, CopilotKind.INTERVIEW_PREP, copilot_input)[
+            "failureType"
+        ]
+        == "NO_FAILURE_REPRODUCED"
+    )

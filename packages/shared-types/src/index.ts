@@ -483,7 +483,13 @@ export interface JobEvidenceMapResponse {
 
 export type CopilotKind = 'MATCH' | 'RESUME_ADVICE' | 'INTERVIEW_PREP';
 export type CopilotSourceType = 'RESUME' | 'JOB' | 'INTERVIEW';
-export type CopilotInterviewCategory = 'PRODUCT' | 'AI' | 'PROJECT';
+export type CopilotInterviewCategory =
+  | 'PRODUCT'
+  | 'AI'
+  | 'PROJECT'
+  | 'TECHNICAL'
+  | 'BEHAVIORAL'
+  | 'DOMAIN';
 
 export interface CopilotSourceEvidence {
   text: string;
@@ -532,7 +538,7 @@ export interface CopilotRecord {
   jobId: string;
   resumeVersionId: string | null;
   kind: CopilotKind;
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   result: JobMatchResult | ResumeAdviceResult | InterviewPrepResult;
   inputFingerprint: string;
   model: string;

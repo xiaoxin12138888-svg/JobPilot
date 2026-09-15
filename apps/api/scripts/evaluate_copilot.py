@@ -21,7 +21,6 @@ from jobpilot_api.domain.copilot import (  # noqa: E402
     CopilotInput,
     CopilotKind,
     CopilotSource,
-    InterviewQuestionCategory,
     SourceType,
     parse_copilot_result,
 )
@@ -70,6 +69,7 @@ KNOWN_RESPONSE_FIELDS = {
     "text",
     "weaknesses",
 }
+V1_INTERVIEW_CATEGORIES = {"PRODUCT", "AI", "PROJECT"}
 
 
 def main() -> int:
@@ -499,7 +499,7 @@ def _schema_problem(
     questions = payload["possibleQuestions"]
     if not isinstance(questions, list):
         return "D_WRONG_TYPE", "possibleQuestions must be an array"
-    observed_categories: set[InterviewQuestionCategory] = set()
+    observed_categories: set[str] = set()
     for index, question in enumerate(questions):
         path = f"possibleQuestions[{index}]"
         if not isinstance(question, dict):
@@ -511,10 +511,10 @@ def _schema_problem(
         )
         if problem is not None:
             return problem
-        try:
-            observed_categories.add(InterviewQuestionCategory(question["category"]))
-        except (TypeError, ValueError):
+        category = question["category"]
+        if not isinstance(category, str) or category not in V1_INTERVIEW_CATEGORIES:
             return "E_INVALID_ENUM", f"{path}.category is outside the V1 enum"
+        observed_categories.add(category)
         for field in ("question", "reason"):
             if not isinstance(question[field], str):
                 return "D_WRONG_TYPE", f"{path}.{field} must be a string"
@@ -541,7 +541,7 @@ def _schema_problem(
     problem = _string_array_problem("review.nextActions", review["nextActions"])
     if problem is not None:
         return problem
-    if observed_categories != set(InterviewQuestionCategory):
+    if observed_categories != V1_INTERVIEW_CATEGORIES:
         return "E_INVALID_ENUM", "possibleQuestions do not contain every V1 category"
     return None
 

@@ -146,7 +146,7 @@ class CopilotRecordModel(Base):
             "kind IN ('MATCH','RESUME_ADVICE','INTERVIEW_PREP')",
             name="ck_copilot_records_kind",
         ),
-        CheckConstraint("schema_version = 1", name="ck_copilot_records_schema_version"),
+        CheckConstraint("schema_version IN (1, 2)", name="ck_copilot_records_schema_version"),
         Index(
             "ix_copilot_records_context_created",
             "job_id",
