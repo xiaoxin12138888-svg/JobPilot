@@ -484,12 +484,7 @@ export interface JobEvidenceMapResponse {
 export type CopilotKind = 'MATCH' | 'RESUME_ADVICE' | 'INTERVIEW_PREP';
 export type CopilotSourceType = 'RESUME' | 'JOB' | 'INTERVIEW';
 export type CopilotInterviewCategory =
-  | 'PRODUCT'
-  | 'AI'
-  | 'PROJECT'
-  | 'TECHNICAL'
-  | 'BEHAVIORAL'
-  | 'DOMAIN';
+  'PRODUCT' | 'AI' | 'PROJECT' | 'TECHNICAL' | 'BEHAVIORAL' | 'DOMAIN';
 
 export interface CopilotSourceEvidence {
   text: string;
