@@ -4,9 +4,9 @@
 
 - [x] Preserve V1 dataset, `COPILOT_RESULTS.md` baseline and BC-01 through BC-07 unchanged.
 - [x] RED/GREEN diagnostic replay for only the seven V1 failures without persisting raw Provider output.
-- [ ] Classify each failure A–H with expected schema, sanitized actual shape, root cause and candidate fix.
+- [x] Classify each failure A–H with expected schema, sanitized actual shape, root cause and candidate fix.
 - [ ] Locate the single unsupported evidence and record whether it is ID, quote, ownership or semantic overreach.
-- [ ] Commit `COPILOT_V1_FAILURE_ANALYSIS.md` before changing Prompt or Schema.
+- [x] Commit `COPILOT_V1_FAILURE_ANALYSIS.md` before changing Prompt or Schema.
 
 ## V2 structured reliability
 

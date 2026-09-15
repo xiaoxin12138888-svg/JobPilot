@@ -1,0 +1,79 @@
+{
+  "datasetVersion": 1,
+  "runType": "V1_FAILURE_DIAGNOSTIC",
+  "promptVersions": {
+    "MATCH": "match-v1",
+    "RESUME_ADVICE": "resume-advice-v1",
+    "INTERVIEW_PREP": "interview-prep-v1"
+  },
+  "model": "[K12]gemini-3.5-flash",
+  "temperature": 0,
+  "timeoutSeconds": 60.0,
+  "sampleCount": 7,
+  "rawProviderOutputPersisted": false,
+  "samples": [
+    {
+      "id": "copilot-009",
+      "kind": "RESUME_ADVICE",
+      "expectedSchema": "object{highlight:GroundedItem[],possibleImprovement:string[],interviewFocus:GroundedItem[]}",
+      "failureType": "D_WRONG_TYPE",
+      "actualShape": "object{highlight:list,interviewFocus:list,possibleImprovement:list}",
+      "validationIssue": "possibleImprovement entries must be strings",
+      "latencyMs": 18513
+    },
+    {
+      "id": "copilot-010",
+      "kind": "RESUME_ADVICE",
+      "expectedSchema": "object{highlight:GroundedItem[],possibleImprovement:string[],interviewFocus:GroundedItem[]}",
+      "failureType": "D_WRONG_TYPE",
+      "actualShape": "object{highlight:list,interviewFocus:list,possibleImprovement:list}",
+      "validationIssue": "possibleImprovement entries must be strings",
+      "latencyMs": 40666
+    },
+    {
+      "id": "copilot-011",
+      "kind": "RESUME_ADVICE",
+      "expectedSchema": "object{highlight:GroundedItem[],possibleImprovement:string[],interviewFocus:GroundedItem[]}",
+      "failureType": "D_WRONG_TYPE",
+      "actualShape": "object{highlight:list,interviewFocus:list,possibleImprovement:list}",
+      "validationIssue": "possibleImprovement entries must be strings",
+      "latencyMs": 39878
+    },
+    {
+      "id": "copilot-012",
+      "kind": "RESUME_ADVICE",
+      "expectedSchema": "object{highlight:GroundedItem[],possibleImprovement:string[],interviewFocus:GroundedItem[]}",
+      "failureType": "D_WRONG_TYPE",
+      "actualShape": "object{highlight:list,interviewFocus:list,possibleImprovement:list}",
+      "validationIssue": "possibleImprovement entries must be strings",
+      "latencyMs": 23569
+    },
+    {
+      "id": "copilot-014",
+      "kind": "RESUME_ADVICE",
+      "expectedSchema": "object{highlight:GroundedItem[],possibleImprovement:string[],interviewFocus:GroundedItem[]}",
+      "failureType": "NO_FAILURE_REPRODUCED",
+      "actualShape": "object{highlight:list,interviewFocus:list,possibleImprovement:list}",
+      "validationIssue": "response passed the frozen V1 parser on diagnostic replay",
+      "latencyMs": 13513
+    },
+    {
+      "id": "copilot-017",
+      "kind": "INTERVIEW_PREP",
+      "expectedSchema": "object{possibleQuestions:Question[],review:{strengths:GroundedItem[],weaknesses:GroundedItem[],nextActions:string[]}}",
+      "failureType": "F_EVIDENCE_STRUCTURE",
+      "actualShape": "object{possibleQuestions:list,review:object}",
+      "validationIssue": "possibleQuestions[1].sourceEvidence evidence fields must be non-empty strings",
+      "latencyMs": 18852
+    },
+    {
+      "id": "copilot-019",
+      "kind": "INTERVIEW_PREP",
+      "expectedSchema": "object{possibleQuestions:Question[],review:{strengths:GroundedItem[],weaknesses:GroundedItem[],nextActions:string[]}}",
+      "failureType": "D_WRONG_TYPE",
+      "actualShape": "object{possibleQuestions:list,review:object}",
+      "validationIssue": "review.nextActions entries must be strings",
+      "latencyMs": 22131
+    }
+  ]
+}
