@@ -7,7 +7,8 @@
 > Phase 10 本地 PDF/DOCX Parse → Preview → Confirm 已完成实现、自动化门禁与虚构文件隔离浏览器
 > 验证；真实简历内容和合并验收仍等待项目负责人，尚未标记 PASS。
 
-> Phase 11 AI Job Copilot P0 已完成技术实现；真实 Provider 评测与 BOSS/牛客人工内容验收待完成。
+> Phase 11 AI Job Copilot P0/V2 已完成技术实现与真实虚构集评测；Provider 可用性使合并结果只有
+> 14/20，V2 BOSS/牛客人工验收待完成，当前仍为 `PHASE 11 BLOCKED`。
 
 ## 1. 运行时
 
@@ -73,7 +74,7 @@ Alembic revision `0001_job_application` 创建 `jobs` 和 `applications`；`0002
 存在 schema 2 记录时拒绝降级；`0008_interview_feedback` 为 Application 增加结果说明/淘汰原因，
 并新增 `interview_rounds` 与 `interview_questions`；`0009_autofill_profile` 新增 id 固定为 1 的
 `autofill_profiles`，`0010_profile_projects` 增加独立 projects JSON；`0011_copilot_records`
-增加 append-only Copilot 历史。Job 删除级联 Application、Interview、Question、JD Analysis、
+增加 append-only Copilot 历史，`0012_copilot_schema_v2` 允许旧 schema 1 与当前 schema 2 共存。Job 删除级联 Application、Interview、Question、JD Analysis、
 Evidence 和 Copilot；Round 删除级联 Question。被 Application 引用的 Resume 通过 RESTRICT
 和 service guard 保留，未引用 Resume 删除时级联其 Evidence。自动化测试必须显式传入临时数据库
 路径。
@@ -124,7 +125,9 @@ Copilot 复用同一 adapter，通过独立 `CopilotService` 与三份小型 Pro
 Resume Advice 和 Interview Prep。输入只含当前结构化岗位条件、明确选择的一个 Resume，或该
 Job 已有 Interview 记录；phone/email 在 Provider data 构造前删除。所有 source type/id/quote
 经 domain parser 验证后才 append-only 写入 `copilot_records`。输入指纹变化只在读取时标 stale；
-重新生成失败不覆盖历史结果。Copilot 不修改 Job、Resume、Application 或 Interview。
+重新生成失败不覆盖历史结果。V2 system prompt 显式携带当次 allowed source IDs；只在首次结构验证失败时
+使用原响应的内存副本向同一 Provider 发送一次仅结构修复的对话；不对 timeout/传输失败重试，
+不记录无效 raw response。Copilot 不修改 Job、Resume、Application 或 Interview。
 
 JD 服务仅构造 title/company/description/location/salaryText 输入。Evidence 服务只构造必要岗位
 上下文、当前非 stale 的硬性要求、加分项、职责、技能、经验、学历六类条件与用户当次确认的一个

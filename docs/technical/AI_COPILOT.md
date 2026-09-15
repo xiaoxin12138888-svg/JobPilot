@@ -17,9 +17,11 @@ Phase 11 P0 包含岗位匹配、简历准备和面试准备。它是 Job Detail
 ## 输出契约
 
 Match：`summary`、`strengths[]`、`gaps[]`、`suggestions[]`。strength 必须引用 RESUME；gap 必须引用
-JOB。Resume Advice：`highlight[]` 引用 RESUME，`possibleImprovement[]` 是 AI 建议，
-`interviewFocus[]` 引用 JOB。Interview Prep：`possibleQuestions[]` 分类固定为 PRODUCT、AI、PROJECT
-并引用 JOB；有面试记录时 `review.strengths[]/weaknesses[]` 引用 INTERVIEW，`nextActions[]` 为建议。
+JOB。Resume Advice：`highlight[]` 引用 RESUME，`possibleImprovement[]` 是 string[] AI 建议，
+`interviewFocus[]` 引用 JOB。Interview Prep：`possibleQuestions[]` 可使用 PRODUCT、AI、PROJECT、
+TECHNICAL、BEHAVIORAL、DOMAIN，但只能根据 JD 选择相关类别，非 AI 岗位不强制 AI；问题引用
+JOB。有面试记录时 `review.strengths[]/weaknesses[]` 引用 INTERVIEW，`nextActions[]` 为 string[]
+建议。
 
 Grounded item wire shape：
 
@@ -36,6 +38,16 @@ Grounded item wire shape：
 
 Source type 是 `RESUME | JOB | INTERVIEW`；INTERVIEW 仅用于复盘。所有字段 exact-key、长度和条数
 有界。source type/id/quote 任一不匹配，本次结果以 `AI_INVALID_RESPONSE` 失败且不持久化。
+当前生成使用 schema 2 与 `match-v2` / `resume-advice-v2` / `interview-prep-v2`；历史 schema 1
+结果仍可读。V2 将当次允许的 source IDs 显式加入 system instruction，不接受模型自创 ID。
+要求增加简历经历/成果的建议必须有“如果你确实有”类条件，否则只能建议学习、准备或核实。
+
+## 有界结构修复
+
+首次 content 只有在严格 Copilot parser 返回 `AI_INVALID_RESPONSE` 时才允许修复。最多一次、仍使用
+同一 Provider/模型/Prompt，并在单独 user repair message 中携带白名单 validator code，明确禁止新增
+claim 或 evidence。首次无效响应只在该请求内存中传回同一 Provider，不写数据库、文件或日志。
+timeout、Provider unavailable 和 provider envelope 失败不重试；第二次仍无效时立即返回脱敏错误。
 
 ## Persistence 与 stale
 
@@ -62,9 +74,25 @@ response、Provider URL 或 API Key。
 第三方 Provider；这是功能所需的显式外发，不能表述为“从不发送到第三方”。Provider 未配置或
 失败时，本地核心与历史结果仍可用。
 
+## Phase 11.1 安全复核
+
+- **Prompt Injection / 恶意 JD**：system instruction 与不可信 Job/Resume/Interview JSON 分离；输入中要求
+  改规则、泄露信息、编造经历或输出其他格式的文字仍按数据处理。虚构 injection 样本没有改变
+  contract 或生成匹配分。
+- **简历隐私**：Provider input 构造前移除 phone/email，不发送 Profile、其他简历、Application 状态、
+  文件名、Cookie 或账号数据。用户明确选中的最小简历文本仍会发给其配置的第三方 Provider，
+  不用“不上传简历”误导用户。
+- **Provider 失败**：timeout/unavailable/invalid 只返回稳定脱敏错误，不含 URL、Key、envelope 或 raw
+  response；失败不覆盖上次有效 Analysis，Job/Application/Resume/Interview 本地功能继续可用。
+- **AI 结果泄露**：只有经 exact schema、source ownership 和 quote grounding 验证的结果写入本地 SQLite；
+  无 telemetry、无远程同步、无 raw-response 日志。
+- **Remote upload**：不上传 PDF/DOCX 原文件，不访问招聘网站隐藏 API；仅在用户当次确认后向已配置
+  Provider 发送任务所需的脱敏纯文本。传输继续禁止系统代理和 redirect。
+
 ## 当前验收状态
 
-20 条 BOSS/牛客风格虚构 dataset、real-output-only runner、自动化 grounding/隐私/失败降级门禁
-已完成。2026-09-13 的评测进程未配置完整 Provider 三元组，因此真实 Provider run、latency、
-Schema/Evidence/Hallucination 内容指标和真实 BOSS/牛客人工验收均为 `NOT RUN`。不得填入推测值、
-以 Fake Provider 代替，或因此进入 Phase 12。
+20 条 BOSS/牛客风格虚构 dataset 与 real-output-only runner 已完成 V1/V2 真实运行。V2 三样本预检
+3/3 PASS；正式 run 的 Provider availability 为 14/20，first-pass schema 13/20，一条经修复后 final
+schema 14/20。收到的 14 条有效结果为 14/14 final schema、evidence 43/43，自动安全/相关性违规为 0。
+但合并 final 未达 19/20 验收门槛，V2 真实 BOSS/牛客六项人工验收待完成，因此当前为
+`PHASE 11 BLOCKED`。不得为提高数字删除失败样本、重跑挑选结果或进入 Phase 12。

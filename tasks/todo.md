@@ -5,29 +5,31 @@
 - [x] Preserve V1 dataset, `COPILOT_RESULTS.md` baseline and BC-01 through BC-07 unchanged.
 - [x] RED/GREEN diagnostic replay for only the seven V1 failures without persisting raw Provider output.
 - [x] Classify each failure A–H with expected schema, sanitized actual shape, root cause and candidate fix.
-- [ ] Locate the single unsupported evidence and record whether it is ID, quote, ownership or semantic overreach.
+- [ ] Locate the single unsupported V1 evidence and record whether it is ID, quote, ownership or semantic overreach; V1 did not persist per-sample attribution, so this remains unknowable without a prohibited raw replay.
 - [x] Commit `COPILOT_V1_FAILURE_ANALYSIS.md` before changing Prompt or Schema.
 
 ## V2 structured reliability
 
-- [ ] RED/GREEN separate `match-v2`, `resume-advice-v2` and `interview-prep-v2` JSON-only prompts.
-- [ ] Simplify only Schema fields proven unnecessary; keep evidence grounding unchanged or stronger.
-- [ ] RED/GREEN conditional suggestion safety and JD-driven interview categories.
-- [ ] RED/GREEN one structure-only retry for `AI_INVALID_RESPONSE`, maximum two Provider calls.
-- [ ] Record first-attempt/final status, retry count and latency without raw response or secrets.
+- [x] RED/GREEN separate `match-v2`, `resume-advice-v2` and `interview-prep-v2` JSON-only prompts.
+- [x] Simplify only Schema fields proven unnecessary; keep evidence grounding unchanged or stronger.
+- [x] RED/GREEN conditional suggestion safety and JD-driven interview categories.
+- [x] RED/GREEN one structure-only retry for `AI_INVALID_RESPONSE`, maximum two Provider calls.
+- [x] Record first-attempt/final status, retry count and latency without raw response or secrets.
 
 ## V2 evaluation and acceptance
 
-- [ ] Run 3-sample real Provider preflight; require 3/3 schema/evidence and safety/relevance PASS.
-- [ ] Freeze V2 against unchanged dataset v1, model, temperature 0 and timeout 60s.
-- [ ] Re-run the same 20 samples and compare every approved V1/V2 metric.
+- [x] Run 3-sample real Provider preflight; require 3/3 schema/evidence and safety/relevance PASS.
+- [x] Freeze V2 against unchanged dataset v1, model, temperature 0 and timeout 60s.
+- [x] Re-run the same 20 samples and compare every approved V1/V2 metric.
 - [ ] Re-run the original BOSS and Nowcoder six tasks; require at least 5/6 without systematic failure.
 - [ ] Obtain owner PASS/FAIL for all successful real-job outputs.
 - [ ] Run full regression/security/browser/documentation gates and stop before Phase 12.
 
-Current gate (2026-09-15): V1 invalid raw responses were intentionally not persisted, and the Codex process has
-no Provider configuration. Prompt V2 is therefore blocked until the diagnostic replay is run from the owner's
-configured Provider terminal.
+Current gate (2026-09-15): V2 preflight is 3/3, but the unchanged 20-sample run obtained usable Provider content
+for only 14/20 samples (five `AI_PROVIDER_UNAVAILABLE`, one `AI_TIMEOUT`). The 14 received results reached
+14/14 final schema and 43/43 grounding, with one bounded repair, but combined final 14/20 is below the frozen
+19/20 threshold. Real V2 BOSS/Nowcoder six-task owner acceptance and browser automation remain pending; Phase 11
+stays BLOCKED and Phase 12 is not started.
 
 ---
 

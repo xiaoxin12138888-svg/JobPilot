@@ -6,7 +6,8 @@
 > `0007_evidence_map_schema_v2` 允许旧 schema 1 与当前 schema 2 共存；
 > `0008_interview_feedback` 增加本地面试记录与 Application 结果字段；
 > `0009_autofill_profile` 增加 single-user 当前求职资料，`0010_profile_projects` 增加项目经历；
-> `0011_copilot_records` 增加 Phase 11 append-only Copilot 结果。
+> `0011_copilot_records` 增加 Phase 11 append-only Copilot 结果，`0012_copilot_schema_v2` 允许
+> Copilot schema 1/2 共存且不重写历史记录。
 > Phase 10 Local Resume Import 已完成实现和自动化，复用 `resume_versions` 与
 > `autofill_profiles`，不新增表或 migration；真实简历人工验收仍待完成。
 
@@ -184,7 +185,7 @@ Application。Extension 不持久化副本，且不消费或填写 projects。
 | `job_id` | String(36), NOT NULL, FK jobs.id ON DELETE CASCADE |
 | `resume_version_id` | String(36), nullable，不建立 FK |
 | `kind` | String(32), CHECK IN (`MATCH`, `RESUME_ADVICE`, `INTERVIEW_PREP`) |
-| `schema_version` | Integer, NOT NULL, CHECK = 1 |
+| `schema_version` | Integer, NOT NULL, CHECK IN (1, 2) |
 | `result_json` | Text, NOT NULL，已验证的 canonical JSON |
 | `input_fingerprint` | String(64), NOT NULL，最小 Provider input 的 SHA-256 |
 | `model` | String(200), NOT NULL |
@@ -199,6 +200,8 @@ context endpoint 按 `created_at`、`id` 倒序读取最新记录，by-id endpoi
 `isStale` 不持久化。读取时重建当前最小输入并比较 fingerprint；Job、JD Analysis、所选 Resume
 或 Interview 内容变化/缺失都会使旧记录 stale。Provider raw response、输入正文、错误详情和 API
 Key 不进入本表；只有通过 source type/id/quote grounding 与语言规则验证的结果可以写入。
+当前新生成写入 schema 2。旧 schema 1 记录保持原样可读；数据库中存在 schema 2 记录时，
+`0012` downgrade 会拒绝执行，避免丢弃可见历史。
 
 ## 11. Phase 10 atomic import
 

@@ -7,8 +7,9 @@
 > 2026-09-07 完成自动化、安全门禁与真实中国移动校招表单人工验收，状态为 PASS。
 > Phase 10 — Local Resume Import 已完成实现、自动化门禁与虚构文件隔离浏览器验收；真实 DOCX/PDF
 > 内容与合并验收仍由项目负责人完成，在此之前不得标记 PASS。
-> Phase 11 — AI Job Copilot P0 已完成技术实现和自动化门禁；真实 Provider 评测及 BOSS/牛客
-> 人工内容验收仍未完成，因此不得标记 PASS 或进入 Phase 12。
+> Phase 11 — AI Job Copilot P0/V2 已完成技术实现、真实三样本预检与 20 条评测。正式评测
+> 只有 14/20 Provider 请求获得有效响应，合并成功率未达 19/20；V2 BOSS/牛客人工内容验收仍待
+> 完成，因此不得标记 PASS 或进入 Phase 12。
 
 ## 1. 产品定位
 
@@ -277,14 +278,19 @@ Application、Evidence Map、Extension 或现有 Resume Version。
 
 Phase 11 P0 包含岗位匹配、简历准备和面试准备；岗位理解复用当前 JD Analysis。Match 的 strengths
 只引用 RESUME、gaps 只引用 JOB；Resume Advice 的 highlight 只引用 RESUME、interview focus
-只引用 JOB；Interview Prep 的三类问题只引用 JOB，复盘 strengths/weaknesses 只引用 INTERVIEW。
+只引用 JOB；Interview Prep 的岗位相关问题只引用 JOB，复盘 strengths/weaknesses 只引用 INTERVIEW。
 quote 经空白规范化后必须存在于声明的 source id，任何 source type/id/quote 错误都使本次生成以
 `AI_INVALID_RESPONSE` 失败且不持久化。
 
 用户每次生成前必须明确确认。传输前确定性移除 email/phone，只发送当前任务所需的最小
 Job/Resume/Interview 文本。gap 只能表述“当前资料/简历未发现”，面试问题只能表示“可能关注
-方向”；建议不得伪装为用户已有经历。每次成功生成 append-only 写入 input fingerprint、model、
+方向”；V2 面试类别为 `PRODUCT|AI|PROJECT|TECHNICAL|BEHAVIORAL|DOMAIN`，只按 JD 需要选择，
+非 AI 岗位不强制 AI 类别。建议不得伪装为用户已有经历；要求向简历增加经历时必须有“如果确实
+有”类真实性条件。每次成功生成 append-only 写入 input fingerprint、model、
 prompt version、result 和 created time；来源变化把历史结果标为 stale，失败不删除上次有效结果。
+
+V2 只对已收到但严格 parser 拒绝的结构响应进行最多一次修复请求，修复指令禁止新增 claim 或
+evidence。timeout 和 transport failure 不重试；第二次仍无效时立即失败且不持久化任何无效原文。
 
 本阶段不实现 P1 求职策略、聊天 Agent、长期记忆、RAG、评分、Offer 概率、自动简历改写、投递、
 消息或其他行动。

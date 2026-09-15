@@ -3,7 +3,8 @@
 > 状态：`GET /health`、Job/Application、BOSS/牛客 capture、Job Analysis、Resume Version、
 > Evidence Map、Interview、Feedback Summary、Autofill Profile、Local Resume Import 与 AI Job
 > Copilot contract 已由 ADR-018 冻结。Resume Import 实现和自动化已完成，等待真实简历人工验收；
-> Copilot 技术实现已完成，等待真实 Provider 评测与人工内容验收。JSON 字段使用
+> Copilot V2 技术实现和真实 synthetic evaluation 已完成，但 Provider 可用性使 final 只有 14/20，
+> 真实 BOSS/牛客 V2 人工内容验收待完成。JSON 字段使用
 > camelCase。
 
 ## 1. Runtime boundary
@@ -533,7 +534,7 @@ Interview Prep 请求：
     "jobId": "job-id",
     "resumeVersionId": "resume-id",
     "kind": "MATCH",
-    "schemaVersion": 1,
+    "schemaVersion": 2,
     "result": {
       "summary": "当前匹配判断",
       "strengths": [],
@@ -542,7 +543,7 @@ Interview Prep 请求：
     },
     "inputFingerprint": "64-char-sha256",
     "model": "configured-model",
-    "promptVersion": "match-v1",
+    "promptVersion": "match-v2",
     "isStale": false,
     "createdAt": "2026-09-13T00:00:00Z"
   }
@@ -562,6 +563,11 @@ append-only 新记录。GET 依据当前最小输入计算 `isStale`；来源缺
 stale。未配置、timeout 或 Provider 失败不修改已有记录，也不影响本地 Job/Resume/Application/
 Interview。POST 继续接受精确 loopback Web Origin、非 cross-site Fetch Metadata 与 JSON-only，
 不向 Extension 开放。
+
+V2 生成在 system instruction 中明确列出当次 allowed source IDs。如首次 Provider content 被严格 parser
+拒绝，API 最多对同一 Provider 进行一次仅结构修复；修复不得增加 claim/evidence。timeout、
+`AI_PROVIDER_UNAVAILABLE` 不重试，修复后仍无效依旧返回 `AI_INVALID_RESPONSE`。对外 endpoint、request 和
+result field 未改变；旧 schema 1 记录仍可读。
 
 ## 13. Errors
 

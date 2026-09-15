@@ -9,8 +9,10 @@ JobPilot 不替代招聘网站，不建设职位数据库，也不代表用户�
 
 项目已通过 **Phase 3 — Job & Application Domain Foundation**、**Phase 4 — BOSS Direct Job Capture**、**Phase 5 — Nowcoder Adapter & Shared Capture Contract**、**Phase 6 — JD Structured AI Analysis**、**Phase 8 — Interview Record & Feedback Loop** 与 **Phase 9 — Profile Vault & Safe Job Form Autofill**。Phase 9 已在真实中国移动校招表单完成 Scan → Preview → Confirm → Fill → 人工检查，填写 1/1 个确认字段且未触发 Submit/Continue。**Phase 10 — Local Resume Import** 已完成实现、自动化门禁和虚构文件隔离浏览器验收，当前等待项目负责人使用脱敏真实 DOCX/PDF 完成人工内容与合并验收，因此尚未标记 PASS。**Phase 7 — Resume Version & Evidence Map** 已实现，但真实语义质量验收仍为 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`。核心能力包括：
 
-**Phase 11 — AI Job Copilot** 的 P0 技术实现、严格 grounding、Web 状态与 20 条虚构评测集已完成；
-真实 Provider 评测和 BOSS/牛客内容人工验收尚未完成，因此尚未标记 PASS。
+**Phase 11 — AI Job Copilot** 的 P0 技术实现、V2 严格 grounding/单次结构修复和真实 20 条
+虚构评测已完成。V2 预检 3/3；正式评测中 Provider 完成 14/20，14 条有效响应最终全部
+通过 Schema/Evidence，但合并验收为 14/20，未达 19/20 门槛。因 Provider 可用性和 V2 真实
+BOSS/牛客人工验收尚未完成，当前仍为 `PHASE 11 BLOCKED`。
 
 - React Web：本机 API 状态、岗位库、纯文本简历版本、本地 PDF/DOCX 导入预览、本地求职资料、岗位详情/编辑/删除、投递状态/使用简历记录、面试轮次与题目、自我复盘、Application 结果记录、事实型求职复盘，以及可选 JD Analysis/Evidence Map/AI Copilot；
 - Chrome Extension：使用 `activeTab` + `scripting` 的用户主动 Popup，支持 BOSS/牛客岗位采集与当前申请表的 Scan → Preview → Confirm → Fill；无后台进程，唯一 host permission 是 `http://127.0.0.1:8000/*`；
@@ -44,7 +46,8 @@ Phase 11 P0 在岗位详情提供岗位理解、岗位匹配、简历准备和�
 email/phone 会在传输前删除。grounded 结论必须引用对应本地原文，非法 quote、错误 source、
 能力断言或确定性面试问题不会持久化。每次重新生成追加一条带 input fingerprint、model、prompt
 version 和时间的记录；来源变化只标 stale，失败保留上一次有效结果。Copilot 不修改任何本地事实
-或执行求职动作。
+或执行求职动作。V2 对结构验证失败最多请求同一 Provider 修复一次，不对 timeout/
+传输失败重试，不放宽 evidence，也不保存无效原始响应。
 
 ## 本地优先意味着什么
 

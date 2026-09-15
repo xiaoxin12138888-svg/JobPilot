@@ -38,6 +38,17 @@ and retain first-pass metrics independently from final metrics.
 - **Real acceptance:** same six tasks reach at least 5/6 without a systematic same-class failure; owner judges
   successful content.
 
+## 2026-09-15 execution status
+
+- V1 failure diagnostics: complete; five wrong-type string arrays, one evidence-structure failure and one
+  non-reproduced response were recorded without invalid raw output.
+- V2 prompt/schema/retry: complete; schema 1 remains readable, schema 2 is current, and repair is capped at one.
+- V2 preflight: 3/3 final schema, 10/10 evidence, no automated safety/relevance violation.
+- V2 20-sample run: Provider usable content 14/20; first-pass 13/20; final 14/20 after one repair; evidence
+  43/43; five unavailable and one timeout. The frozen 19/20 combined threshold was not met.
+- Automated regression and build gates pass. Browser automation is blocked by the local request-header policy;
+  V2 real BOSS/Nowcoder owner acceptance remains required. Verdict stays `PHASE 11 BLOCKED`.
+
 ## Stop conditions
 
 - Do not change Prompt or Schema before the real V1 failure classifications exist.

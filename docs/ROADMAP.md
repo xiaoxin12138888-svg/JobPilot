@@ -7,8 +7,9 @@
 > 中国移动校招表单人工验收并标记 PASS。BOSS 与牛客保持 `SUPPORTED — V1`。
 > Phase 10 — Local Resume Import 已完成实现、自动化门禁和虚构文件隔离浏览器验收，等待真实
 > DOCX/PDF 人工内容与合并验收；此前不得标记 PASS。
-> Phase 11 — AI Job Copilot P0 已完成技术实现、严格 grounding 和 20 条虚构评测数据；Provider
-> 当前未配置，真实评测与 BOSS/牛客人工内容验收均为 NOT RUN，因此不得标记 PASS 或进入 Phase 12。
+> Phase 11 — AI Job Copilot P0/V2 已完成技术实现、三样本预检和真实 20 条虚构集评测。Provider
+> 完成 14/20，收到的 14 条结果最终均通过 Schema/Evidence，但合并结果未达 19/20 门槛；V2
+> BOSS/牛客人工验收待完成，因此不得标记 PASS 或进入 Phase 12。
 
 ## 1. Global gates
 
@@ -163,10 +164,11 @@ P0 只在 Job Detail 交付岗位匹配、简历准备与面试准备；岗位�
 虚构经历或确定性面试问题稳定拒绝。结果 append-only、fingerprinted、stale-aware；失败保留上次
 有效结果且不影响任何本地核心。
 
-20 条 BOSS/牛客风格虚构数据与 real-output-only runner 已就绪。当前 Provider 为
-`NOT_CONFIGURED`，所以 Schema、Evidence、Hallucination、内容质量和 latency 指标均保持
-`NOT RUN`，不以 Fake Provider 或 schema 单测冒充真实评测。只有真实 run 和负责人对真实 BOSS/
-牛客内容验收完成后才能标记 Phase 11 PASS。
+20 条 BOSS/牛客风格虚构数据已使用 `[K12]gemini-3.5-flash`、temperature 0 和 60s timeout
+完成 V1/V2 真实评测。V2 预检 3/3；正式 run 的 Provider availability 为 14/20，first-pass schema
+为 13/20，一条经结构修复后 final schema 为 14/20。有效结果 evidence 43/43，自动检出的 unsupported、
+错误 gap、虚构建议、过度确定和错误 AI category 均为 0。由于合并 final 未达 19/20 且 V2 真实
+BOSS/牛客验收待完成，Phase 11 继续 `BLOCKED`。
 
 Phase 11 不包含 P1 求职策略、Chat Agent、长期记忆、RAG/embedding/vector DB、评分/Offer 概率、
 自动改写简历、自动投递、自动消息或招聘网站操作。
