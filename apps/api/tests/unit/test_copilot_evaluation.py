@@ -6,6 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from jobpilot_api.application.providers import CopilotRepairRequest
 from jobpilot_api.domain.copilot import CopilotInput, CopilotKind, CopilotSource
 
 
@@ -162,6 +163,147 @@ def test_copilot_evaluator_counts_all_sources_when_source_ids_repeat() -> None:
     )
 
     assert functions["_evidence_counts"](raw_content, copilot_input) == (3, 3)
+
+
+def test_v2_evaluator_records_first_pass_and_one_successful_repair_without_raw_output() -> None:
+    script_path = Path(__file__).resolve().parents[2] / "scripts" / "evaluate_copilot.py"
+    functions = runpy.run_path(str(script_path))
+    invalid_marker = "PRIVATE_INVALID_PROVIDER_RESPONSE"
+    valid = json.dumps(
+        {
+            "summary": "匹配结论",
+            "strengths": [
+                {
+                    "text": "具备需求分析经历",
+                    "sourceEvidence": {
+                        "text": "负责用户调研",
+                        "sourceType": "RESUME",
+                        "sourceId": "resume-1",
+                    },
+                }
+            ],
+            "gaps": [],
+            "suggestions": ["准备需求分析案例"],
+        },
+        ensure_ascii=False,
+    )
+
+    class Provider:
+        model = "fictional-model"
+
+        def __init__(self) -> None:
+            self.calls: list[CopilotRepairRequest | None] = []
+            self.responses = [invalid_marker, valid]
+
+        def generate_copilot(
+            self,
+            _copilot_input: CopilotInput,
+            *,
+            system_instruction: str,
+            repair: CopilotRepairRequest | None = None,
+        ) -> str:
+            assert "ALLOWED_SOURCE_IDS_JSON" in system_instruction
+            self.calls.append(repair)
+            return self.responses.pop(0)
+
+    provider = Provider()
+    entry = functions["_evaluate_sample"](
+        {
+            "id": "copilot-test",
+            "kind": "MATCH",
+            "title": "产品经理",
+            "jobSources": [{"id": "job-1", "text": "负责需求分析"}],
+            "resume": {"id": "resume-1", "text": "负责用户调研"},
+            "interviews": [],
+        },
+        provider,
+    )
+
+    assert entry["firstPassSchemaValid"] is False
+    assert entry["finalSchemaValid"] is True
+    assert entry["retryCount"] == 1
+    assert entry["attemptCount"] == 2
+    assert entry["evidence"] == {"grounded": 1, "provided": 1}
+    assert provider.calls[0] is None
+    assert provider.calls[1] is not None
+    assert provider.calls[1].validator_error == "INVALID_JSON"
+    assert invalid_marker not in json.dumps(entry, ensure_ascii=False)
+
+
+def test_v2_evaluator_stops_after_one_failed_repair_and_keeps_only_sanitized_error() -> None:
+    script_path = Path(__file__).resolve().parents[2] / "scripts" / "evaluate_copilot.py"
+    functions = runpy.run_path(str(script_path))
+    private_markers = ["PRIVATE_FIRST_RESPONSE", "PRIVATE_SECOND_RESPONSE"]
+
+    class Provider:
+        model = "fictional-model"
+
+        def __init__(self) -> None:
+            self.repairs: list[CopilotRepairRequest | None] = []
+
+        def generate_copilot(
+            self,
+            _copilot_input: CopilotInput,
+            *,
+            system_instruction: str,
+            repair: CopilotRepairRequest | None = None,
+        ) -> str:
+            self.repairs.append(repair)
+            return private_markers[len(self.repairs) - 1]
+
+    provider = Provider()
+    entry = functions["_evaluate_sample"](
+        {
+            "id": "copilot-test",
+            "kind": "MATCH",
+            "title": "产品经理",
+            "jobSources": [{"id": "job-1", "text": "负责需求分析"}],
+            "resume": {"id": "resume-1", "text": "负责用户调研"},
+            "interviews": [],
+        },
+        provider,
+    )
+
+    assert entry["firstPassSchemaValid"] is False
+    assert entry["finalSchemaValid"] is False
+    assert entry["retryCount"] == 1
+    assert entry["attemptCount"] == 2
+    assert entry["errorCode"] == "AI_INVALID_RESPONSE"
+    assert len(provider.repairs) == 2
+    serialized = json.dumps(entry, ensure_ascii=False)
+    assert all(marker not in serialized for marker in private_markers)
+
+
+def test_v2_preflight_selects_one_sample_per_kind_and_requires_every_gate() -> None:
+    script_path = Path(__file__).resolve().parents[2] / "scripts" / "evaluate_copilot.py"
+    functions = runpy.run_path(str(script_path))
+    samples = [
+        {"id": "copilot-001", "kind": "MATCH"},
+        {"id": "copilot-009", "kind": "RESUME_ADVICE"},
+        {"id": "copilot-017", "kind": "INTERVIEW_PREP"},
+        {"id": "copilot-020", "kind": "INTERVIEW_PREP"},
+    ]
+    selected = functions["_preflight_samples"](samples)
+    passing_entries = [
+        {
+            "finalSchemaValid": True,
+            "evidence": {"grounded": 2, "provided": 2},
+            "gapLanguageViolations": 0,
+            "interviewCertaintyViolations": 0,
+            "suggestionSafetyViolations": 0,
+            "interviewCategoryRelevanceViolations": 0,
+        }
+        for _sample in selected
+    ]
+
+    assert [sample["id"] for sample in selected] == [
+        "copilot-001",
+        "copilot-009",
+        "copilot-017",
+    ]
+    assert functions["_preflight_passes"](passing_entries) is True
+    passing_entries[2]["interviewCategoryRelevanceViolations"] = 1
+    assert functions["_preflight_passes"](passing_entries) is False
 
 
 def test_unsafe_language_counts_tolerates_non_array_provider_fields() -> None:

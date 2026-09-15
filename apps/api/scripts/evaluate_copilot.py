@@ -15,16 +15,21 @@ from jobpilot_api.application.copilot import (  # noqa: E402
     MATCH_PROMPT_V1,
     PROMPTS,
     RESUME_ADVICE_PROMPT_V1,
+    copilot_instruction,
 )
+from jobpilot_api.application.providers import CopilotRepairRequest  # noqa: E402
 from jobpilot_api.config import ApiSettings  # noqa: E402
 from jobpilot_api.domain.copilot import (  # noqa: E402
+    COPILOT_SCHEMA_VERSION,
+    EXPERIENCE_ADDITION,
+    TRUTH_CONDITION,
     CopilotInput,
     CopilotKind,
     CopilotSource,
     SourceType,
     parse_copilot_result,
 )
-from jobpilot_api.domain.errors import DomainError  # noqa: E402
+from jobpilot_api.domain.errors import AnalysisInvalidResponseError, DomainError  # noqa: E402
 from jobpilot_api.infrastructure.ai.openai_compatible import (  # noqa: E402
     OpenAICompatibleJDAnalysisProvider,
 )
@@ -70,6 +75,8 @@ KNOWN_RESPONSE_FIELDS = {
     "weaknesses",
 }
 V1_INTERVIEW_CATEGORIES = {"PRODUCT", "AI", "PROJECT"}
+V2_PREFLIGHT_IDS = ("copilot-001", "copilot-009", "copilot-017")
+AI_JOB_TEXT = re.compile(r"(?i)(?:\bAI\b|\bLLM\b|大模型|人工智能|机器学习|深度学习|算法|模型)")
 
 
 def main() -> int:
@@ -80,6 +87,16 @@ def main() -> int:
         "--diagnose-failures-from",
         type=Path,
         help="Replay only AI_INVALID_RESPONSE samples from a frozen V1 run",
+    )
+    parser.add_argument(
+        "--preflight",
+        action="store_true",
+        help="Run the fixed three-sample V2 gate before a full evaluation",
+    )
+    parser.add_argument(
+        "--preflight-from",
+        type=Path,
+        help="Require a passing V2 preflight produced with the same model and dataset",
     )
     args = parser.parse_args()
 
@@ -121,58 +138,55 @@ def main() -> int:
             args.output,
         )
 
-    entries: list[dict[str, Any]] = []
-    bad_cases: list[dict[str, str]] = []
-    evidence_provided = 0
-    evidence_grounded = 0
-    gap_language_violations = 0
-    certainty_violations = 0
-    schema_valid = 0
-
-    for sample in samples:
-        kind = CopilotKind(sample["kind"])
-        copilot_input = _input_from_sample(sample, kind)
-        entry: dict[str, Any] = {
-            "id": sample["id"],
-            "kind": kind.value,
-            "schemaValid": False,
-        }
-        started_at = time.perf_counter()
+    if args.preflight and args.preflight_from is not None:
+        print("BLOCKED: use either --preflight or --preflight-from", file=sys.stderr)
+        return 2
+    if args.preflight:
+        selected_samples = _preflight_samples(samples)
+        run_type = "V2_PREFLIGHT"
+    else:
+        if args.preflight_from is None:
+            print("BLOCKED: a passing V2 --preflight-from file is required", file=sys.stderr)
+            return 2
         try:
-            raw_content = provider.generate_copilot(
-                copilot_input,
-                system_instruction=PROMPTS[kind][1],
+            _validate_preflight(
+                args.preflight_from,
+                dataset_version=dataset["datasetVersion"],
+                model=settings.model,
+                timeout_seconds=settings.timeout_seconds,
             )
-            provided, grounded = _evidence_counts(raw_content, copilot_input)
-            evidence_provided += provided
-            evidence_grounded += grounded
-            gaps, questions = _unsafe_language_counts(raw_content)
-            gap_language_violations += gaps
-            certainty_violations += questions
-            result = parse_copilot_result(kind, raw_content, copilot_input)
-            entry["schemaValid"] = True
-            entry["result"] = result.as_dict()
-            schema_valid += 1
-        except DomainError as error:
-            entry["errorCode"] = error.code
-            bad_cases.append(
-                {
-                    "id": sample["id"],
-                    "kind": kind.value,
-                    "reason": error.code,
-                }
-            )
-        entry["latencyMs"] = round((time.perf_counter() - started_at) * 1000)
+        except (json.JSONDecodeError, OSError, ValueError) as error:
+            print(f"BLOCKED: {error}", file=sys.stderr)
+            return 2
+        selected_samples = samples
+        run_type = "V2_REAL_PROVIDER_OUTPUT_ONLY"
+
+    entries = []
+    for sample in selected_samples:
+        entry = _evaluate_sample(sample, provider)
         print(
-            f"{entry['id']}: {'PASS' if entry['schemaValid'] else 'FAIL'} "
-            f"({entry['latencyMs']} ms)",
+            f"{entry['id']}: {'PASS' if entry['finalSchemaValid'] else 'FAIL'} "
+            f"(first={entry['firstAttemptLatencyMs']} ms, total={entry['totalLatencyMs']} ms, "
+            f"retry={entry['retryCount']})",
             flush=True,
         )
         entries.append(entry)
 
+    metrics = _aggregate_metrics(entries)
+    bad_cases = [
+        {
+            "id": entry["id"],
+            "kind": entry["kind"],
+            "reason": _entry_failure_reason(entry),
+        }
+        for entry in entries
+        if _entry_failure_reason(entry) is not None
+    ]
+    preflight_passed = _preflight_passes(entries) if args.preflight else None
+
     output = {
         "datasetVersion": dataset["datasetVersion"],
-        "runType": "REAL_PROVIDER_OUTPUT_ONLY",
+        "runType": run_type,
         "promptVersions": {
             kind.value: PROMPTS[kind][0]
             for kind in (
@@ -181,21 +195,12 @@ def main() -> int:
                 CopilotKind.INTERVIEW_PREP,
             )
         },
-        "schemaVersion": 1,
+        "schemaVersion": COPILOT_SCHEMA_VERSION,
         "model": settings.model,
         "temperature": 0,
         "timeoutSeconds": settings.timeout_seconds,
-        "sampleCount": len(samples),
-        "metrics": {
-            "schemaSuccess": {"valid": schema_valid, "total": len(samples)},
-            "evidenceGrounding": {
-                "grounded": evidence_grounded,
-                "provided": evidence_provided,
-            },
-            "unsupportedHallucinationCount": evidence_provided - evidence_grounded,
-            "gapLanguageViolations": gap_language_violations,
-            "interviewCertaintyViolations": certainty_violations,
-        },
+        "sampleCount": len(selected_samples),
+        "metrics": metrics,
         "humanContentReview": {
             "status": "NOT_RUN",
             "dimensions": ["summary usefulness", "suggestion usefulness", "question relevance"],
@@ -203,12 +208,196 @@ def main() -> int:
         "badCases": bad_cases,
         "samples": entries,
     }
+    if preflight_passed is not None:
+        output["preflightPassed"] = preflight_passed
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
         json.dumps(output, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
-    return 0
+    return 0 if preflight_passed is not False else 1
+
+
+def _evaluate_sample(
+    sample: dict[str, Any],
+    provider: Any,
+) -> dict[str, Any]:
+    kind = CopilotKind(sample["kind"])
+    copilot_input = _input_from_sample(sample, kind)
+    system_instruction = copilot_instruction(PROMPTS[kind][1], copilot_input)
+    entry: dict[str, Any] = {
+        "id": sample["id"],
+        "kind": kind.value,
+        "firstPassSchemaValid": False,
+        "finalSchemaValid": False,
+        "schemaValid": False,
+        "attemptCount": 1,
+        "retryCount": 0,
+        "evidence": {"grounded": 0, "provided": 0},
+        "unsupportedHallucinationCount": 0,
+        "gapLanguageViolations": 0,
+        "interviewCertaintyViolations": 0,
+        "suggestionSafetyViolations": 0,
+        "interviewCategoryRelevanceViolations": 0,
+    }
+    total_started_at = time.perf_counter()
+    attempt_started_at = time.perf_counter()
+    try:
+        raw_content = provider.generate_copilot(
+            copilot_input,
+            system_instruction=system_instruction,
+        )
+    except DomainError as error:
+        entry["firstAttemptLatencyMs"] = round((time.perf_counter() - attempt_started_at) * 1000)
+        entry["errorCode"] = error.code
+        return _finish_entry(entry, total_started_at)
+    entry["firstAttemptLatencyMs"] = round((time.perf_counter() - attempt_started_at) * 1000)
+
+    try:
+        result = parse_copilot_result(kind, raw_content, copilot_input)
+        entry["firstPassSchemaValid"] = True
+    except AnalysisInvalidResponseError as first_error:
+        entry["firstPassErrorCode"] = first_error.code
+        entry["retryCount"] = 1
+        entry["attemptCount"] = 2
+        try:
+            raw_content = provider.generate_copilot(
+                copilot_input,
+                system_instruction=system_instruction,
+                repair=CopilotRepairRequest(
+                    previous_response=raw_content,
+                    validator_error=first_error.diagnostic_code,
+                ),
+            )
+            result = parse_copilot_result(kind, raw_content, copilot_input)
+        except DomainError as final_error:
+            entry["errorCode"] = final_error.code
+            return _finish_entry(entry, total_started_at)
+
+    provided, grounded = _evidence_counts(raw_content, copilot_input)
+    gap_violations, certainty_violations = _unsafe_language_counts(raw_content)
+    suggestion_violations = _suggestion_safety_violations(raw_content, kind)
+    category_violations = _interview_category_relevance_violations(
+        raw_content,
+        copilot_input,
+        kind,
+    )
+    entry.update(
+        {
+            "finalSchemaValid": True,
+            "schemaValid": True,
+            "evidence": {"grounded": grounded, "provided": provided},
+            "unsupportedHallucinationCount": provided - grounded,
+            "gapLanguageViolations": gap_violations,
+            "interviewCertaintyViolations": certainty_violations,
+            "suggestionSafetyViolations": suggestion_violations,
+            "interviewCategoryRelevanceViolations": category_violations,
+            "result": result.as_dict(),
+        }
+    )
+    return _finish_entry(entry, total_started_at)
+
+
+def _finish_entry(entry: dict[str, Any], started_at: float) -> dict[str, Any]:
+    entry["totalLatencyMs"] = round((time.perf_counter() - started_at) * 1000)
+    entry["latencyMs"] = entry["totalLatencyMs"]
+    return entry
+
+
+def _preflight_samples(samples: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    selected = {sample.get("id"): sample for sample in samples}
+    if any(sample_id not in selected for sample_id in V2_PREFLIGHT_IDS):
+        raise ValueError("dataset does not contain the fixed V2 preflight samples")
+    result = [selected[sample_id] for sample_id in V2_PREFLIGHT_IDS]
+    if {sample["kind"] for sample in result} != {kind.value for kind in CopilotKind}:
+        raise ValueError("V2 preflight must contain one sample per Copilot kind")
+    return result
+
+
+def _preflight_passes(entries: list[dict[str, Any]]) -> bool:
+    return len(entries) == 3 and all(
+        entry.get("finalSchemaValid") is True
+        and entry.get("evidence", {}).get("provided", 0) > 0
+        and entry.get("evidence", {}).get("grounded") == entry.get("evidence", {}).get("provided")
+        and entry.get("gapLanguageViolations") == 0
+        and entry.get("interviewCertaintyViolations") == 0
+        and entry.get("suggestionSafetyViolations") == 0
+        and entry.get("interviewCategoryRelevanceViolations") == 0
+        for entry in entries
+    )
+
+
+def _validate_preflight(
+    path: Path,
+    *,
+    dataset_version: int,
+    model: str,
+    timeout_seconds: float,
+) -> None:
+    preflight = json.loads(path.read_text(encoding="utf-8"))
+    expected_prompts = {kind.value: PROMPTS[kind][0] for kind in CopilotKind}
+    if (
+        preflight.get("runType") != "V2_PREFLIGHT"
+        or preflight.get("datasetVersion") != dataset_version
+        or preflight.get("promptVersions") != expected_prompts
+        or preflight.get("schemaVersion") != COPILOT_SCHEMA_VERSION
+        or preflight.get("model") != model
+        or preflight.get("timeoutSeconds") != timeout_seconds
+        or preflight.get("sampleCount") != 3
+        or preflight.get("preflightPassed") is not True
+    ):
+        raise ValueError("preflight did not pass with the current V2 evaluation configuration")
+
+
+def _aggregate_metrics(entries: list[dict[str, Any]]) -> dict[str, Any]:
+    total = len(entries)
+    evidence_provided = sum(entry["evidence"]["provided"] for entry in entries)
+    evidence_grounded = sum(entry["evidence"]["grounded"] for entry in entries)
+    return {
+        "firstPassSchemaSuccess": {
+            "valid": sum(entry["firstPassSchemaValid"] for entry in entries),
+            "total": total,
+        },
+        "finalSchemaSuccess": {
+            "valid": sum(entry["finalSchemaValid"] for entry in entries),
+            "total": total,
+        },
+        "repairUsage": {
+            "samplesRetried": sum(entry["retryCount"] for entry in entries),
+            "total": total,
+        },
+        "evidenceGrounding": {"grounded": evidence_grounded, "provided": evidence_provided},
+        "unsupportedHallucinationCount": sum(
+            entry["unsupportedHallucinationCount"] for entry in entries
+        ),
+        "gapLanguageViolations": sum(entry["gapLanguageViolations"] for entry in entries),
+        "interviewCertaintyViolations": sum(
+            entry["interviewCertaintyViolations"] for entry in entries
+        ),
+        "suggestionSafetyViolations": sum(entry["suggestionSafetyViolations"] for entry in entries),
+        "interviewCategoryRelevanceViolations": sum(
+            entry["interviewCategoryRelevanceViolations"] for entry in entries
+        ),
+        "latencyMs": {
+            "total": sum(entry["totalLatencyMs"] for entry in entries),
+            "maximum": max((entry["totalLatencyMs"] for entry in entries), default=0),
+        },
+    }
+
+
+def _entry_failure_reason(entry: dict[str, Any]) -> str | None:
+    if not entry["finalSchemaValid"]:
+        return entry.get("errorCode", "AI_INVALID_RESPONSE")
+    for field in (
+        "unsupportedHallucinationCount",
+        "gapLanguageViolations",
+        "interviewCertaintyViolations",
+        "suggestionSafetyViolations",
+        "interviewCategoryRelevanceViolations",
+    ):
+        if entry[field]:
+            return field
+    return None
 
 
 def _run_failure_diagnostics(
@@ -393,6 +582,53 @@ def _unsafe_language_counts(raw_content: str) -> tuple[int, int]:
         for item in questions
     )
     return gap_violations, certainty_violations
+
+
+def _suggestion_safety_violations(raw_content: str, kind: CopilotKind) -> int:
+    try:
+        payload = json.loads(raw_content)
+    except (json.JSONDecodeError, TypeError):
+        return 0
+    if not isinstance(payload, dict):
+        return 0
+    if kind == CopilotKind.MATCH:
+        suggestions = payload.get("suggestions", [])
+    elif kind == CopilotKind.RESUME_ADVICE:
+        suggestions = payload.get("possibleImprovement", [])
+    else:
+        return 0
+    if not isinstance(suggestions, list):
+        return 0
+    return sum(
+        isinstance(item, str)
+        and EXPERIENCE_ADDITION.search(item) is not None
+        and TRUTH_CONDITION.search(item) is None
+        for item in suggestions
+    )
+
+
+def _interview_category_relevance_violations(
+    raw_content: str,
+    copilot_input: CopilotInput,
+    kind: CopilotKind,
+) -> int:
+    if kind != CopilotKind.INTERVIEW_PREP:
+        return 0
+    try:
+        payload = json.loads(raw_content)
+    except (json.JSONDecodeError, TypeError):
+        return 0
+    if not isinstance(payload, dict):
+        return 0
+    questions = payload.get("possibleQuestions", [])
+    if not isinstance(questions, list):
+        return 0
+    job_mentions_ai = any(AI_JOB_TEXT.search(source.text) for source in copilot_input.job_sources)
+    if job_mentions_ai:
+        return 0
+    return sum(
+        isinstance(question, dict) and question.get("category") == "AI" for question in questions
+    )
 
 
 def _failure_diagnostic(
