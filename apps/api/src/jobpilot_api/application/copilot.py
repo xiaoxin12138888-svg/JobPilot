@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 
 from jobpilot_api.application.jd_analysis import JDAnalysisService
-from jobpilot_api.application.providers import CopilotProvider
+from jobpilot_api.application.providers import CopilotProvider, CopilotRepairRequest
 from jobpilot_api.application.repositories import (
     ApplicationRepository,
     CopilotRepository,
@@ -19,6 +20,7 @@ from jobpilot_api.domain.copilot import (
     parse_copilot_result,
 )
 from jobpilot_api.domain.errors import (
+    AnalysisInvalidResponseError,
     AnalysisNotConfiguredError,
     AnalysisProviderUnavailableError,
     AnalysisTimeoutError,
@@ -191,17 +193,21 @@ class CopilotService:
         if self._provider is None:
             raise AnalysisNotConfiguredError("AI 服务未配置")
         input_data = self._build_input(job_id, kind, resume_version_id)
-        prompt_version, system_instruction = PROMPTS[kind]
+        prompt_version, base_instruction = PROMPTS[kind]
+        system_instruction = copilot_instruction(base_instruction, input_data)
+        raw_content = self._generate_provider(input_data, system_instruction=system_instruction)
         try:
-            raw_content = self._provider.generate_copilot(
+            result = parse_copilot_result(kind, raw_content, input_data)
+        except AnalysisInvalidResponseError as first_error:
+            repaired_content = self._generate_provider(
                 input_data,
                 system_instruction=system_instruction,
+                repair=CopilotRepairRequest(
+                    previous_response=raw_content,
+                    validator_error=first_error.diagnostic_code,
+                ),
             )
-        except AnalysisTimeoutError:
-            raise AnalysisTimeoutError("AI 生成超时，请稍后重试") from None
-        except AnalysisProviderUnavailableError:
-            raise AnalysisProviderUnavailableError("AI Copilot 暂时不可用，请稍后重试") from None
-        result = parse_copilot_result(kind, raw_content, input_data)
+            result = parse_copilot_result(kind, repaired_content, input_data)
         record = self._repository.create(
             job_id=job_id,
             resume_version_id=resume_version_id,
@@ -212,6 +218,25 @@ class CopilotService:
             prompt_version=prompt_version,
         )
         return CopilotState(is_configured=True, record=record, is_stale=False)
+
+    def _generate_provider(
+        self,
+        input_data: CopilotInput,
+        *,
+        system_instruction: str,
+        repair: CopilotRepairRequest | None = None,
+    ) -> str:
+        assert self._provider is not None
+        try:
+            return self._provider.generate_copilot(
+                input_data,
+                system_instruction=system_instruction,
+                repair=repair,
+            )
+        except AnalysisTimeoutError:
+            raise AnalysisTimeoutError("AI 生成超时，请稍后重试") from None
+        except AnalysisProviderUnavailableError:
+            raise AnalysisProviderUnavailableError("AI Copilot 暂时不可用，请稍后重试") from None
 
     def _state(self, record: CopilotRecord | None) -> CopilotState:
         return CopilotState(
@@ -331,3 +356,15 @@ def _interview_text(detail: InterviewRoundDetail) -> str:
         if question.note:
             parts.append(f"题目记录：{question.note}")
     return "\n".join(parts)
+
+
+def copilot_instruction(base_instruction: str, input_data: CopilotInput) -> str:
+    allowed_source_ids = [source.id for source in input_data.job_sources]
+    if input_data.resume_source is not None:
+        allowed_source_ids.append(input_data.resume_source.id)
+    allowed_source_ids.extend(source.id for source in input_data.interview_sources)
+    unique_ids = tuple(dict.fromkeys(allowed_source_ids))
+    return (
+        f"{base_instruction}\n\nALLOWED_SOURCE_IDS_JSON: "
+        f"{json.dumps(unique_ids, ensure_ascii=False, separators=(',', ':'))}"
+    )

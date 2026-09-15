@@ -8,6 +8,7 @@ from typing import Any
 
 import pytest
 
+from jobpilot_api.application.providers import CopilotRepairRequest
 from jobpilot_api.config import LLMSettings
 from jobpilot_api.domain.copilot import CopilotInput, CopilotKind, CopilotSource
 from jobpilot_api.domain.errors import (
@@ -168,6 +169,48 @@ def test_copilot_provider_uses_stable_timeout_error_without_raw_details() -> Non
 
     assert "raw provider timeout details" not in str(captured.value)
     assert "local-test-key" not in str(captured.value)
+
+
+def test_copilot_provider_sends_structure_repair_as_bounded_conversation() -> None:
+    content = '{"summary":"repaired"}'
+    opener = StubOpener(
+        StubResponse(json.dumps({"choices": [{"message": {"content": content}}]}).encode())
+    )
+    provider = OpenAICompatibleJDAnalysisProvider(_settings(), opener=opener)
+    copilot_input = CopilotInput.create(
+        kind=CopilotKind.MATCH,
+        title="产品经理",
+        job_sources=(CopilotSource("job-id", "负责产品需求分析"),),
+        resume_source=CopilotSource("resume-id", "参与需求分析"),
+    )
+    invalid = '{"summary":"incomplete"}'
+
+    assert (
+        provider.generate_copilot(
+            copilot_input,
+            system_instruction="SYSTEM-BOUNDARY",
+            repair=CopilotRepairRequest(
+                previous_response=invalid,
+                validator_error="SCHEMA_MISMATCH",
+            ),
+        )
+        == content
+    )
+
+    payload = json.loads(opener.request.data)
+    assert [message["role"] for message in payload["messages"]] == [
+        "system",
+        "user",
+        "assistant",
+        "user",
+    ]
+    assert payload["messages"][0]["content"] == "SYSTEM-BOUNDARY"
+    assert payload["messages"][2]["content"] == invalid
+    assert "SCHEMA_MISMATCH" in payload["messages"][3]["content"]
+    assert "Do not add new claims" in payload["messages"][3]["content"]
+    assert "Do not add new evidence" in payload["messages"][3]["content"]
+    assert "Return JSON only" in payload["messages"][3]["content"]
+    assert invalid not in payload["messages"][0]["content"]
 
 
 def test_provider_does_not_forward_api_key_across_redirects() -> None:

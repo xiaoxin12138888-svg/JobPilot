@@ -5,6 +5,7 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, OpenerDirector, ProxyHandler, Request, build_opener
 
+from jobpilot_api.application.providers import CopilotRepairRequest
 from jobpilot_api.config import LLMSettings
 from jobpilot_api.domain.copilot import CopilotInput
 from jobpilot_api.domain.errors import (
@@ -44,11 +45,18 @@ class OpenAICompatibleJDAnalysisProvider:
     def map_evidence(self, evidence_input: EvidenceMapInput, *, system_instruction: str) -> str:
         return self._complete(evidence_input.as_provider_data(), system_instruction)
 
-    def generate_copilot(self, copilot_input: CopilotInput, *, system_instruction: str) -> str:
+    def generate_copilot(
+        self,
+        copilot_input: CopilotInput,
+        *,
+        system_instruction: str,
+        repair: CopilotRepairRequest | None = None,
+    ) -> str:
         return self._complete(
             copilot_input.as_provider_data(),
             system_instruction,
             expose_timeout=True,
+            repair=repair,
         )
 
     def _complete(
@@ -57,21 +65,30 @@ class OpenAICompatibleJDAnalysisProvider:
         system_instruction: str,
         *,
         expose_timeout: bool = False,
+        repair: CopilotRepairRequest | None = None,
     ) -> str:
+        messages = [
+            {"role": "system", "content": system_instruction},
+            {
+                "role": "user",
+                "content": json.dumps(
+                    provider_data,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                ),
+            },
+        ]
+        if repair is not None:
+            messages.extend(
+                [
+                    {"role": "assistant", "content": repair.previous_response},
+                    {"role": "user", "content": _repair_instruction(repair.validator_error)},
+                ]
+            )
         request_body = json.dumps(
             {
                 "model": self._settings.model,
-                "messages": [
-                    {"role": "system", "content": system_instruction},
-                    {
-                        "role": "user",
-                        "content": json.dumps(
-                            provider_data,
-                            ensure_ascii=False,
-                            separators=(",", ":"),
-                        ),
-                    },
-                ],
+                "messages": messages,
                 "response_format": {"type": "json_object"},
                 "temperature": 0,
             },
@@ -119,3 +136,16 @@ def _invalid_response() -> AnalysisInvalidResponseError:
 
 def _is_timeout(error: TimeoutError | URLError) -> bool:
     return isinstance(error, TimeoutError) or isinstance(error.reason, TimeoutError)
+
+
+def _repair_instruction(validator_error: str) -> str:
+    safe_code = (
+        validator_error
+        if validator_error in {item.value for item in AnalysisInvalidResponseDiagnostic}
+        else AnalysisInvalidResponseDiagnostic.SCHEMA_MISMATCH.value
+    )
+    return f"""Previous response failed schema validation: {safe_code}.
+Return the same semantic answer using the required JSON schema.
+Do not add new claims.
+Do not add new evidence.
+Return JSON only."""

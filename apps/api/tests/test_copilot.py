@@ -9,7 +9,11 @@ from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
 
-from jobpilot_api.application.providers import CopilotProvider, JDAnalysisProvider
+from jobpilot_api.application.providers import (
+    CopilotProvider,
+    CopilotRepairRequest,
+    JDAnalysisProvider,
+)
 from jobpilot_api.config import ApiSettings
 from jobpilot_api.domain.copilot import CopilotInput, CopilotKind
 from jobpilot_api.domain.errors import AnalysisProviderUnavailableError
@@ -39,16 +43,25 @@ class FakeProvider(JDAnalysisProvider, CopilotProvider):
     model = "fictional-model"
 
     def __init__(self) -> None:
-        self.copilot_calls: list[tuple[CopilotInput, str]] = []
+        self.copilot_calls: list[tuple[CopilotInput, str, CopilotRepairRequest | None]] = []
         self.copilot_error: Exception | None = None
+        self.copilot_responses: list[str] = []
 
     def analyze(self, _input: JDAnalysisInput, *, system_instruction: str) -> str:
         return VALID_ANALYSIS
 
-    def generate_copilot(self, copilot_input: CopilotInput, *, system_instruction: str) -> str:
-        self.copilot_calls.append((copilot_input, system_instruction))
+    def generate_copilot(
+        self,
+        copilot_input: CopilotInput,
+        *,
+        system_instruction: str,
+        repair: CopilotRepairRequest | None = None,
+    ) -> str:
+        self.copilot_calls.append((copilot_input, system_instruction, repair))
         if self.copilot_error is not None:
             raise self.copilot_error
+        if self.copilot_responses:
+            return self.copilot_responses.pop(0)
         if copilot_input.kind == CopilotKind.RESUME_ADVICE:
             assert copilot_input.resume_source is not None
             return json.dumps(
@@ -229,6 +242,69 @@ def test_source_change_marks_old_result_stale_and_failed_regeneration_preserves_
     assert failed.json()["error"]["code"] == "AI_PROVIDER_UNAVAILABLE"
     assert "secret" not in failed.text
     assert preserved == stale
+
+
+def test_invalid_first_response_gets_one_structure_only_repair(
+    copilot_context: tuple[TestClient, FakeProvider, Path],
+) -> None:
+    client, provider, _database_path = copilot_context
+    job, resume = _create_sources(client)
+    invalid = '{"summary":"结构不完整"}'
+    provider.copilot_responses = [invalid]
+
+    response = client.post(
+        f"/api/v1/jobs/{job['id']}/copilot/match",
+        json={"resumeVersionId": resume["id"], "confirmExternalAi": True},
+    )
+
+    assert response.status_code == 200, response.text
+    assert len(provider.copilot_calls) == 2
+    assert provider.copilot_calls[0][2] is None
+    repair = provider.copilot_calls[1][2]
+    assert repair is not None
+    assert repair.previous_response == invalid
+    assert repair.validator_error == "SCHEMA_MISMATCH"
+    assert response.json()["record"]["promptVersion"] == "match-v2"
+
+
+def test_two_invalid_responses_stop_after_one_retry_and_preserve_previous_record(
+    copilot_context: tuple[TestClient, FakeProvider, Path],
+) -> None:
+    client, provider, _database_path = copilot_context
+    job, resume = _create_sources(client)
+    endpoint = f"/api/v1/jobs/{job['id']}/copilot/match"
+    request = {"resumeVersionId": resume["id"], "confirmExternalAi": True}
+    original = client.post(endpoint, json=request).json()
+    provider.copilot_calls.clear()
+    provider.copilot_responses = [
+        '{"summary":"第一次仍不完整"}',
+        '{"summary":"第二次仍不完整"}',
+    ]
+
+    failed = client.post(endpoint, json=request)
+    preserved = client.get(endpoint, params={"resumeVersionId": resume["id"]})
+
+    assert failed.status_code == 502
+    assert failed.json()["error"]["code"] == "AI_INVALID_RESPONSE"
+    assert len(provider.copilot_calls) == 2
+    assert preserved.json()["record"]["id"] == original["record"]["id"]
+
+
+def test_provider_transport_failure_is_not_retried(
+    copilot_context: tuple[TestClient, FakeProvider, Path],
+) -> None:
+    client, provider, _database_path = copilot_context
+    job, resume = _create_sources(client)
+    provider.copilot_error = AnalysisProviderUnavailableError("secret provider detail")
+
+    response = client.post(
+        f"/api/v1/jobs/{job['id']}/copilot/match",
+        json={"resumeVersionId": resume["id"], "confirmExternalAi": True},
+    )
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "AI_PROVIDER_UNAVAILABLE"
+    assert len(provider.copilot_calls) == 1
 
 
 def test_match_requires_current_analysis_resume_consent_and_provider(
