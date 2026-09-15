@@ -1,4 +1,54 @@
-# Implementation Plan: Phase 11 — AI Job Copilot
+# Implementation Plan: Phase 11.1 — Copilot Reliability Hardening
+
+> Owner-approved on 2026-09-15 from Phase 11 V1 acceptance commit `5c25c0c`. Keep the V1
+> dataset/results/BC-01 through BC-07 immutable, preserve Phase 7 as
+> `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`, and stop before Phase 12.
+
+## Objective
+
+Raise real Provider structured-generation reliability without adding product scope or weakening evidence
+grounding. Compare frozen V1 with separately versioned V2, permit at most one structure-only Provider repair,
+and retain first-pass metrics independently from final metrics.
+
+## Ordered increments
+
+1. Add a V1 diagnostic-only runner mode that replays only the seven failed synthetic samples and records
+   failure category, expected schema, sanitized actual shape and validator issue without persisting raw output.
+   Produce `COPILOT_V1_FAILURE_ANALYSIS.md` from real Provider observations before changing any Prompt.
+2. RED/GREEN three separate V2 prompts, suggestion-safety rules, source allowlists and only the minimal Schema
+   V2 changes proven necessary by Increment 1. Keep evidence source ownership and quote grounding fail-closed.
+3. RED/GREEN one bounded structure-repair retry for `AI_INVALID_RESPONSE`; pass only sanitized validator issues,
+   forbid new claims/evidence, preserve previous valid records, and record attempt/total latency separately.
+4. Run one Match, one Resume Advice and one Interview Prep preflight. Freeze V2 only after 3/3 schema,
+   evidence, suggestion safety and category relevance pass; otherwise stop for analysis.
+5. Re-run the unchanged 20-sample dataset and report first-pass/final schema success, retry count, grounding,
+   safety, relevance, quality and latency against the V1 baseline.
+6. Re-run the original BOSS and Nowcoder Match/Resume Advice/Interview Prep tasks once, record attempt/retry/
+   final latency and request owner PASS/FAIL for every successful output.
+7. Run full regression, security, migration, browser and documentation gates. Mark Phase 11 PASS only when all
+   approved acceptance thresholds hold; otherwise remain BLOCKED.
+
+## Checkpoints
+
+- **V1 diagnosis:** all seven failures have real, non-sensitive A–H classifications; no raw Provider output or
+  secret is written.
+- **V2 preflight:** 3/3 schema and evidence pass before the 20-sample run.
+- **Synthetic acceptance:** final schema >= 19/20, evidence >= 98%, no accepted P0/P1 unsupported evidence,
+  fabricated experience, unsafe resume suggestion or false inability wording.
+- **Real acceptance:** same six tasks reach at least 5/6 without a systematic same-class failure; owner judges
+  successful content.
+
+## Stop conditions
+
+- Do not change Prompt or Schema before the real V1 failure classifications exist.
+- Do not retry more than once, silently create semantic fields, relax source ownership or accept invented IDs.
+- Do not overwrite V1 records, change dataset/scoring, optimize latency, add Agent/RAG/framework/product scope,
+  alter Phase 7 or enter Phase 12.
+- Never read, modify, delete, stage or commit `操作手册.txt`; never expose Provider secrets or invalid raw output.
+
+---
+
+# Historical Implementation Plan: Phase 11 — AI Job Copilot
 
 > Owner-approved on 2026-09-09 from Phase 10 commit `8609dee`. Phase 7 remains
 > `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`. Preserve the protected untracked `操作手册.txt` and stop

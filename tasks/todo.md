@@ -1,4 +1,37 @@
-# Phase 11 — AI Job Copilot Checklist
+# Phase 11.1 — Copilot Reliability Hardening Checklist
+
+## V1 failure diagnosis
+
+- [x] Preserve V1 dataset, `COPILOT_RESULTS.md` baseline and BC-01 through BC-07 unchanged.
+- [x] RED/GREEN diagnostic replay for only the seven V1 failures without persisting raw Provider output.
+- [ ] Classify each failure A–H with expected schema, sanitized actual shape, root cause and candidate fix.
+- [ ] Locate the single unsupported evidence and record whether it is ID, quote, ownership or semantic overreach.
+- [ ] Commit `COPILOT_V1_FAILURE_ANALYSIS.md` before changing Prompt or Schema.
+
+## V2 structured reliability
+
+- [ ] RED/GREEN separate `match-v2`, `resume-advice-v2` and `interview-prep-v2` JSON-only prompts.
+- [ ] Simplify only Schema fields proven unnecessary; keep evidence grounding unchanged or stronger.
+- [ ] RED/GREEN conditional suggestion safety and JD-driven interview categories.
+- [ ] RED/GREEN one structure-only retry for `AI_INVALID_RESPONSE`, maximum two Provider calls.
+- [ ] Record first-attempt/final status, retry count and latency without raw response or secrets.
+
+## V2 evaluation and acceptance
+
+- [ ] Run 3-sample real Provider preflight; require 3/3 schema/evidence and safety/relevance PASS.
+- [ ] Freeze V2 against unchanged dataset v1, model, temperature 0 and timeout 60s.
+- [ ] Re-run the same 20 samples and compare every approved V1/V2 metric.
+- [ ] Re-run the original BOSS and Nowcoder six tasks; require at least 5/6 without systematic failure.
+- [ ] Obtain owner PASS/FAIL for all successful real-job outputs.
+- [ ] Run full regression/security/browser/documentation gates and stop before Phase 12.
+
+Current gate (2026-09-15): V1 invalid raw responses were intentionally not persisted, and the Codex process has
+no Provider configuration. Prompt V2 is therefore blocked until the diagnostic replay is run from the owner's
+configured Provider terminal.
+
+---
+
+# Historical Phase 11 — AI Job Copilot Checklist
 
 ## Contract and foundation
 

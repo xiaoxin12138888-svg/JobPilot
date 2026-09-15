@@ -25,3 +25,19 @@ uv run --project apps/api python apps/api/scripts/evaluate_copilot.py \
 
 summary、建议有用性和问题相关性仍需人工内容审核，runner 不用伪造分数代替人审。真实运行状态与
 Bad Cases 见 `../COPILOT_RESULTS.md`。
+
+## V1 failure diagnostic replay
+
+Phase 11.1 的定向诊断模式从冻结 V1 run 自动选择 `AI_INVALID_RESPONSE` 样本，仍使用 V1 Prompt，
+不会覆盖 baseline，也不会持久化 Provider 原文或有效结果正文。它只记录 A–H failure type、预期
+Schema、脱敏后的字段类型形状、validator issue 与 latency：
+
+```text
+uv run --project apps/api python apps/api/scripts/evaluate_copilot.py \
+  --dataset docs/evaluation/copilot/dataset-v1.json \
+  --diagnose-failures-from docs/evaluation/copilot/real-run.json \
+  --output docs/evaluation/copilot/v1-failure-diagnostics.json
+```
+
+必须在与 V1 相同的已配置 Provider 终端中执行。该文件只用于编写
+`../COPILOT_V1_FAILURE_ANALYSIS.md`；在七条真实分类完成前不得修改 V2 Prompt 或 Schema。

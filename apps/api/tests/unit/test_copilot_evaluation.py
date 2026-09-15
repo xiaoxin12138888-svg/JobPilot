@@ -174,3 +174,179 @@ def test_unsafe_language_counts_tolerates_non_array_provider_fields() -> None:
     )
 
     assert functions["_unsafe_language_counts"](raw_content) == (0, 0)
+
+
+def test_copilot_failure_diagnostic_classifies_non_json_fence_and_truncation() -> None:
+    script_path = Path(__file__).resolve().parents[2] / "scripts" / "evaluate_copilot.py"
+    functions = runpy.run_path(str(script_path))
+    diagnose = functions["_failure_diagnostic"]
+    copilot_input = CopilotInput.create(
+        kind=CopilotKind.MATCH,
+        title="产品经理",
+        job_sources=(CopilotSource("job-1", "负责需求分析"),),
+        resume_source=CopilotSource("resume-1", "负责用户调研"),
+    )
+
+    assert diagnose("not json", CopilotKind.MATCH, copilot_input)["failureType"] == "A_NON_JSON"
+    assert (
+        diagnose("```json\n{}\n```", CopilotKind.MATCH, copilot_input)["failureType"]
+        == "B_MARKDOWN_CODE_FENCE"
+    )
+    assert (
+        diagnose('{"summary":"ok","strengths":[', CopilotKind.MATCH, copilot_input)["failureType"]
+        == "G_TRUNCATED_OUTPUT"
+    )
+
+
+def test_copilot_failure_diagnostic_classifies_schema_and_evidence_failures() -> None:
+    script_path = Path(__file__).resolve().parents[2] / "scripts" / "evaluate_copilot.py"
+    functions = runpy.run_path(str(script_path))
+    diagnose = functions["_failure_diagnostic"]
+    copilot_input = CopilotInput.create(
+        kind=CopilotKind.INTERVIEW_PREP,
+        title="产品经理",
+        job_sources=(CopilotSource("job-1", "负责需求分析"),),
+    )
+
+    missing = json.dumps({"possibleQuestions": []}, ensure_ascii=False)
+    wrong_type = json.dumps(
+        {
+            "possibleQuestions": "none",
+            "review": {"strengths": [], "weaknesses": [], "nextActions": []},
+        },
+        ensure_ascii=False,
+    )
+    invalid_enum = json.dumps(
+        {
+            "possibleQuestions": [
+                {
+                    "category": "SALES",
+                    "question": "如何分析需求？",
+                    "reason": "岗位要求",
+                    "sourceEvidence": {
+                        "text": "负责需求分析",
+                        "sourceType": "JOB",
+                        "sourceId": "job-1",
+                    },
+                }
+            ],
+            "review": {"strengths": [], "weaknesses": [], "nextActions": []},
+        },
+        ensure_ascii=False,
+    )
+    unsupported_evidence = invalid_enum.replace('"SALES"', '"PRODUCT"').replace(
+        '"负责需求分析"', '"不存在的要求"'
+    )
+
+    assert (
+        diagnose(missing, CopilotKind.INTERVIEW_PREP, copilot_input)["failureType"]
+        == "C_MISSING_FIELD"
+    )
+    assert (
+        diagnose(wrong_type, CopilotKind.INTERVIEW_PREP, copilot_input)["failureType"]
+        == "D_WRONG_TYPE"
+    )
+    assert (
+        diagnose(invalid_enum, CopilotKind.INTERVIEW_PREP, copilot_input)["failureType"]
+        == "E_INVALID_ENUM"
+    )
+    evidence_result = diagnose(unsupported_evidence, CopilotKind.INTERVIEW_PREP, copilot_input)
+    assert evidence_result["failureType"] == "F_EVIDENCE_STRUCTURE"
+    assert "不存在的要求" not in json.dumps(evidence_result, ensure_ascii=False)
+
+
+def test_copilot_failure_diagnostic_records_only_sanitized_shape() -> None:
+    script_path = Path(__file__).resolve().parents[2] / "scripts" / "evaluate_copilot.py"
+    functions = runpy.run_path(str(script_path))
+    secret_marker = "DO_NOT_PERSIST_PROVIDER_CONTENT"
+    result = functions["_failure_diagnostic"](
+        json.dumps(
+            {
+                "highlight": [],
+                "possibleImprovement": secret_marker,
+                "interviewFocus": [],
+            }
+        ),
+        CopilotKind.RESUME_ADVICE,
+        CopilotInput.create(
+            kind=CopilotKind.RESUME_ADVICE,
+            title="产品经理",
+            job_sources=(CopilotSource("job-1", "负责需求分析"),),
+            resume_source=CopilotSource("resume-1", "负责用户调研"),
+        ),
+    )
+
+    serialized = json.dumps(result, ensure_ascii=False)
+    assert result["failureType"] == "D_WRONG_TYPE"
+    assert (
+        result["actualShape"]
+        == "object{highlight:list,interviewFocus:list,possibleImprovement:string}"
+    )
+    assert secret_marker not in serialized
+
+    malicious_key = functions["_failure_diagnostic"](
+        json.dumps(
+            {
+                "highlight": [],
+                "possibleImprovement": [],
+                "interviewFocus": [],
+                secret_marker: "ignored",
+            }
+        ),
+        CopilotKind.RESUME_ADVICE,
+        CopilotInput.create(
+            kind=CopilotKind.RESUME_ADVICE,
+            title="产品经理",
+            job_sources=(CopilotSource("job-1", "负责需求分析"),),
+            resume_source=CopilotSource("resume-1", "负责用户调研"),
+        ),
+    )
+
+    malicious_serialized = json.dumps(malicious_key, ensure_ascii=False)
+    assert malicious_key["failureType"] == "H_OTHER"
+    assert "unknownFields:1" in malicious_key["actualShape"]
+    assert secret_marker not in malicious_serialized
+
+
+def test_copilot_failure_diagnostic_selects_only_baseline_bad_cases() -> None:
+    script_path = Path(__file__).resolve().parents[2] / "scripts" / "evaluate_copilot.py"
+    functions = runpy.run_path(str(script_path))
+    dataset_samples = [
+        {"id": "copilot-001"},
+        {"id": "copilot-002"},
+        {"id": "copilot-003"},
+    ]
+    baseline = {
+        "runType": "REAL_PROVIDER_OUTPUT_ONLY",
+        "datasetVersion": 1,
+        "promptVersions": {
+            "MATCH": "match-v1",
+            "RESUME_ADVICE": "resume-advice-v1",
+            "INTERVIEW_PREP": "interview-prep-v1",
+        },
+        "badCases": [
+            {"id": "copilot-002", "reason": "AI_INVALID_RESPONSE"},
+            {"id": "copilot-003", "reason": "AI_TIMEOUT"},
+        ],
+    }
+
+    assert functions["_diagnostic_sample_ids"](baseline, 1, dataset_samples) == ("copilot-002",)
+
+
+def test_copilot_failure_diagnostic_rejects_non_v1_or_unknown_baseline_samples() -> None:
+    script_path = Path(__file__).resolve().parents[2] / "scripts" / "evaluate_copilot.py"
+    functions = runpy.run_path(str(script_path))
+    dataset_samples = [{"id": "copilot-001"}]
+    invalid_baseline = {
+        "runType": "REAL_PROVIDER_OUTPUT_ONLY",
+        "datasetVersion": 1,
+        "promptVersions": {"MATCH": "match-v2"},
+        "badCases": [{"id": "copilot-999", "reason": "AI_INVALID_RESPONSE"}],
+    }
+
+    try:
+        functions["_diagnostic_sample_ids"](invalid_baseline, 1, dataset_samples)
+    except ValueError as error:
+        assert str(error) == "diagnostic source must be the frozen V1 run"
+    else:
+        raise AssertionError("invalid V1 diagnostic source must be rejected")
