@@ -1,4 +1,29 @@
-# Phase 11.1 — Copilot Reliability Hardening Checklist
+# Phase 11.2 — Final Reliability Closure Checklist
+
+## Frozen failure analysis
+
+- [x] Preserve V1 13/20, V2 14/20, the dataset/scoring contract and real-job 6/6 PASS.
+- [x] Classify all six V2 failures using the approved A–L taxonomy without raw output or secrets.
+- [x] Record `COPILOT_V2_FAILURE_ANALYSIS.md` before any implementation change.
+- [x] Audit Prompt/Schema/Parser/Validator/Retry: all six failures stopped at Provider/transport.
+- [x] Do not make an unrelated parser or schema change; no code defect is evidenced by these six failures.
+
+## Real rerun gate
+
+- [ ] Run the frozen three-feature preflight to a new file; require 3/3 final PASS.
+- [ ] After preflight PASS, rerun the unchanged 20 samples to a new file without overwriting V2.
+- [ ] Record first/final schema, retry, evidence, safety, relevance and latency metrics.
+- [ ] Run final Python/API client/Web/Extension/type/lint/format/build/security review gates.
+- [ ] Update final evaluation docs and stop before Phase 12.
+
+Current gate (2026-09-16): analysis is complete. Five failures are `AI_PROVIDER_UNAVAILABLE`, one is
+`AI_TIMEOUT`, and none returned content to the structured-output pipeline. The configured Provider variables
+are not present in the Codex subprocess, so real preflight/final evaluation remain NOT RUN here. Phase 11 stays
+BLOCKED and Phase 12 is not started.
+
+---
+
+# Historical Phase 11.1 — Copilot Reliability Hardening Checklist
 
 ## V1 failure diagnosis
 

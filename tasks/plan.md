@@ -1,4 +1,48 @@
-# Implementation Plan: Phase 11.1 — Copilot Reliability Hardening
+# Implementation Plan: Phase 11.2 — Final Reliability Closure
+
+> Owner-approved on 2026-09-16 from V2 evaluation commit `51a4ab1` and real-job acceptance commit
+> `0351de3`. Preserve V1/V2 results, the frozen 20-sample dataset and the 6/6 real-job acceptance. Do not
+> restore Evidence Map UI, change Phase 7, add product scope or enter Phase 12.
+
+## Objective
+
+Classify the six frozen V2 failures before changing code, make only an evidence-backed reliability fix,
+then rerun a three-feature gate and the unchanged 20-sample evaluation against the same Provider settings.
+
+## Ordered increments
+
+1. Freeze and analyze all six V2 failures without replaying them or persisting raw Provider output.
+2. Audit Prompt, Schema, Parser, Validator and repair paths; do not modify a layer that none of the six
+   failures reached.
+3. If a code defect is proven, RED/GREEN the generic rule and commit it separately. Otherwise record why a
+   no-code decision is the smallest correct change.
+4. Run the fixed three-feature gate as `copilot-001`, `copilot-009`, `copilot-017`; the failed set has no
+   Interview Prep sample, so `017` remains the repair-capable control. Require 3/3 final PASS.
+5. After the gate passes, run all 20 unchanged samples to new output files and record first/final schema,
+   repair, evidence, safety, relevance and latency metrics without overwriting V1/V2.
+6. Run full regression/security/review/documentation gates. Re-run real jobs only if Prompt/Schema changes;
+   otherwise retain the already completed 6/6 human acceptance.
+
+## Acceptance and stop conditions
+
+- Final evaluation at least 19/20; evidence grounding at least 98%; zero serious accepted unsupported
+  evidence, fabricated existing experience, unsafe suggestion or gap wording error.
+- All automated regression and security gates pass with Critical 0 and Required 0.
+- If preflight is not 3/3, stop before the 20-sample run.
+- If final evaluation is at most 18/20, keep `PHASE 11 BLOCKED`; never lower the threshold or cherry-pick.
+- Preserve `操作手册.txt` as untracked and untouched.
+
+## 2026-09-16 analysis checkpoint
+
+- The six failures are five `AI_PROVIDER_UNAVAILABLE` and one `AI_TIMEOUT`; no raw Copilot content was
+  received, no parser/validator ran and no repair was eligible.
+- No Prompt/Schema/Parser/Validator/Retry code change is causally justified by these failures.
+- The Codex subprocess does not inherit the configured Provider variables, so the real gate awaits execution
+  from the project owner's already configured PowerShell.
+
+---
+
+# Historical Implementation Plan: Phase 11.1 — Copilot Reliability Hardening
 
 > Owner-approved on 2026-09-15 from Phase 11 V1 acceptance commit `5c25c0c`. Keep the V1
 > dataset/results/BC-01 through BC-07 immutable, preserve Phase 7 as
