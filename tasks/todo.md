@@ -10,16 +10,17 @@
 
 ## Real rerun gate
 
-- [ ] Run the frozen three-feature preflight to a new file; require 3/3 final PASS.
+- [x] Run the frozen three-feature preflight to `final-preflight.json`; 2026-09-16 result is 3/3 first/final
+  Schema, 10/10 evidence, zero safety/relevance violations and zero repair retries.
 - [ ] After preflight PASS, rerun the unchanged 20 samples to a new file without overwriting V2.
 - [ ] Record first/final schema, retry, evidence, safety, relevance and latency metrics.
 - [ ] Run final Python/API client/Web/Extension/type/lint/format/build/security review gates.
 - [ ] Update final evaluation docs and stop before Phase 12.
 
 Current gate (2026-09-16): analysis is complete. Five failures are `AI_PROVIDER_UNAVAILABLE`, one is
-`AI_TIMEOUT`, and none returned content to the structured-output pipeline. The configured Provider variables
-are not present in the Codex subprocess, so real preflight/final evaluation remain NOT RUN here. Phase 11 stays
-BLOCKED and Phase 12 is not started.
+`AI_TIMEOUT`, and none returned content to the structured-output pipeline. The project owner's configured
+PowerShell ran the real preflight successfully (3/3); the unchanged 20-sample final evaluation remains NOT RUN.
+Phase 11 stays BLOCKED and Phase 12 is not started.
 
 ---
 

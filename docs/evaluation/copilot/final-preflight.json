@@ -1,0 +1,236 @@
+{
+  "datasetVersion": 1,
+  "runType": "V2_PREFLIGHT",
+  "promptVersions": {
+    "MATCH": "match-v2",
+    "RESUME_ADVICE": "resume-advice-v2",
+    "INTERVIEW_PREP": "interview-prep-v2"
+  },
+  "schemaVersion": 2,
+  "model": "[K12]gemini-3.5-flash",
+  "temperature": 0,
+  "timeoutSeconds": 60.0,
+  "sampleCount": 3,
+  "metrics": {
+    "firstPassSchemaSuccess": {
+      "valid": 3,
+      "total": 3
+    },
+    "finalSchemaSuccess": {
+      "valid": 3,
+      "total": 3
+    },
+    "repairUsage": {
+      "samplesRetried": 0,
+      "total": 3
+    },
+    "evidenceGrounding": {
+      "grounded": 10,
+      "provided": 10
+    },
+    "unsupportedHallucinationCount": 0,
+    "gapLanguageViolations": 0,
+    "interviewCertaintyViolations": 0,
+    "suggestionSafetyViolations": 0,
+    "interviewCategoryRelevanceViolations": 0,
+    "latencyMs": {
+      "total": 67972,
+      "maximum": 27188
+    }
+  },
+  "humanContentReview": {
+    "status": "NOT_RUN",
+    "dimensions": [
+      "summary usefulness",
+      "suggestion usefulness",
+      "question relevance"
+    ]
+  },
+  "badCases": [],
+  "samples": [
+    {
+      "id": "copilot-001",
+      "kind": "MATCH",
+      "firstPassSchemaValid": true,
+      "finalSchemaValid": true,
+      "schemaValid": true,
+      "attemptCount": 1,
+      "retryCount": 0,
+      "evidence": {
+        "grounded": 3,
+        "provided": 3
+      },
+      "unsupportedHallucinationCount": 0,
+      "gapLanguageViolations": 0,
+      "interviewCertaintyViolations": 0,
+      "suggestionSafetyViolations": 0,
+      "interviewCategoryRelevanceViolations": 0,
+      "firstAttemptLatencyMs": 21333,
+      "result": {
+        "summary": "求职者拥有智能问答项目的需求和版本管理经验，与岗位要求的AI产品经理方向有一定匹配度。但简历中未体现SQL数据分析能力以及明确的大模型产品经验，需要进一步补充或准备。",
+        "strengths": [
+          {
+            "text": "求职者在智能问答项目中负责需求文档和版本验收，具备相关的需求与版本管理经验。",
+            "sourceEvidence": {
+              "text": "在智能问答项目中负责用户调研、需求文档和版本验收。",
+              "sourceType": "RESUME",
+              "sourceId": "resume-001"
+            }
+          }
+        ],
+        "gaps": [
+          {
+            "text": "当前简历未发现使用 SQL 分析业务数据的相关经历或技能。",
+            "sourceEvidence": {
+              "text": "能够使用 SQL 分析业务数据",
+              "sourceType": "JOB",
+              "sourceId": "job-001"
+            }
+          },
+          {
+            "text": "当前简历未发现大模型产品的直接需求分析与版本规划经历。",
+            "sourceEvidence": {
+              "text": "负责大模型产品的需求分析与版本规划",
+              "sourceType": "JOB",
+              "sourceId": "job-001"
+            }
+          }
+        ],
+        "suggestions": [
+          "如果你确实有使用 SQL 进行业务数据分析的经历但当前简历未体现，建议在简历中补充相关实际应用案例；否则建议系统学习 SQL 并在面试前准备模拟分析场景。",
+          "如果你确实有大模型产品（如基于大模型的智能问答）的相关规划经历但当前简历未体现，建议在简历中明确写出；否则建议重点准备智能问答项目与大模型产品结合的理解与思考。"
+        ]
+      },
+      "totalLatencyMs": 21334,
+      "latencyMs": 21334
+    },
+    {
+      "id": "copilot-009",
+      "kind": "RESUME_ADVICE",
+      "firstPassSchemaValid": true,
+      "finalSchemaValid": true,
+      "schemaValid": true,
+      "attemptCount": 1,
+      "retryCount": 0,
+      "evidence": {
+        "grounded": 3,
+        "provided": 3
+      },
+      "unsupportedHallucinationCount": 0,
+      "gapLanguageViolations": 0,
+      "interviewCertaintyViolations": 0,
+      "suggestionSafetyViolations": 0,
+      "interviewCategoryRelevanceViolations": 0,
+      "firstAttemptLatencyMs": 27187,
+      "result": {
+        "highlight": [
+          {
+            "text": "具备在校园服务小程序项目中绘制用户流程、低保真原型并组织可用性测试的实际经历。",
+            "sourceEvidence": {
+              "text": "为校园服务小程序绘制用户流程、低保真原型并组织可用性测试。",
+              "sourceType": "RESUME",
+              "sourceId": "resume-009"
+            }
+          }
+        ],
+        "possibleImprovement": [
+          "如果你确实有使用 Figma 进行移动端交互设计的经历但当前简历未体现，建议在简历中补充说明具体的设计工具使用情况及移动端交互方案的设计细节。",
+          "如果你确实有与产品和研发协作完成设计验收的经历但当前简历未体现，建议在简历中补充相关的协作流程与验收成果。",
+          "当前简历未发现关于 Figma 工具使用及设计验收的相关描述，建议提前准备相关工具操作演示及跨团队协作的实际案例以备面试。"
+        ],
+        "interviewFocus": [
+          {
+            "text": "考察求职者使用 Figma 设计移动端交互方案的专业技能。",
+            "sourceEvidence": {
+              "text": "使用 Figma 设计移动端交互方案",
+              "sourceType": "JOB",
+              "sourceId": "job-009"
+            }
+          },
+          {
+            "text": "考察求职者与产品和研发团队协作并完成设计验收的沟通协作能力。",
+            "sourceEvidence": {
+              "text": "与产品和研发协作完成设计验收",
+              "sourceType": "JOB",
+              "sourceId": "job-009"
+            }
+          }
+        ]
+      },
+      "totalLatencyMs": 27188,
+      "latencyMs": 27188
+    },
+    {
+      "id": "copilot-017",
+      "kind": "INTERVIEW_PREP",
+      "firstPassSchemaValid": true,
+      "finalSchemaValid": true,
+      "schemaValid": true,
+      "attemptCount": 1,
+      "retryCount": 0,
+      "evidence": {
+        "grounded": 4,
+        "provided": 4
+      },
+      "unsupportedHallucinationCount": 0,
+      "gapLanguageViolations": 0,
+      "interviewCertaintyViolations": 0,
+      "suggestionSafetyViolations": 0,
+      "interviewCategoryRelevanceViolations": 0,
+      "firstAttemptLatencyMs": 19450,
+      "result": {
+        "possibleQuestions": [
+          {
+            "category": "TECHNICAL",
+            "question": "请问你如何进行安全告警研判与事件响应？",
+            "reason": "岗位要求负责安全告警研判与事件响应，面试中可能会关注你在这一核心职责上的实际操作流程和经验。",
+            "sourceEvidence": {
+              "text": "负责安全告警研判与事件响应",
+              "sourceType": "JOB",
+              "sourceId": "job-017"
+            }
+          },
+          {
+            "category": "TECHNICAL",
+            "question": "你对常见的 Web 攻击和 Linux 系统安全有哪些了解？",
+            "reason": "岗位要求熟悉常见 Web 攻击和 Linux，面试中可能会针对这些基础技术领域进行提问。",
+            "sourceEvidence": {
+              "text": "熟悉常见 Web 攻击和 Linux",
+              "sourceType": "JOB",
+              "sourceId": "job-017"
+            }
+          }
+        ],
+        "review": {
+          "strengths": [
+            {
+              "text": "在日志分析方面具备完整的思路。",
+              "sourceEvidence": {
+                "text": "日志分析思路完整",
+                "sourceType": "INTERVIEW",
+                "sourceId": "interview-017"
+              }
+            }
+          ],
+          "weaknesses": [
+            {
+              "text": "对事件分级标准的解释不够准确。",
+              "sourceEvidence": {
+                "text": "对事件分级标准解释不够准确",
+                "sourceType": "INTERVIEW",
+                "sourceId": "interview-017"
+              }
+            }
+          ],
+          "nextActions": [
+            "建议重新梳理并准确记忆安全事件分级标准，以便在后续面试中能够准确阐述。",
+            "继续保持并巩固在日志分析思路方面的优势，准备相关的实际案例进行展示。"
+          ]
+        }
+      },
+      "totalLatencyMs": 19450,
+      "latencyMs": 19450
+    }
+  ],
+  "preflightPassed": true
+}

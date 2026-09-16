@@ -113,7 +113,10 @@ write new output files rather than overwriting `v2-preflight.json` or `v2-real-r
 
 - Failure analysis: COMPLETE.
 - Product-code fix: NOT JUSTIFIED by the six observed failures.
-- Provider preflight: NOT RUN in the Codex process because Provider environment variables are not inherited.
+- Provider preflight: PASS on 2026-09-16 in the project owner's configured PowerShell. The unchanged
+  `copilot-001`/`009`/`017` gate reached first-pass and final Schema 3/3, evidence 10/10, zero safety or
+  relevance violations and zero repair retries. The immutable record is
+  `docs/evaluation/copilot/final-preflight.json`.
 - Final rerun: NOT RUN.
 - Verdict: `PHASE 11 BLOCKED`.
 - Phase 12: NOT STARTED.
