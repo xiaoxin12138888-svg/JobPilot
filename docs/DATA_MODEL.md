@@ -10,6 +10,8 @@
 > Copilot schema 1/2 共存且不重写历史记录。
 > Phase 10 Local Resume Import 已完成实现和自动化，复用 `resume_versions` 与
 > `autofill_profiles`，不新增表或 migration；真实简历人工验收仍待完成。
+> Web 于 2026-09-16 隐藏 Evidence Map 前端入口，但 `evidence_map_records`、外键、迁移和历史数据
+> 全部保留；本次 UI 收敛不执行数据库变更或数据清理。
 
 ## 1. Storage rules
 

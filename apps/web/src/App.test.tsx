@@ -13,7 +13,6 @@ import type {
   InterviewRound,
   Job,
   JobAnalysisResponse,
-  JobEvidenceMapResponse,
   JobListItem,
   ResumeVersion,
 } from '@jobpilot/api-client';
@@ -1060,153 +1059,23 @@ describe('App', () => {
     });
   });
 
-  it('requires a selected Resume and current JD analysis before Evidence Map generation', async () => {
+  it('hides the legacy Evidence Map while keeping Copilot available on Job detail', async () => {
     const job = createJob();
     const resume = createResume();
     const apiClient = createApiClient({
       listJobs: vi.fn().mockResolvedValue(page([{ ...job, applicationStatus: null }])),
       getJob: vi.fn().mockResolvedValue(job),
       listResumeVersions: vi.fn().mockResolvedValue(page([resume])),
-      getJobAnalysis: vi.fn().mockResolvedValue({ isConfigured: true, analysis: null }),
+      getJobAnalysis: vi.fn().mockResolvedValue(createAnalysisResponse()),
     });
     render(<App apiClient={apiClient} />);
     fireEvent.click(await screen.findByRole('button', { name: '查看详情' }));
 
-    expect(await screen.findByText('请选择一个简历版本')).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('用于证据匹配的简历版本'), {
-      target: { value: resume.id },
-    });
-    expect(await screen.findByText('请先完成岗位 AI 分析。')).toBeInTheDocument();
-    expect(apiClient.generateJobEvidenceMap).not.toHaveBeenCalled();
-  });
-
-  it('shows an Evidence prerequisite error when the JD analysis state cannot be loaded', async () => {
-    const job = createJob();
-    const resume = createResume();
-    const apiClient = createApiClient({
-      listJobs: vi.fn().mockResolvedValue(page([{ ...job, applicationStatus: null }])),
-      getJob: vi.fn().mockResolvedValue(job),
-      listResumeVersions: vi.fn().mockResolvedValue(page([resume])),
-      getJobAnalysis: vi.fn().mockRejectedValue(new Error('untrusted API response')),
-    });
-    render(<App apiClient={apiClient} />);
-    fireEvent.click(await screen.findByRole('button', { name: '查看详情' }));
-    fireEvent.change(await screen.findByLabelText('用于证据匹配的简历版本'), {
-      target: { value: resume.id },
-    });
-
-    expect(await screen.findByText('岗位分析状态暂时无法读取，请稍后重试。')).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: 'AI 求职 Copilot' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '简历综合证据分析' })).toBeNull();
+    expect(screen.queryByLabelText('用于证据匹配的简历版本')).toBeNull();
     expect(apiClient.getJobEvidenceMap).not.toHaveBeenCalled();
-  });
-
-  it('keeps local Resume features available when the Evidence provider is not configured', async () => {
-    const job = createJob();
-    const resume = createResume();
-    const apiClient = createApiClient({
-      listJobs: vi.fn().mockResolvedValue(page([{ ...job, applicationStatus: null }])),
-      getJob: vi.fn().mockResolvedValue(job),
-      listResumeVersions: vi.fn().mockResolvedValue(page([resume])),
-      getJobAnalysis: vi.fn().mockResolvedValue(createAnalysisResponse()),
-      getJobEvidenceMap: vi.fn().mockResolvedValue({ isConfigured: false, evidenceMap: null }),
-    });
-    render(<App apiClient={apiClient} />);
-    fireEvent.click(await screen.findByRole('button', { name: '查看详情' }));
-    fireEvent.change(await screen.findByLabelText('用于证据匹配的简历版本'), {
-      target: { value: resume.id },
-    });
-
-    expect(await screen.findByText('AI 服务未配置')).toBeInTheDocument();
-    expect(screen.getByText(resume.name)).toBeInTheDocument();
     expect(apiClient.generateJobEvidenceMap).not.toHaveBeenCalled();
-  });
-
-  it('confirms external AI sending, shows progress, and renders deterministic Evidence totals', async () => {
-    const job = createJob();
-    const resume = createResume();
-    let resolveGeneration: ((value: JobEvidenceMapResponse) => void) | undefined;
-    const generation = new Promise<JobEvidenceMapResponse>((resolve) => {
-      resolveGeneration = resolve;
-    });
-    const generated = createEvidenceMapResponse();
-    const apiClient = createApiClient({
-      listJobs: vi.fn().mockResolvedValue(page([{ ...job, applicationStatus: null }])),
-      getJob: vi.fn().mockResolvedValue(job),
-      listResumeVersions: vi.fn().mockResolvedValue(page([resume])),
-      getJobAnalysis: vi.fn().mockResolvedValue(createAnalysisResponse()),
-      getJobEvidenceMap: vi.fn().mockResolvedValue({ isConfigured: true, evidenceMap: null }),
-      generateJobEvidenceMap: vi.fn().mockReturnValue(generation),
-    });
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
-    render(<App apiClient={apiClient} />);
-    fireEvent.click(await screen.findByRole('button', { name: '查看详情' }));
-    fireEvent.change(await screen.findByLabelText('用于证据匹配的简历版本'), {
-      target: { value: resume.id },
-    });
-    fireEvent.click(await screen.findByRole('button', { name: '生成证据映射' }));
-
-    expect(screen.getByRole('button', { name: '正在综合分析岗位条件与简历证据…' })).toBeDisabled();
-    expect(window.confirm).toHaveBeenCalledWith(
-      '本次分析会将当前选择的简历正文与岗位的六类结构化条件发送至你配置的 AI 服务，用于综合证据判断。是否继续？',
-    );
-
-    await act(async () => resolveGeneration?.(generated));
-    expect(
-      await screen.findByText(
-        '共分析 6 项：直接证据 2 项，部分支持 / 待确认 2 项，当前无法证明 2 项。',
-      ),
-    ).toBeInTheDocument();
-    const evidenceRegion = screen.getByRole('region', { name: '简历综合证据分析' });
-    for (const heading of ['硬性要求', '加分项', '岗位职责', '技能', '经验', '学历']) {
-      expect(within(evidenceRegion).getByRole('heading', { name: heading })).toBeInTheDocument();
-    }
-    expect(within(evidenceRegion).getAllByText('结论：直接证据')).toHaveLength(2);
-    expect(within(evidenceRegion).getAllByText('结论：部分支持 / 待确认')).toHaveLength(2);
-    expect(within(evidenceRegion).getAllByText('结论：当前无法证明')).toHaveLength(2);
-    expect(within(evidenceRegion).getByRole('heading', { name: '待确认事项' })).toBeInTheDocument();
-    expect(
-      within(evidenceRegion).getByRole('heading', { name: '主要证据缺口' }),
-    ).toBeInTheDocument();
-    expect(screen.getByText('使用 SQL 完成业务数据统计')).toBeInTheDocument();
-    const firstMapping = within(evidenceRegion).getByRole('article', {
-      name: '岗位条件：能够分析需求',
-    });
-    const detailHeadings = within(firstMapping).getAllByRole('heading', { level: 5 });
-    expect(detailHeadings.map((heading) => heading.textContent)).toEqual([
-      '判断依据',
-      '简历原文证据',
-    ]);
-    expect(screen.queryByText(/%|匹配率|Offer 概率/)).toBeNull();
-  });
-
-  it('keeps a stale Evidence Map visible when regeneration fails', async () => {
-    const job = createJob();
-    const resume = createResume();
-    const stale = createEvidenceMapResponse();
-    stale.evidenceMap!.isStale = true;
-    const apiClient = createApiClient({
-      listJobs: vi.fn().mockResolvedValue(page([{ ...job, applicationStatus: null }])),
-      getJob: vi.fn().mockResolvedValue(job),
-      listResumeVersions: vi.fn().mockResolvedValue(page([resume])),
-      getJobAnalysis: vi.fn().mockResolvedValue(createAnalysisResponse()),
-      getJobEvidenceMap: vi.fn().mockResolvedValue(stale),
-      generateJobEvidenceMap: vi.fn().mockRejectedValue(new Error('raw resume and provider error')),
-    });
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
-    render(<App apiClient={apiClient} />);
-    fireEvent.click(await screen.findByRole('button', { name: '查看详情' }));
-    fireEvent.change(await screen.findByLabelText('用于证据匹配的简历版本'), {
-      target: { value: resume.id },
-    });
-
-    expect(
-      await screen.findByText('岗位或简历内容已更新，请重新生成证据映射。'),
-    ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '重新生成证据映射' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'AI证据匹配暂时不可用，请稍后重试。',
-    );
-    expect(screen.getByText('使用 SQL 完成业务数据统计')).toBeInTheDocument();
-    expect(screen.queryByText('raw resume and provider error')).toBeNull();
   });
 
   it('ignores a stale health failure after the API client changes', async () => {
@@ -1485,67 +1354,6 @@ function createAnalysisResponse(): JobAnalysisResponse {
       isStale: false,
       createdAt: '2026-09-04T00:00:00Z',
       updatedAt: '2026-09-04T00:00:00Z',
-    },
-  };
-}
-
-function createEvidenceMapResponse(): JobEvidenceMapResponse {
-  return {
-    isConfigured: true,
-    evidenceMap: {
-      id: 'map-1',
-      jobId: 'job-1',
-      resumeVersionId: 'resume-1',
-      schemaVersion: 2,
-      result: {
-        mappings: [
-          {
-            requirementType: 'MUST_HAVE',
-            requirementText: '能够分析需求',
-            coverage: 'DIRECT',
-            resumeEvidence: [{ quote: '使用 SQL 完成业务数据统计' }],
-            reason: '简历原文提供了直接证据。',
-          },
-          {
-            requirementType: 'PREFERRED',
-            requirementText: '完整上线经验',
-            coverage: 'PARTIAL',
-            resumeEvidence: [{ quote: '参与需求评审和版本验收' }],
-            reason: '有相关环节经验，但未完整证明。',
-          },
-          {
-            requirementType: 'RESPONSIBILITY',
-            requirementText: '负责市场调研',
-            coverage: 'DIRECT',
-            resumeEvidence: [{ quote: '完成用户与竞品调研' }],
-            reason: '简历原文直接说明了调研职责。',
-          },
-          {
-            requirementType: 'SKILL',
-            requirementText: 'Python',
-            coverage: 'PARTIAL',
-            resumeEvidence: [{ quote: '使用 Python 清洗业务数据' }],
-            reason: '存在实际使用记录，但未证明岗位要求的熟练程度。',
-          },
-          {
-            requirementType: 'EXPERIENCE',
-            requirementText: '三年产品经验',
-            coverage: 'GAP',
-            resumeEvidence: [],
-            reason: '当前简历版本中未发现可证明年限的内容。',
-          },
-          {
-            requirementType: 'EDUCATION',
-            requirementText: '本科及以上',
-            coverage: 'GAP',
-            resumeEvidence: [],
-            reason: '当前简历版本中未发现明确学历内容。',
-          },
-        ],
-      },
-      isStale: false,
-      createdAt: '2026-09-05T00:00:00Z',
-      updatedAt: '2026-09-05T00:00:00Z',
     },
   };
 }

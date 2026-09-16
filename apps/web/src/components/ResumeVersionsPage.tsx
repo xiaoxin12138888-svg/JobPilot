@@ -246,7 +246,7 @@ export function ResumeVersionsPage({ apiClient }: ResumeVersionsPageProps) {
         <div className="empty-state">
           <span aria-hidden="true">＋</span>
           <h2>还没有简历版本</h2>
-          <p>新建一个版本并粘贴脱敏后的简历正文，后续可按岗位生成证据映射。</p>
+          <p>新建一个版本并粘贴脱敏后的简历正文，后续可用于 AI Copilot 岗位匹配分析。</p>
           <button
             type="button"
             className="button primary"

@@ -15,7 +15,10 @@ JobPilot 不替代招聘网站，不建设职位数据库，也不代表用户�
 V2 真实 BOSS/牛客六项人工验收，生成与内容审核均为 6/6 PASS；冻结 synthetic 门槛仍未达到，
 因此当前仍为 `PHASE 11 BLOCKED`。
 
-- React Web：本机 API 状态、岗位库、纯文本简历版本、本地 PDF/DOCX 导入预览、本地求职资料、岗位详情/编辑/删除、投递状态/使用简历记录、面试轮次与题目、自我复盘、Application 结果记录、事实型求职复盘，以及可选 JD Analysis/Evidence Map/AI Copilot；
+2026-09-16 起，岗位详情不再显示与 Copilot 重复的 Evidence Map 模块；历史记录、数据库结构和
+API 保持兼容，Phase 7 状态不变，用户统一使用 Copilot“匹配分析”。
+
+- React Web：本机 API 状态、岗位库、纯文本简历版本、本地 PDF/DOCX 导入预览、本地求职资料、岗位详情/编辑/删除、投递状态/使用简历记录、面试轮次与题目、自我复盘、Application 结果记录、事实型求职复盘，以及可选 JD Analysis/AI Copilot；
 - Chrome Extension：使用 `activeTab` + `scripting` 的用户主动 Popup，支持 BOSS/牛客岗位采集与当前申请表的 Scan → Preview → Confirm → Fill；无后台进程，唯一 host permission 是 `http://127.0.0.1:8000/*`；
 - FastAPI：公开 `GET /health`、Job/Application/Resume Version、Autofill Profile、Web-only Resume Import、Interview 与事实型 Feedback Summary，以及每个 Job 的可选分析/Evidence Map/Copilot API，默认绑定 `127.0.0.1`；
 - SQLite、SQLAlchemy 与 Alembic：launcher 启动前自动升级 `runtime-data/jobpilot.db`，业务表另含 single-user singleton `autofill_profiles`；

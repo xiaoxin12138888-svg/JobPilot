@@ -7,6 +7,9 @@
 > 真实 BOSS/牛客 V2 人工生成与内容验收已达到 6/6 PASS。JSON 字段使用
 > camelCase。
 
+> 2026-09-16，Web 隐藏 Evidence Map 用户入口以避免与 Copilot Match 重复；本文件中的 Evidence
+> Map endpoints 继续保持兼容，可读取既有记录，未删除或改变请求/响应契约。
+
 ## 1. Runtime boundary
 
 默认 API origin 为 `http://127.0.0.1:8000`，只支持 loopback。没有账号、cookie、token、

@@ -1,5 +1,9 @@
 # Evidence Map V2
 
+> UI 状态（2026-09-16）：岗位详情不再显示独立 Evidence Map 面板，避免与 AI Copilot“匹配分析”
+> 重复。以下协议作为历史记录读取、数据模型和后端 API 兼容说明继续保留；没有删除既有记录、表、
+> migration 或 endpoint，也没有改变 Phase 7 的 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED` 状态。
+
 ## Input and consent
 
 生成前必须同时满足：Job 存在；当前 JD Analysis 存在且非 stale；ResumeVersion 存在；Provider

@@ -24,6 +24,7 @@
 - [x] Re-run the original BOSS and Nowcoder six tasks; 2026-09-16 result 6/6 generation and content PASS.
 - [x] Obtain owner PASS/FAIL for all successful real-job outputs; owner confirmed all six PASS.
 - [ ] Run full regression/security/browser/documentation gates and stop before Phase 12.
+- [x] Hide the redundant Job Detail Evidence Map panel while retaining historical data and API compatibility.
 
 Current gate (2026-09-15): V2 preflight is 3/3, but the unchanged 20-sample run obtained usable Provider content
 for only 14/20 samples (five `AI_PROVIDER_UNAVAILABLE`, one `AI_TIMEOUT`). The 14 received results reached

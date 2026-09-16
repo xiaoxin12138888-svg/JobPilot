@@ -7,6 +7,8 @@
 > 中国移动校招表单人工验收并标记 PASS。BOSS 与牛客保持 `SUPPORTED — V1`。
 > Phase 10 — Local Resume Import 已完成实现、自动化门禁和虚构文件隔离浏览器验收，等待真实
 > DOCX/PDF 人工内容与合并验收；此前不得标记 PASS。
+> Phase 7 Evidence Map 的独立 Web 面板已于 2026-09-16 隐藏，历史数据/API 兼容保留，Phase 7
+> 仍为 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`；当前匹配入口统一为 Copilot。
 > Phase 11 — AI Job Copilot P0/V2 已完成技术实现、三样本预检和真实 20 条虚构集评测。Provider
 > 完成 14/20，收到的 14 条结果最终均通过 Schema/Evidence，但合并结果未达 19/20 门槛。V2
 > BOSS/牛客人工生成与内容验收已于 2026-09-16 达到 6/6 PASS；synthetic 门槛仍阻止 Phase 11

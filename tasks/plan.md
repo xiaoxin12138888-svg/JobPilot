@@ -50,6 +50,13 @@ and retain first-pass metrics independently from final metrics.
   V2 real BOSS/Nowcoder generation and owner content acceptance completed 6/6 PASS on 2026-09-16. The
   synthetic threshold remains unmet, so the verdict stays `PHASE 11 BLOCKED`.
 
+## 2026-09-16 UI consolidation
+
+- Hide the redundant Evidence Map panel from Job Detail and direct users to Copilot Match.
+- Keep all Evidence Map tables, migrations, records, backend services, endpoints and API-client methods.
+- Update Resume empty-state copy, add a Web regression proving the hidden panel makes no Evidence Map request,
+  and preserve Phase 7 as `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`.
+
 ## Stop conditions
 
 - Do not change Prompt or Schema before the real V1 failure classifications exist.

@@ -6,6 +6,8 @@
 > 实现、自动化验证及真实 ATS 人工验收并标记 PASS；Phase 8/9 均不依赖 Provider。
 > Phase 10 本地 PDF/DOCX Parse → Preview → Confirm 已完成实现、自动化门禁与虚构文件隔离浏览器
 > 验证；真实简历内容和合并验收仍等待项目负责人，尚未标记 PASS。
+> 2026-09-16 起 Web 不再挂载 Evidence Map 面板；相关表、Repository、Service、API 与旧记录继续
+> 保留兼容，不执行数据迁移或删除。Copilot“匹配分析”是岗位详情唯一的简历匹配入口。
 
 > Phase 11 AI Job Copilot P0/V2 已完成技术实现与真实虚构集评测；Provider 可用性使合并结果只有
 > 14/20。V2 BOSS/牛客人工生成与内容验收已于 2026-09-16 达到 6/6 PASS，但冻结 synthetic
