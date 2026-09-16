@@ -192,3 +192,11 @@ Provider availability 失败使合并 final 只有 14/20，低于 19/20 门槛�
 timeout→timeout、非超时不重试、结构错误与超时互斥、脱敏和历史记录保留的自动化测试。
 这是 BC-11 的候选通用修复，**不是**已证明的真实评测修复；冻结 20 条改动后复跑仍为 NOT_RUN，
 不得把 006/007 单独重试结果计作通过。
+
+## BC-11 后续复验（2026-09-16）
+
+完整冻结 20 条复跑见 [`copilot/timeout-retry-real-run.json`](copilot/timeout-retry-real-run.json)：
+20/20 均在首次调用成功，`copilot-006` 与 `007` 分别为 30,011 ms 与 15,437 ms，均未触发
+timeout retry。Evidence 62/62，自动安全/Gap/相关性违例 0。BC-11 的真实超时在本轮**未复现**，
+但这不证明新重试机制是 20/20 的原因，也不能抹除先前两次真实 timeout；超时分支由确定性
+自动化测试覆盖。没有新失败样本，不虚构新的 Bad Case。

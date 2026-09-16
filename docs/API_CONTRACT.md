@@ -3,13 +3,13 @@
 > 状态：`GET /health`、Job/Application、BOSS/牛客 capture、Job Analysis、Resume Version、
 > Evidence Map、Interview、Feedback Summary、Autofill Profile、Local Resume Import 与 AI Job
 > Copilot contract 已由 ADR-018 冻结。Resume Import 实现和自动化已完成，等待真实简历人工验收；
-> Copilot V2 技术实现和真实 synthetic evaluation 已完成；历史 V2 为 14/20，冻结配置最终
-> 复跑为 18/20，剩余两条在 60s Provider 窗口超时，仍低于 19/20 门槛；
-> 真实 BOSS/牛客 V2 人工生成与内容验收已达到 6/6 PASS。JSON 字段使用
+> Copilot V2 技术实现和真实 synthetic evaluation 已完成；历史 V2 14/20、超时重试前
+> 18/20，加入有界超时重试后同一冻结集完整复跑 20/20、Evidence 62/62；真实 BOSS/牛客
+> V2 人工生成与内容验收为 6/6 PASS。Phase 11 PASS。JSON 字段使用
 > camelCase。
 
-> 首次 `AI_TIMEOUT` 的一次有界重试已实现，但上述 18/20 是变更前历史结果；同数据集的完整
-> 重评尚未执行。单次 Provider timeout 不变，Copilot 客户端等待窗口只为容纳两次尝试而调整。
+> 本轮 20 条均首次成功，未实际触发重试；20/20 不可归因于新机制。单次 Provider timeout
+> 不变，Copilot 客户端等待窗口只为容纳两次尝试而调整。
 
 > 2026-09-16，Web 隐藏 Evidence Map 用户入口以避免与 Copilot Match 重复；本文件中的 Evidence
 > Map endpoints 继续保持兼容，可读取既有记录，未删除或改变请求/响应契约。

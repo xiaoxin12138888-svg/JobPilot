@@ -6,11 +6,13 @@
 - [x] Keep each Provider call at 60s; only the Copilot client wait window accommodates both calls.
 - [x] Full automated regression: Python 300/300, API client 71/71, Web 58/58, Extension 112/112;
   typecheck, lint, format, import and builds PASS.
-- [ ] Run all 20 unchanged synthetic samples from the configured Provider PowerShell into a new file.
-- [ ] Record first/final, per-attempt latency, retries, evidence, safety and final acceptance.
+- [x] Run all 20 unchanged synthetic samples from the configured Provider PowerShell into
+  `timeout-retry-real-run.json`; all 20 first/final PASS, no timeout retry triggered.
+- [x] Record first/final, per-attempt latency, retries, evidence, safety and final acceptance.
 
-Until the new real run exists, the latest verified synthetic result remains the pre-change 18/20 and
-`PHASE 11 BLOCKED`; Phase 12 is not started.
+The new full run is 20/20 with 62/62 evidence and zero automated safety violations, above the frozen
+>=19/20 gate. Real BOSS/Nowcoder owner acceptance remains 6/6. The run did not exercise the new retry
+path, so no causal reliability claim is made. Verdict: `PHASE 11 PASS`. Phase 12 is not started.
 
 ---
 

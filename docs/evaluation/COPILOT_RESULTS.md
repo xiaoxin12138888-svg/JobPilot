@@ -4,15 +4,39 @@
 
 - Provider：`CONFIGURED`
 - Model：`[K12]gemini-3.5-flash`
-- Real Provider run：`COMPLETE`
+- Real Provider run：`COMPLETE — timeout-retry checkpoint 20/20`
 - Synthetic V1 content review：`COMPLETE — NOT ACCEPTABLE`；final-run 人工内容复核：`NOT_RUN`
 - Real BOSS / Nowcoder acceptance：`COMPLETE — PASS（6/6）`
-- Verdict：`PHASE 11 BLOCKED`
+- Verdict：`PHASE 11 PASS`
 
-2026-09-16 后续变更：首次 `AI_TIMEOUT` 已增加最多一次自动重试，Provider 单次 60s 不变，
-总调用最多 2 次；完整冻结 20 条重评仍为 `NOT_RUN`。下文 18/20 是**变更前**的历史最终复跑，
-不可当作新逻辑的成绩。新 runner 将逐样本记录 first attempt result/latency、retry triggered/
-result/latency 与 total latency，且只写脱敏状态，不写 raw response。
+2026-09-16 后续变更：首次 `AI_TIMEOUT` 增加最多一次自动重试，Provider 单次 60s 不变，
+总调用最多 2 次。完整冻结 20 条重评已完成，结果见下文；旧 18/20 是变更前的历史复跑，
+两次均保留。Runner 逐样本记录 first attempt result/latency、retry triggered/result/latency
+（仅在触发时）与 total latency，只写脱敏状态，不写 raw response。
+
+---
+
+## Phase 11 bounded timeout retry — frozen full rerun（2026-09-16）
+
+真实结构化记录见 [`copilot/timeout-retry-real-run.json`](copilot/timeout-retry-real-run.json)。完整的原 dataset v1 20 条样本按原顺序运行；Prompt `match-v2` / `resume-advice-v2` / `interview-prep-v2`、Schema 2、模型 `[K12]gemini-3.5-flash`、temperature 0、单次 Provider timeout 60s 和评分规则未变。新机制只允许首次 `AI_TIMEOUT` 用相同脱敏输入重试一次，与结构修复共享最多两次调用上限；Copilot-only 网页等待窗口为 130s，其他 API 不变。
+
+| 指标 | 本轮真实结果 |
+| --- | --- |
+| Samples | 20/20；Match 8/8、Resume Advice 6/6、Interview Prep 6/6 |
+| First-pass PASS / Schema | 20/20 |
+| Final PASS after timeout-retry-capable logic | 20/20 |
+| Retry Count | 0（timeout retry 0；structure repair 0） |
+| `AI_TIMEOUT` / `AI_INVALID_RESPONSE` | 0 / 0 |
+| Evidence Grounding | 62/62（100%） |
+| Unsupported Evidence / Unsafe Suggestions / Gap Errors | 0 / 0 / 0 |
+| Interview certainty / category relevance violations | 0 / 0 |
+| Latency（全部 20 条） | 均值 19,223.75 ms；中位数 17,095.5 ms；P95 nearest-rank 30,011 ms；最小 13,579 ms；最大 38,905 ms |
+
+20 条都在首次调用成功，**真实运行没有触发 timeout retry**；不能把 18→20 的改善归因于新重试机制。超时→成功、超时→超时、非超时不重试、结构错误与超时重试互斥、最大两次调用、脱敏与历史结果保留由确定性自动化测试验证。旧 `copilot-006` / `007` 本轮首次分别为 30,011 / 15,437 ms 且成功；没有单独择优重跑它们。
+
+本轮自动违规计数为 0、Evidence 62/62，但 synthetic 生成内容的主观有用性人审仍为 `NOT_RUN`；不能据此声称全部建议质量已经人工通过。原 BOSS 与牛客各三项真实岗位的生成和项目负责人人工内容验收 **6/6 PASS**，本轮 Prompt/Schema/模型未变，保持有效。浏览器自动化曾受 request-header policy 阻挡，不补记为 PASS。
+
+本轮前的完整回归：Python 300/300、API client 71/71、Web 58/58、Extension 112/112，以及 typecheck、ESLint、Ruff lint/format、Prettier、API import、Web/Extension build 和 Extension artifact security 均 PASS。评测文件扫描未发现邮箱、手机号、Provider URL 或 Key 形态；没有持久化失败原文或凭据。人工真实岗位 6/6、自动 evidence/safety 门槛和冻结 final **≥19/20** 均满足。按获批门槛，Verdict：**`PHASE 11 PASS`**。Phase 7 状态不变；Phase 12 未开始。
 
 ---
 
@@ -43,7 +67,7 @@ result/latency 与 total latency，且只写脱敏状态，不写 raw response�
 
 安全复核：评测文件未发现邮箱、中国手机号、Provider URL 或 Key 形态；失败只记录脱敏错误码与耗时，无 raw Provider 响应。产品继续要求逐次确认，只发送任务所需的去电话/邮箱纯文本到用户配置的第三方 Provider；不上传原始文件或其他个人资料，失败不影响本地核心及历史结果。自动安全门禁未发现 Critical / Required 问题；不把尚未执行的浏览器自动化称为已通过。
 
-冻结门槛是 final **≥19/20**、grounding **≥98%** 且严重安全问题为 0。当前 18/20，即使证据与真实岗位门槛满足，仍为 **`PHASE 11 BLOCKED`**。不调整评分、不择优复跑、不进入 Phase 12。
+冻结门槛是 final **≥19/20**、grounding **≥98%** 且严重安全问题为 0。在此历史节点为 18/20，即使证据与真实岗位门槛满足，当时仍为 **`PHASE 11 BLOCKED`**。不调整评分、不择优复跑、不进入 Phase 12。
 
 ---
 

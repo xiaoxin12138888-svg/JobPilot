@@ -52,7 +52,8 @@ claim 或 evidence。首次无效响应只在该请求内存中传回同一 Prov
 三次调用。`AI_PROVIDER_UNAVAILABLE` 和 provider envelope 失败不重试；第二次仍超时返回脱敏
 `AI_TIMEOUT`。Copilot Web 整次请求等待窗口为 130s，仅为容纳两次 60s Provider 尝试，
 不改变 Provider 或其他 API timeout。评测 runner 只持久化每次尝试的脱敏状态与耗时、重试原因
-和总耗时，不保存 raw Provider content 或错误。此改动后的冻结 20 条真实复跑尚未执行。
+和总耗时，不保存 raw Provider content 或错误。此改动后的冻结 20 条真实复跑已完成，
+20/20 均首轮成功，未触发重试。
 
 ## Persistence 与 stale
 
@@ -96,14 +97,13 @@ response、Provider URL 或 API Key。
 
 ## 当前验收状态
 
-20 条 BOSS/牛客风格虚构 dataset 与 real-output-only runner 已完成 V1、V2 和冻结配置最终复跑：
-V1 13/20，V2 14/20，最终 18/20。最终三样本预检 3/3 PASS；完整运行首轮/最终 Schema
-18/20、Evidence 55/55、修复 retry 0。剩余 `copilot-006` / `007` Match 均在冻结的 60s 窗口
-超时，未收到可供 Parser/Validator 检查的内容；具体上游原因未知。本轮未修改产品代码、Prompt、
-Schema、Provider、timeout 或 retry。自动安全/相关性违例为 0，但最终 synthetic 内容有用性人审
-仍是 NOT_RUN。2026-09-16，项目负责人完成原 BOSS/牛客六项人工验收：六项均生成成功，内容
-审核 6/6 PASS；因本轮无产品行为变更，该结果保持有效。最终 18/20 仍低于冻结 19/20 门槛，
-因此 `PHASE 11 BLOCKED`。不得删样本、择优复跑或进入 Phase 12。
+20 条 BOSS/牛客风格虚构 dataset 与 real-output-only runner 的演进链：V1 13/20、V2 14/20、
+变更前最终复跑 18/20，后两条 Match 因 Provider 60s 超时失败。负责人批准一次 `AI_TIMEOUT`
+有界重试后，对**同一冻结 20 条**完整复跑：首轮/最终 Schema 20/20、Evidence 62/62、retry 0、
+自动安全/相关性违例 0。全部在第一次请求成功；不能把结果改善归因于重试。Synthetic 内容有用性
+人审仍为 NOT_RUN；原 BOSS/牛客各三项真实岗位人工生成与内容验收 6/6 PASS，Prompt/Schema/模型
+未变，结果保持有效。按冻结 ≥19/20 及 evidence/safety/真实岗位门槛，**`PHASE 11 PASS`**。
+Phase 7 状态不变，Phase 12 未开始。
 
 ## 前端入口收敛
 

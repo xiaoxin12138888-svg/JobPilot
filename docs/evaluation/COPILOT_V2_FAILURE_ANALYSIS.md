@@ -109,7 +109,7 @@ fixed three-feature gate is retained:
 The gate must be 3/3 final PASS before the unchanged 20-sample rerun. If it fails, stop. If it passes,
 write new output files rather than overwriting `v2-preflight.json` or `v2-real-run.json`.
 
-## Current decision
+## Historical decision before the later timeout-retry approval
 
 - Failure analysis: COMPLETE.
 - Product-code fix: NOT JUSTIFIED by the six observed failures.
@@ -121,3 +121,14 @@ write new output files rather than overwriting `v2-preflight.json` or `v2-real-r
 - Final product-code change: NONE; no evidence-backed fix within the frozen Provider/timeout/retry constraints. No cherry-picked rerun or threshold change.
 - Verdict: `PHASE 11 BLOCKED`.
 - Phase 12: NOT STARTED.
+
+## Subsequent full-run outcome（2026-09-16）
+
+The owner later approved one bounded retry only after `AI_TIMEOUT`, with the same 60s Provider timeout,
+model, Prompt V2, Schema V2, dataset and scoring. The complete unchanged 20-sample run recorded in
+`docs/evaluation/copilot/timeout-retry-real-run.json` reached 20/20 first/final PASS and 62/62 grounded
+evidence. No retry was triggered; both formerly timed-out Match samples succeeded on the first attempt.
+This is compatible with variable Provider availability but does not establish that the new retry caused
+the improvement. The historical 18/20 and its two timeout failures remain preserved. With the prior
+6/6 real-job owner review and all frozen acceptance gates satisfied, the latest verdict is
+`PHASE 11 PASS`; Phase 12 was not started.

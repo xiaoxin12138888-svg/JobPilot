@@ -7,9 +7,11 @@ still limited to 60s and no more than two total Provider calls. A structure repa
 when the first call returned invalid content; a timeout retry never permits a third call. The Copilot-only
 Web request wait window is 130s so the approved two attempts can complete; other client/API timeouts,
 Prompt, Schema, model, dataset and scoring stay unchanged. RED/GREEN focused tests and full regression
-passed. The unchanged 20-sample real rerun must be executed from the owner's configured PowerShell and
-recorded in a new file; until then the latest verified score is the pre-change 18/20 and Phase 11 stays
-BLOCKED. Phase 12 remains out of scope.
+passed. The owner ran all 20 unchanged samples from the configured PowerShell into
+`docs/evaluation/copilot/timeout-retry-real-run.json`: 20/20 first/final PASS, Evidence 62/62,
+zero retries and zero automated safety violations. All first attempts succeeded, so the result cannot
+be attributed to the new retry path. With prior real-job owner acceptance 6/6 and all frozen gates
+met, verdict is `PHASE 11 PASS`. Phase 7 remains paused; Phase 12 remains out of scope.
 
 ---
 

@@ -9,13 +9,13 @@
 > 内容与合并验收仍由项目负责人完成，在此之前不得标记 PASS。
 > Phase 7 的 Evidence Map 前端入口已于 2026-09-16 隐藏，历史数据和 API 继续兼容，语义验收状态
 > 不变；岗位与简历的当前用户入口统一为 Copilot“匹配分析”。
-> Phase 11 — AI Job Copilot P0/V2 已完成技术实现、真实三样本预检与 20 条评测。历史 V2
-> 为 14/20；冻结配置最终复跑为 18/20、Evidence 55/55，剩余两条 Match 因 60s Provider
-> 超时失败，仍未达 19/20。2026-09-16 完成的 BOSS/牛客人工内容验收为 6/6 PASS，但不能
-> 替代 synthetic 门槛，因此不得标记 PASS 或进入 Phase 12。
+> Phase 11 — AI Job Copilot P0/V2 已完成技术实现与真实评测。历史 V2 为 14/20、超时重试
+> 前复跑为 18/20；加入一次有界 `AI_TIMEOUT` 重试后，同一冻结 20 条完整复跑为 20/20、
+> Evidence 62/62，达到 ≥19/20。BOSS/牛客真实岗位人工内容验收 6/6 PASS；Phase 11 PASS，
+> Phase 12 尚未开始。
 
-> 首次 `AI_TIMEOUT` 的一次有界重试已实现；上述 18/20 是变更前成绩，冻结 20 条完整重评
-> 尚未运行。单次 Provider timeout、Prompt、Schema、数据集与评分规则保持不变。
+> 本次 20 条均首轮成功，未触发重试；不把 20/20 归因于新机制。单次 Provider timeout、
+> Prompt、Schema、数据集与评分规则保持不变。
 
 ## 1. 产品定位
 
