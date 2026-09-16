@@ -6,7 +6,7 @@
 - Model：`[K12]gemini-3.5-flash`
 - Real Provider run：`COMPLETE`
 - Synthetic content review：`COMPLETE — NOT ACCEPTABLE`
-- Real BOSS / Nowcoder acceptance：`COMPLETE — FAIL`
+- Real BOSS / Nowcoder acceptance：`COMPLETE — PASS（6/6）`
 - Verdict：`PHASE 11 BLOCKED`
 
 ---
@@ -65,7 +65,12 @@ Prep 未再强制非 AI 岗位使用 AI 类别。
 ### 内容与真实岗位验收
 
 - Synthetic 成功结果的项目负责人内容复核：`NOT_RUN`。自动指标不代替 summary/建议/问题有用性人审。
-- V2 原 BOSS/Nowcoder 六项真实岗位复验：`USER ACTION REQUIRED`。V1 的 3/6 不冒充 V2 验收。
+- V2 原 BOSS/Nowcoder 六项真实岗位复验：`COMPLETE — PASS（6/6）`。项目负责人于
+  2026-09-16 确认 BOSS Match、Resume Advice、Interview Prep 与 Nowcoder Match、Resume Advice、
+  Interview Prep 均生成成功，且逐项内容审核均为 PASS。V1 的 3/6 继续作为历史基线保留，不改写。
+- 本次负责人审核确认：优势来自所选简历、Gap 表述合理、建议有帮助、面试问题符合岗位；未报告
+  fabricated experience、错误来源标签或非 AI 岗位强制 AI 类别。未单独记录真实请求 latency，
+  因此不补造耗时数据。
 - 浏览器自动验收：`BLOCKED — browser request-header policy unavailable`；重试后仍无法加载浏览器面，
   未把工具失败记为页面 PASS/FAIL。
 
@@ -74,6 +79,7 @@ Prep 未再强制非 AI 岗位使用 AI 类别。
 - Python 292/292、API client 70/70、Web 62/62、Extension 112/112：PASS。
 - Typecheck、ESLint、Ruff lint/format、Prettier、API import、Web/Extension build 和 Extension artifact security：PASS。
 - Copilot V2 相关聚焦回归 43/43；迁移保留 schema 1、允许 schema 2、拒绝 schema 3：PASS。
+- V2 真实岗位人工门槛要求至少 5/6 且成功输出由负责人判断；实际为 6/6 生成及内容 PASS：PASS。
 - 合并 final schema 14/20，低于冻结的 19/20 门槛；不重跑失败样本来挑选更好结果。
 - Verdict：`PHASE 11 BLOCKED`。Phase 12 未开始。
 

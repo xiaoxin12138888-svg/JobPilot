@@ -47,7 +47,8 @@ and retain first-pass metrics independently from final metrics.
 - V2 20-sample run: Provider usable content 14/20; first-pass 13/20; final 14/20 after one repair; evidence
   43/43; five unavailable and one timeout. The frozen 19/20 combined threshold was not met.
 - Automated regression and build gates pass. Browser automation is blocked by the local request-header policy;
-  V2 real BOSS/Nowcoder owner acceptance remains required. Verdict stays `PHASE 11 BLOCKED`.
+  V2 real BOSS/Nowcoder generation and owner content acceptance completed 6/6 PASS on 2026-09-16. The
+  synthetic threshold remains unmet, so the verdict stays `PHASE 11 BLOCKED`.
 
 ## Stop conditions
 

@@ -21,15 +21,15 @@
 - [x] Run 3-sample real Provider preflight; require 3/3 schema/evidence and safety/relevance PASS.
 - [x] Freeze V2 against unchanged dataset v1, model, temperature 0 and timeout 60s.
 - [x] Re-run the same 20 samples and compare every approved V1/V2 metric.
-- [ ] Re-run the original BOSS and Nowcoder six tasks; require at least 5/6 without systematic failure.
-- [ ] Obtain owner PASS/FAIL for all successful real-job outputs.
+- [x] Re-run the original BOSS and Nowcoder six tasks; 2026-09-16 result 6/6 generation and content PASS.
+- [x] Obtain owner PASS/FAIL for all successful real-job outputs; owner confirmed all six PASS.
 - [ ] Run full regression/security/browser/documentation gates and stop before Phase 12.
 
 Current gate (2026-09-15): V2 preflight is 3/3, but the unchanged 20-sample run obtained usable Provider content
 for only 14/20 samples (five `AI_PROVIDER_UNAVAILABLE`, one `AI_TIMEOUT`). The 14 received results reached
 14/14 final schema and 43/43 grounding, with one bounded repair, but combined final 14/20 is below the frozen
-19/20 threshold. Real V2 BOSS/Nowcoder six-task owner acceptance and browser automation remain pending; Phase 11
-stays BLOCKED and Phase 12 is not started.
+19/20 threshold. Real V2 BOSS/Nowcoder six-task owner acceptance is complete at 6/6 PASS; browser automation
+remains blocked by the local request-header policy. Phase 11 stays BLOCKED and Phase 12 is not started.
 
 ---
 

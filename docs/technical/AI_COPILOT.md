@@ -94,5 +94,6 @@ response、Provider URL 或 API Key。
 20 条 BOSS/牛客风格虚构 dataset 与 real-output-only runner 已完成 V1/V2 真实运行。V2 三样本预检
 3/3 PASS；正式 run 的 Provider availability 为 14/20，first-pass schema 13/20，一条经修复后 final
 schema 14/20。收到的 14 条有效结果为 14/14 final schema、evidence 43/43，自动安全/相关性违规为 0。
-但合并 final 未达 19/20 验收门槛，V2 真实 BOSS/牛客六项人工验收待完成，因此当前为
-`PHASE 11 BLOCKED`。不得为提高数字删除失败样本、重跑挑选结果或进入 Phase 12。
+但合并 final 未达 19/20 验收门槛。2026-09-16，项目负责人完成 V2 真实 BOSS/牛客六项人工
+验收：六项均生成成功，内容审核 6/6 PASS。真实岗位门槛已满足，但不能替代 synthetic 门槛，
+因此当前仍为 `PHASE 11 BLOCKED`。不得为提高数字删除失败样本、重跑挑选结果或进入 Phase 12。

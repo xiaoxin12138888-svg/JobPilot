@@ -8,8 +8,9 @@
 > Phase 10 — Local Resume Import 已完成实现、自动化门禁和虚构文件隔离浏览器验收，等待真实
 > DOCX/PDF 人工内容与合并验收；此前不得标记 PASS。
 > Phase 11 — AI Job Copilot P0/V2 已完成技术实现、三样本预检和真实 20 条虚构集评测。Provider
-> 完成 14/20，收到的 14 条结果最终均通过 Schema/Evidence，但合并结果未达 19/20 门槛；V2
-> BOSS/牛客人工验收待完成，因此不得标记 PASS 或进入 Phase 12。
+> 完成 14/20，收到的 14 条结果最终均通过 Schema/Evidence，但合并结果未达 19/20 门槛。V2
+> BOSS/牛客人工生成与内容验收已于 2026-09-16 达到 6/6 PASS；synthetic 门槛仍阻止 Phase 11
+> 标记 PASS 或进入 Phase 12。
 
 ## 1. Global gates
 

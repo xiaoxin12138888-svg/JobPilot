@@ -3,8 +3,8 @@
 > 状态：`GET /health`、Job/Application、BOSS/牛客 capture、Job Analysis、Resume Version、
 > Evidence Map、Interview、Feedback Summary、Autofill Profile、Local Resume Import 与 AI Job
 > Copilot contract 已由 ADR-018 冻结。Resume Import 实现和自动化已完成，等待真实简历人工验收；
-> Copilot V2 技术实现和真实 synthetic evaluation 已完成，但 Provider 可用性使 final 只有 14/20，
-> 真实 BOSS/牛客 V2 人工内容验收待完成。JSON 字段使用
+> Copilot V2 技术实现和真实 synthetic evaluation 已完成，但 Provider 可用性使 final 只有 14/20；
+> 真实 BOSS/牛客 V2 人工生成与内容验收已达到 6/6 PASS。JSON 字段使用
 > camelCase。
 
 ## 1. Runtime boundary

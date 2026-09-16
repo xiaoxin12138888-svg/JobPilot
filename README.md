@@ -11,8 +11,9 @@ JobPilot 不替代招聘网站，不建设职位数据库，也不代表用户�
 
 **Phase 11 — AI Job Copilot** 的 P0 技术实现、V2 严格 grounding/单次结构修复和真实 20 条
 虚构评测已完成。V2 预检 3/3；正式评测中 Provider 完成 14/20，14 条有效响应最终全部
-通过 Schema/Evidence，但合并验收为 14/20，未达 19/20 门槛。因 Provider 可用性和 V2 真实
-BOSS/牛客人工验收尚未完成，当前仍为 `PHASE 11 BLOCKED`。
+通过 Schema/Evidence，但合并验收为 14/20，未达 19/20 门槛。2026-09-16，项目负责人完成
+V2 真实 BOSS/牛客六项人工验收，生成与内容审核均为 6/6 PASS；冻结 synthetic 门槛仍未达到，
+因此当前仍为 `PHASE 11 BLOCKED`。
 
 - React Web：本机 API 状态、岗位库、纯文本简历版本、本地 PDF/DOCX 导入预览、本地求职资料、岗位详情/编辑/删除、投递状态/使用简历记录、面试轮次与题目、自我复盘、Application 结果记录、事实型求职复盘，以及可选 JD Analysis/Evidence Map/AI Copilot；
 - Chrome Extension：使用 `activeTab` + `scripting` 的用户主动 Popup，支持 BOSS/牛客岗位采集与当前申请表的 Scan → Preview → Confirm → Fill；无后台进程，唯一 host permission 是 `http://127.0.0.1:8000/*`；

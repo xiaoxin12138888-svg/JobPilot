@@ -165,4 +165,9 @@
 
 V1 的 string-array 错误和非 AI 岗位强制 AI 类别在已收到的 V2 有效 content 中未再出现；但新的
 Provider availability 失败使合并 final 只有 14/20，低于 19/20 门槛。未生成的 6 条不能进行 summary/
-建议/问题内容审核，不得用 0 违规冒充内容质量 PASS。Phase 11 保持 `BLOCKED`。
+建议/问题内容审核，不得用 0 违规冒充内容质量 PASS。
+
+2026-09-16 的 V2 真实岗位复验中，BOSS 与 Nowcoder 的 Match、Resume Advice、Interview Prep
+共六项均生成成功，项目负责人内容审核 6/6 PASS；本次没有观察到新的真实岗位 Bad Case，因此不
+虚构新增编号。该结果满足真实岗位门槛，但不覆盖 BC-08/BC-09，也不能替代冻结 synthetic run 的
+19/20 门槛。Phase 11 保持 `BLOCKED`。
