@@ -8,6 +8,9 @@
 > 真实 BOSS/牛客 V2 人工生成与内容验收已达到 6/6 PASS。JSON 字段使用
 > camelCase。
 
+> 首次 `AI_TIMEOUT` 的一次有界重试已实现，但上述 18/20 是变更前历史结果；同数据集的完整
+> 重评尚未执行。单次 Provider timeout 不变，Copilot 客户端等待窗口只为容纳两次尝试而调整。
+
 > 2026-09-16，Web 隐藏 Evidence Map 用户入口以避免与 Copilot Match 重复；本文件中的 Evidence
 > Map endpoints 继续保持兼容，可读取既有记录，未删除或改变请求/响应契约。
 
@@ -16,8 +19,8 @@
 默认 API origin 为 `http://127.0.0.1:8000`，只支持 loopback。没有账号、cookie、token、
 session 或用户 endpoint。客户端请求使用 `credentials: omit`、`cache: no-store`、
 `redirect: error`。核心请求 timeout 为 5000 ms；显式 JD 分析请求使用 35000 ms 客户端 timeout，
-Evidence Map 与 Copilot 生成使用 65000 ms 客户端 timeout，后端 LLM Provider request timeout 集中配置为
-60 秒。
+Evidence Map 使用 65000 ms、Copilot 生成使用 130000 ms 客户端等待窗口；后端 LLM Provider
+每次 request timeout 保持集中配置的 60 秒。其他 API timeout 不变。
 
 写入还要求 loopback Host、安全的 Origin/Fetch Metadata 与 `application/json`。
 CORS 只列精确 Web origin 和 `GET, POST, PUT, PATCH, DELETE`，不允许 credentials。
@@ -570,7 +573,9 @@ Interview。POST 继续接受精确 loopback Web Origin、非 cross-site Fetch M
 
 V2 生成在 system instruction 中明确列出当次 allowed source IDs。如首次 Provider content 被严格 parser
 拒绝，API 最多对同一 Provider 进行一次仅结构修复；修复不得增加 claim/evidence。timeout、
-`AI_PROVIDER_UNAVAILABLE` 不重试，修复后仍无效依旧返回 `AI_INVALID_RESPONSE`。对外 endpoint、request 和
+`AI_PROVIDER_UNAVAILABLE` 不重试，修复后仍无效依旧返回 `AI_INVALID_RESPONSE`。首次
+`AI_TIMEOUT` 允许同输入最多一次自动重试；两次均超时返回 `AI_TIMEOUT`。结构修复与超时重试
+共享最多两次 Provider 调用上限。对外 endpoint、request 和
 result field 未改变；旧 schema 1 记录仍可读。
 
 ## 13. Errors

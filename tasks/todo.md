@@ -1,5 +1,19 @@
 # Phase 11.2 — Final Reliability Closure Checklist
 
+## Subsequent bounded-timeout-retry checkpoint（2026-09-16）
+
+- [x] RED/GREEN API, evaluator and client tests for one `AI_TIMEOUT` retry and at most two calls.
+- [x] Keep each Provider call at 60s; only the Copilot client wait window accommodates both calls.
+- [x] Full automated regression: Python 300/300, API client 71/71, Web 58/58, Extension 112/112;
+  typecheck, lint, format, import and builds PASS.
+- [ ] Run all 20 unchanged synthetic samples from the configured Provider PowerShell into a new file.
+- [ ] Record first/final, per-attempt latency, retries, evidence, safety and final acceptance.
+
+Until the new real run exists, the latest verified synthetic result remains the pre-change 18/20 and
+`PHASE 11 BLOCKED`; Phase 12 is not started.
+
+---
+
 ## Frozen failure analysis
 
 - [x] Preserve V1 13/20, V2 14/20, the dataset/scoring contract and real-job 6/6 PASS.

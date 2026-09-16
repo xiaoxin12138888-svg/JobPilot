@@ -187,3 +187,8 @@ Provider availability 失败使合并 final 只有 14/20，低于 19/20 门槛�
 - **Root Cause**：已观察到的直接原因是 Provider 请求超时。上游负载、网络或具体服务内部原因没有可验证记录；Parser、Schema、Validator 和结构修复均未被这两条触达，不能把超时归因于它们。
 - **Fix**：本轮没有可证实且在授权范围内的产品代码修复。不自动增加 timeout 或 transport retry，不更换 Provider，不单独复跑失败样本以挑选结果。后续如需改变这些冻结条件，须由负责人另行批准并重新定义可比较的评测。
 - **Regression**：产品 timeout 返回稳定脱敏 `AI_TIMEOUT`，不保存 raw response、不覆盖历史有效结果；Python 292/292、API client 70/70、Web 58/58、Extension 112/112 与静态/构建门禁 PASS。验收数字仍为 18/20，故 `PHASE 11 BLOCKED`。
+
+2026-09-16 后续状态：负责人批准通用的一次 `AI_TIMEOUT` 重试，已通过 timeout→success、
+timeout→timeout、非超时不重试、结构错误与超时互斥、脱敏和历史记录保留的自动化测试。
+这是 BC-11 的候选通用修复，**不是**已证明的真实评测修复；冻结 20 条改动后复跑仍为 NOT_RUN，
+不得把 006/007 单独重试结果计作通过。

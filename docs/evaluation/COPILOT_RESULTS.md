@@ -9,6 +9,11 @@
 - Real BOSS / Nowcoder acceptance：`COMPLETE — PASS（6/6）`
 - Verdict：`PHASE 11 BLOCKED`
 
+2026-09-16 后续变更：首次 `AI_TIMEOUT` 已增加最多一次自动重试，Provider 单次 60s 不变，
+总调用最多 2 次；完整冻结 20 条重评仍为 `NOT_RUN`。下文 18/20 是**变更前**的历史最终复跑，
+不可当作新逻辑的成绩。新 runner 将逐样本记录 first attempt result/latency、retry triggered/
+result/latency 与 total latency，且只写脱敏状态，不写 raw response。
+
 ---
 
 ## Phase 11.2 final reliability closure（2026-09-16）

@@ -15,6 +15,10 @@ JobPilot 不替代招聘网站，不建设职位数据库，也不代表用户�
 19/20 门槛。2026-09-16，项目负责人完成 BOSS/牛客六项人工验收，生成与内容审核均为
 6/6 PASS；冻结 synthetic 门槛仍未达到，因此当前仍为 `PHASE 11 BLOCKED`。
 
+针对首次 `AI_TIMEOUT` 已增加一次有界重试：每次 Provider timeout 仍为 60 秒，全部调用最多
+2 次；Copilot 网页等待窗口相应容纳两次尝试。冻结数据集、Prompt、Schema、模型与评分规则
+未变。此改动后的完整 20 条真实评测尚未运行，旧 18/20 是最近一次可验证结果。
+
 2026-09-16 起，岗位详情不再显示与 Copilot 重复的 Evidence Map 模块；历史记录、数据库结构和
 API 保持兼容，Phase 7 状态不变，用户统一使用 Copilot“匹配分析”。
 
@@ -50,8 +54,9 @@ Phase 11 P0 在岗位详情提供岗位理解、岗位匹配、简历准备和�
 email/phone 会在传输前删除。grounded 结论必须引用对应本地原文，非法 quote、错误 source、
 能力断言或确定性面试问题不会持久化。每次重新生成追加一条带 input fingerprint、model、prompt
 version 和时间的记录；来源变化只标 stale，失败保留上一次有效结果。Copilot 不修改任何本地事实
-或执行求职动作。V2 对结构验证失败最多请求同一 Provider 修复一次，不对 timeout/
-传输失败重试，不放宽 evidence，也不保存无效原始响应。
+或执行求职动作。V2 对首次结构验证失败最多请求同一 Provider 修复一次；首次 `AI_TIMEOUT`
+可同输入重试一次，其他传输失败不重试。总 Provider 调用不超过 2，不放宽 evidence，也不保存
+无效原始响应。
 
 ## 本地优先意味着什么
 

@@ -47,7 +47,12 @@ Source type 是 `RESUME | JOB | INTERVIEW`；INTERVIEW 仅用于复盘。所有�
 首次 content 只有在严格 Copilot parser 返回 `AI_INVALID_RESPONSE` 时才允许修复。最多一次、仍使用
 同一 Provider/模型/Prompt，并在单独 user repair message 中携带白名单 validator code，明确禁止新增
 claim 或 evidence。首次无效响应只在该请求内存中传回同一 Provider，不写数据库、文件或日志。
-timeout、Provider unavailable 和 provider envelope 失败不重试；第二次仍无效时立即返回脱敏错误。
+首次 `AI_TIMEOUT` 现在允许用完全相同的脱敏输入自动重试一次；每次 Provider request 仍为 60s，
+总 Provider 调用最多 2 次。首次结构错误仍最多修复一次；若超时重试后又出现结构错误，不允许第
+三次调用。`AI_PROVIDER_UNAVAILABLE` 和 provider envelope 失败不重试；第二次仍超时返回脱敏
+`AI_TIMEOUT`。Copilot Web 整次请求等待窗口为 130s，仅为容纳两次 60s Provider 尝试，
+不改变 Provider 或其他 API timeout。评测 runner 只持久化每次尝试的脱敏状态与耗时、重试原因
+和总耗时，不保存 raw Provider content 或错误。此改动后的冻结 20 条真实复跑尚未执行。
 
 ## Persistence 与 stale
 

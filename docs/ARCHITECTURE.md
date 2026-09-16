@@ -14,6 +14,9 @@
 > 生成与内容验收已于 2026-09-16 达到 6/6 PASS，但 synthetic 19/20 门槛仍未达到，
 > 当前仍为 `PHASE 11 BLOCKED`。
 
+> 首次 `AI_TIMEOUT` 的一次有界重试已实现。上述 18/20 为改动前历史评测；完整冻结 20 条
+> 改动后重评待执行，不能提前判定 Phase 11 PASS。
+
 ## 1. 运行时
 
 ```mermaid
@@ -113,8 +116,8 @@ Web 不引入路由或状态框架。App 只协调 health 和 library/create/res
 EvidenceMapPanel 与 CopilotPanel 为聚焦组件。所有业务 I/O 经过 api-client，不自行拼 HTTP。Interview UI 只记录
 用户输入的本地事实且不改变 Application；Feedback UI 只呈现 API 的确定性统计。Evidence Map 按
 六类条件呈现逐项明确结论、判断依据和原文证据，并在 Web 端确定性计算全图计数、待确认项与主要
-证据缺口。JD 分析请求使用 35 秒 client timeout，Evidence Map 与 Copilot 生成使用 65 秒 client
-timeout，其余核心请求保持 5 秒。
+证据缺口。JD 分析请求使用 35 秒 client timeout，Evidence Map 使用 65 秒，Copilot 生成
+使用 130 秒 client timeout 以容纳最多两次各 60 秒的 Provider 调用；其余核心请求保持 5 秒。
 
 “去原平台查看/投递”使用 `target="_blank"` 与 `rel="noreferrer"`，没有关联 mutation。
 
@@ -130,7 +133,8 @@ Resume Advice 和 Interview Prep。输入只含当前结构化岗位条件、明
 Job 已有 Interview 记录；phone/email 在 Provider data 构造前删除。所有 source type/id/quote
 经 domain parser 验证后才 append-only 写入 `copilot_records`。输入指纹变化只在读取时标 stale；
 重新生成失败不覆盖历史结果。V2 system prompt 显式携带当次 allowed source IDs；只在首次结构验证失败时
-使用原响应的内存副本向同一 Provider 发送一次仅结构修复的对话；不对 timeout/传输失败重试，
+使用原响应的内存副本向同一 Provider 发送一次仅结构修复的对话；首次 `AI_TIMEOUT` 可用同一
+输入重试一次，但总调用数不超过 2。其他传输失败不重试；超时重试后结构无效也不发第三次请求。
 不记录无效 raw response。Copilot 不修改 Job、Resume、Application 或 Interview。
 
 JD 服务仅构造 title/company/description/location/salaryText 输入。Evidence 服务只构造必要岗位

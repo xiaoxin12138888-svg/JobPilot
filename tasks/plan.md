@@ -1,5 +1,18 @@
 # Implementation Plan: Phase 11.2 — Final Reliability Closure
 
+## Subsequent approved timeout-retry checkpoint（2026-09-16）
+
+The owner approved exactly one automatic retry after the first `AI_TIMEOUT`, with each Provider request
+still limited to 60s and no more than two total Provider calls. A structure repair remains possible only
+when the first call returned invalid content; a timeout retry never permits a third call. The Copilot-only
+Web request wait window is 130s so the approved two attempts can complete; other client/API timeouts,
+Prompt, Schema, model, dataset and scoring stay unchanged. RED/GREEN focused tests and full regression
+passed. The unchanged 20-sample real rerun must be executed from the owner's configured PowerShell and
+recorded in a new file; until then the latest verified score is the pre-change 18/20 and Phase 11 stays
+BLOCKED. Phase 12 remains out of scope.
+
+---
+
 > Owner-approved on 2026-09-16 from V2 evaluation commit `51a4ab1` and real-job acceptance commit
 > `0351de3`. Preserve V1/V2 results, the frozen 20-sample dataset and the 6/6 real-job acceptance. Do not
 > restore Evidence Map UI, change Phase 7, add product scope or enter Phase 12.

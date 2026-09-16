@@ -14,6 +14,9 @@
 > 超时失败，仍未达 19/20。2026-09-16 完成的 BOSS/牛客人工内容验收为 6/6 PASS，但不能
 > 替代 synthetic 门槛，因此不得标记 PASS 或进入 Phase 12。
 
+> 首次 `AI_TIMEOUT` 的一次有界重试已实现；上述 18/20 是变更前成绩，冻结 20 条完整重评
+> 尚未运行。单次 Provider timeout、Prompt、Schema、数据集与评分规则保持不变。
+
 ## 1. 产品定位
 
 JobPilot 是个人求职者安装在自己电脑上的本地优先求职工作台。招聘平台继续负责岗位发现、
@@ -293,7 +296,9 @@ Job/Resume/Interview 文本。gap 只能表述“当前资料/简历未发现”
 prompt version、result 和 created time；来源变化把历史结果标为 stale，失败不删除上次有效结果。
 
 V2 只对已收到但严格 parser 拒绝的结构响应进行最多一次修复请求，修复指令禁止新增 claim 或
-evidence。timeout 和 transport failure 不重试；第二次仍无效时立即失败且不持久化任何无效原文。
+evidence。首次 `AI_TIMEOUT` 可以同输入重试一次；其他 transport failure 不重试，
+结构修复与超时重试共享最多两次 Provider 调用。第二次仍失败时立即返回脱敏错误，不持久化
+任何无效原文。
 
 本阶段不实现 P1 求职策略、聊天 Agent、长期记忆、RAG、评分、Offer 概率、自动简历改写、投递、
 消息或其他行动。

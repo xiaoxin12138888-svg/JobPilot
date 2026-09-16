@@ -14,6 +14,9 @@
 > 窗口，仍未达 19/20。BOSS/牛客人工生成与内容验收已于 2026-09-16 达到 6/6 PASS；
 > synthetic 门槛仍阻止 Phase 11 标记 PASS 或进入 Phase 12。
 
+> 首次 `AI_TIMEOUT` 的一次有界重试已实现；上述 18/20 属于变更前历史结果，完整冻结
+> 数据集的改动后重评尚未完成。Phase 11 仍为 BLOCKED，Phase 12 不开始。
+
 ## 1. Global gates
 
 每个阶段依次完成：
