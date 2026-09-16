@@ -39,6 +39,35 @@ const matchResponse = {
 };
 
 describe('Copilot API client', () => {
+  it('keeps the Copilot request open for two bounded 60-second provider attempts', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchImplementation = vi.fn<typeof fetch>(
+        (_input, init) =>
+          new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener(
+              'abort',
+              () => reject(new DOMException('The operation was aborted', 'AbortError')),
+              { once: true },
+            );
+          }),
+      );
+      const client = createApiClient({
+        baseUrl: 'http://127.0.0.1:8000',
+        fetchImplementation,
+      });
+
+      const request = client.generateJobMatch('job-1', 'resume-1');
+      const timeoutExpectation = expect(request).rejects.toThrow('JobPilot API request timed out');
+      await vi.advanceTimersByTimeAsync(129_999);
+      expect(fetchImplementation.mock.calls[0]?.[1]?.signal?.aborted).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      await timeoutExpectation;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('sends explicit consent without credentials and validates a match response', async () => {
     const fetchImplementation = vi.fn().mockImplementation(() => jsonResponse(matchResponse));
     const client = createApiClient({

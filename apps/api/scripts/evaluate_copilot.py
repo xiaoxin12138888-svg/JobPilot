@@ -29,7 +29,11 @@ from jobpilot_api.domain.copilot import (  # noqa: E402
     SourceType,
     parse_copilot_result,
 )
-from jobpilot_api.domain.errors import AnalysisInvalidResponseError, DomainError  # noqa: E402
+from jobpilot_api.domain.errors import (  # noqa: E402
+    AnalysisInvalidResponseError,
+    AnalysisTimeoutError,
+    DomainError,
+)
 from jobpilot_api.infrastructure.ai.openai_compatible import (  # noqa: E402
     OpenAICompatibleJDAnalysisProvider,
 )
@@ -233,6 +237,8 @@ def _evaluate_sample(
         "schemaValid": False,
         "attemptCount": 1,
         "retryCount": 0,
+        "retryTriggered": False,
+        "timeoutRetryTriggered": False,
         "evidence": {"grounded": 0, "provided": 0},
         "unsupportedHallucinationCount": 0,
         "gapLanguageViolations": 0,
@@ -249,17 +255,49 @@ def _evaluate_sample(
         )
     except DomainError as error:
         entry["firstAttemptLatencyMs"] = round((time.perf_counter() - attempt_started_at) * 1000)
-        entry["errorCode"] = error.code
-        return _finish_entry(entry, total_started_at)
-    entry["firstAttemptLatencyMs"] = round((time.perf_counter() - attempt_started_at) * 1000)
+        entry["firstAttemptResult"] = error.code
+        if not isinstance(error, AnalysisTimeoutError):
+            entry["errorCode"] = error.code
+            return _finish_entry(entry, total_started_at)
+        entry["retryCount"] = 1
+        entry["attemptCount"] = 2
+        entry["retryTriggered"] = True
+        entry["timeoutRetryTriggered"] = True
+        entry["retryReason"] = "AI_TIMEOUT"
+        retry_started_at = time.perf_counter()
+        try:
+            raw_content = provider.generate_copilot(
+                copilot_input,
+                system_instruction=system_instruction,
+            )
+        except DomainError as retry_error:
+            entry["retryLatencyMs"] = round((time.perf_counter() - retry_started_at) * 1000)
+            entry["retryResult"] = retry_error.code
+            entry["errorCode"] = retry_error.code
+            return _finish_entry(entry, total_started_at)
+        entry["retryLatencyMs"] = round((time.perf_counter() - retry_started_at) * 1000)
+    else:
+        entry["firstAttemptLatencyMs"] = round((time.perf_counter() - attempt_started_at) * 1000)
 
     try:
         result = parse_copilot_result(kind, raw_content, copilot_input)
-        entry["firstPassSchemaValid"] = True
+        if entry["timeoutRetryTriggered"]:
+            entry["retryResult"] = "PASS"
+        else:
+            entry["firstPassSchemaValid"] = True
+            entry["firstAttemptResult"] = "PASS"
     except AnalysisInvalidResponseError as first_error:
+        if entry["timeoutRetryTriggered"]:
+            entry["retryResult"] = first_error.code
+            entry["errorCode"] = first_error.code
+            return _finish_entry(entry, total_started_at)
+        entry["firstAttemptResult"] = first_error.code
         entry["firstPassErrorCode"] = first_error.code
         entry["retryCount"] = 1
         entry["attemptCount"] = 2
+        entry["retryTriggered"] = True
+        entry["retryReason"] = "AI_INVALID_RESPONSE"
+        retry_started_at = time.perf_counter()
         try:
             raw_content = provider.generate_copilot(
                 copilot_input,
@@ -271,8 +309,12 @@ def _evaluate_sample(
             )
             result = parse_copilot_result(kind, raw_content, copilot_input)
         except DomainError as final_error:
+            entry["retryLatencyMs"] = round((time.perf_counter() - retry_started_at) * 1000)
+            entry["retryResult"] = final_error.code
             entry["errorCode"] = final_error.code
             return _finish_entry(entry, total_started_at)
+        entry["retryLatencyMs"] = round((time.perf_counter() - retry_started_at) * 1000)
+        entry["retryResult"] = "PASS"
 
     provided, grounded = _evidence_counts(raw_content, copilot_input)
     gap_violations, certainty_violations = _unsafe_language_counts(raw_content)
@@ -363,6 +405,16 @@ def _aggregate_metrics(entries: list[dict[str, Any]]) -> dict[str, Any]:
             "total": total,
         },
         "repairUsage": {
+            "samplesRetried": sum(
+                entry.get("retryReason") == "AI_INVALID_RESPONSE" for entry in entries
+            ),
+            "total": total,
+        },
+        "timeoutRetryUsage": {
+            "samplesRetried": sum(entry.get("timeoutRetryTriggered", False) for entry in entries),
+            "total": total,
+        },
+        "retryUsage": {
             "samplesRetried": sum(entry["retryCount"] for entry in entries),
             "total": total,
         },

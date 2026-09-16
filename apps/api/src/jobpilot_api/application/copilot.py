@@ -195,10 +195,17 @@ class CopilotService:
         input_data = self._build_input(job_id, kind, resume_version_id)
         prompt_version, base_instruction = PROMPTS[kind]
         system_instruction = copilot_instruction(base_instruction, input_data)
-        raw_content = self._generate_provider(input_data, system_instruction=system_instruction)
+        attempts_used = 1
+        try:
+            raw_content = self._generate_provider(input_data, system_instruction=system_instruction)
+        except AnalysisTimeoutError:
+            attempts_used = 2
+            raw_content = self._generate_provider(input_data, system_instruction=system_instruction)
         try:
             result = parse_copilot_result(kind, raw_content, input_data)
         except AnalysisInvalidResponseError as first_error:
+            if attempts_used == 2:
+                raise first_error from None
             repaired_content = self._generate_provider(
                 input_data,
                 system_instruction=system_instruction,

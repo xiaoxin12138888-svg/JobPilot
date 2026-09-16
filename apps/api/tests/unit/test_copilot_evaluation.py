@@ -8,6 +8,7 @@ from pathlib import Path
 
 from jobpilot_api.application.providers import CopilotRepairRequest
 from jobpilot_api.domain.copilot import CopilotInput, CopilotKind, CopilotSource
+from jobpilot_api.domain.errors import AnalysisTimeoutError
 
 
 def test_copilot_dataset_contains_twenty_unique_synthetic_cross_feature_samples() -> None:
@@ -272,6 +273,142 @@ def test_v2_evaluator_stops_after_one_failed_repair_and_keeps_only_sanitized_err
     assert len(provider.repairs) == 2
     serialized = json.dumps(entry, ensure_ascii=False)
     assert all(marker not in serialized for marker in private_markers)
+
+
+def test_evaluator_records_timeout_retry_then_success_without_raw_error() -> None:
+    functions = runpy.run_path(
+        str(Path(__file__).resolve().parents[2] / "scripts" / "evaluate_copilot.py")
+    )
+    sample = {
+        "id": "copilot-test",
+        "kind": "MATCH",
+        "title": "产品经理",
+        "jobSources": [{"id": "job-1", "text": "负责需求分析"}],
+        "resume": {"id": "resume-1", "text": "负责用户调研"},
+        "interviews": [],
+    }
+    valid = json.dumps(
+        {"summary": "匹配结论", "strengths": [], "gaps": [], "suggestions": []},
+        ensure_ascii=False,
+    )
+
+    class Provider:
+        def __init__(self) -> None:
+            self.calls: list[CopilotRepairRequest | None] = []
+
+        def generate_copilot(
+            self,
+            _copilot_input: CopilotInput,
+            *,
+            system_instruction: str,
+            repair: CopilotRepairRequest | None = None,
+        ) -> str:
+            assert "ALLOWED_SOURCE_IDS_JSON" in system_instruction
+            self.calls.append(repair)
+            if len(self.calls) == 1:
+                raise AnalysisTimeoutError("PRIVATE_TIMEOUT_DETAIL")
+            return valid
+
+    provider = Provider()
+    entry = functions["_evaluate_sample"](sample, provider)
+
+    assert entry["firstAttemptResult"] == "AI_TIMEOUT"
+    assert entry["firstAttemptLatencyMs"] >= 0
+    assert entry["timeoutRetryTriggered"] is True
+    assert entry["retryResult"] == "PASS"
+    assert entry["retryLatencyMs"] >= 0
+    assert entry["totalLatencyMs"] >= entry["firstAttemptLatencyMs"]
+    assert entry["attemptCount"] == entry["retryCount"] + 1 == 2
+    assert entry["finalSchemaValid"] is True
+    assert provider.calls == [None, None]
+    assert "PRIVATE_TIMEOUT_DETAIL" not in json.dumps(entry, ensure_ascii=False)
+    metrics = functions["_aggregate_metrics"]([entry])
+    assert metrics["retryUsage"]["samplesRetried"] == 1
+    assert metrics["timeoutRetryUsage"]["samplesRetried"] == 1
+    assert metrics["repairUsage"]["samplesRetried"] == 0
+
+
+def test_evaluator_records_second_timeout_without_third_call() -> None:
+    functions = runpy.run_path(
+        str(Path(__file__).resolve().parents[2] / "scripts" / "evaluate_copilot.py")
+    )
+    sample = {
+        "id": "copilot-test",
+        "kind": "MATCH",
+        "title": "产品经理",
+        "jobSources": [{"id": "job-1", "text": "负责需求分析"}],
+        "resume": {"id": "resume-1", "text": "负责用户调研"},
+        "interviews": [],
+    }
+
+    class Provider:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def generate_copilot(
+            self,
+            _copilot_input: CopilotInput,
+            *,
+            system_instruction: str,
+            repair: CopilotRepairRequest | None = None,
+        ) -> str:
+            self.calls += 1
+            assert repair is None
+            raise AnalysisTimeoutError("PRIVATE_TIMEOUT_DETAIL")
+
+    provider = Provider()
+    entry = functions["_evaluate_sample"](sample, provider)
+
+    assert entry["firstAttemptResult"] == "AI_TIMEOUT"
+    assert entry["timeoutRetryTriggered"] is True
+    assert entry["retryResult"] == "AI_TIMEOUT"
+    assert entry["retryLatencyMs"] >= 0
+    assert entry["errorCode"] == "AI_TIMEOUT"
+    assert entry["finalSchemaValid"] is False
+    assert entry["attemptCount"] == 2
+    assert provider.calls == 2
+    assert "PRIVATE_TIMEOUT_DETAIL" not in json.dumps(entry, ensure_ascii=False)
+
+
+def test_evaluator_does_not_repair_invalid_content_after_timeout_retry() -> None:
+    functions = runpy.run_path(
+        str(Path(__file__).resolve().parents[2] / "scripts" / "evaluate_copilot.py")
+    )
+    sample = {
+        "id": "copilot-test",
+        "kind": "MATCH",
+        "title": "产品经理",
+        "jobSources": [{"id": "job-1", "text": "负责需求分析"}],
+        "resume": {"id": "resume-1", "text": "负责用户调研"},
+        "interviews": [],
+    }
+
+    class Provider:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def generate_copilot(
+            self,
+            _copilot_input: CopilotInput,
+            *,
+            system_instruction: str,
+            repair: CopilotRepairRequest | None = None,
+        ) -> str:
+            self.calls += 1
+            assert repair is None
+            if self.calls == 1:
+                raise AnalysisTimeoutError("PRIVATE_TIMEOUT_DETAIL")
+            return '{"summary":"incomplete"}'
+
+    provider = Provider()
+    entry = functions["_evaluate_sample"](sample, provider)
+
+    assert entry["firstAttemptResult"] == "AI_TIMEOUT"
+    assert entry["retryResult"] == "AI_INVALID_RESPONSE"
+    assert entry["errorCode"] == "AI_INVALID_RESPONSE"
+    assert entry["attemptCount"] == 2
+    assert provider.calls == 2
+    assert "PRIVATE_TIMEOUT_DETAIL" not in json.dumps(entry, ensure_ascii=False)
 
 
 def test_v2_preflight_selects_one_sample_per_kind_and_requires_every_gate() -> None:

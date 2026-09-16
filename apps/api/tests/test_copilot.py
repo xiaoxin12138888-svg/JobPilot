@@ -16,7 +16,7 @@ from jobpilot_api.application.providers import (
 )
 from jobpilot_api.config import ApiSettings
 from jobpilot_api.domain.copilot import CopilotInput, CopilotKind
-from jobpilot_api.domain.errors import AnalysisProviderUnavailableError
+from jobpilot_api.domain.errors import AnalysisProviderUnavailableError, AnalysisTimeoutError
 from jobpilot_api.domain.jd_analysis import JDAnalysisInput
 from jobpilot_api.infrastructure.database.engine import sqlite_database_url
 from jobpilot_api.main import create_app
@@ -45,6 +45,7 @@ class FakeProvider(JDAnalysisProvider, CopilotProvider):
     def __init__(self) -> None:
         self.copilot_calls: list[tuple[CopilotInput, str, CopilotRepairRequest | None]] = []
         self.copilot_error: Exception | None = None
+        self.copilot_failures: list[Exception | None] = []
         self.copilot_responses: list[str] = []
 
     def analyze(self, _input: JDAnalysisInput, *, system_instruction: str) -> str:
@@ -58,6 +59,10 @@ class FakeProvider(JDAnalysisProvider, CopilotProvider):
         repair: CopilotRepairRequest | None = None,
     ) -> str:
         self.copilot_calls.append((copilot_input, system_instruction, repair))
+        if self.copilot_failures:
+            failure = self.copilot_failures.pop(0)
+            if failure is not None:
+                raise failure
         if self.copilot_error is not None:
             raise self.copilot_error
         if self.copilot_responses:
@@ -305,6 +310,108 @@ def test_provider_transport_failure_is_not_retried(
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "AI_PROVIDER_UNAVAILABLE"
     assert len(provider.copilot_calls) == 1
+
+
+def test_timeout_retries_once_then_succeeds_without_repair(
+    copilot_context: tuple[TestClient, FakeProvider, Path],
+) -> None:
+    client, provider, _database_path = copilot_context
+    job, resume = _create_sources(client)
+    provider.copilot_failures = [AnalysisTimeoutError("private first timeout"), None]
+
+    response = client.post(
+        f"/api/v1/jobs/{job['id']}/copilot/match",
+        json={"resumeVersionId": resume["id"], "confirmExternalAi": True},
+    )
+
+    assert response.status_code == 200
+    assert len(provider.copilot_calls) == 2
+    assert all(call[2] is None for call in provider.copilot_calls)
+    assert (
+        provider.copilot_calls[0][0].as_provider_data()
+        == provider.copilot_calls[1][0].as_provider_data()
+    )
+    retry_payload = json.dumps(provider.copilot_calls[1][0].as_provider_data(), ensure_ascii=False)
+    assert "fictional@example.com" not in retry_payload
+    assert "138-0013-8000" not in retry_payload
+    assert "private first timeout" not in response.text
+
+
+def test_two_timeouts_stop_after_second_and_preserve_previous_record(
+    copilot_context: tuple[TestClient, FakeProvider, Path],
+) -> None:
+    client, provider, _database_path = copilot_context
+    job, resume = _create_sources(client)
+    endpoint = f"/api/v1/jobs/{job['id']}/copilot/match"
+    request = {"resumeVersionId": resume["id"], "confirmExternalAi": True}
+    original = client.post(endpoint, json=request).json()
+    provider.copilot_calls.clear()
+    provider.copilot_failures = [
+        AnalysisTimeoutError("private first timeout"),
+        AnalysisTimeoutError("private second timeout"),
+    ]
+
+    failed = client.post(endpoint, json=request)
+    preserved = client.get(endpoint, params={"resumeVersionId": resume["id"]})
+
+    assert failed.status_code == 503
+    assert failed.json()["error"]["code"] == "AI_TIMEOUT"
+    assert "private" not in failed.text
+    assert len(provider.copilot_calls) == 2
+    assert all(call[2] is None for call in provider.copilot_calls)
+    assert preserved.json()["record"]["id"] == original["record"]["id"]
+
+
+def test_success_uses_one_call_without_timeout_retry(
+    copilot_context: tuple[TestClient, FakeProvider, Path],
+) -> None:
+    client, provider, _database_path = copilot_context
+    job, resume = _create_sources(client)
+
+    response = client.post(
+        f"/api/v1/jobs/{job['id']}/copilot/match",
+        json={"resumeVersionId": resume["id"], "confirmExternalAi": True},
+    )
+
+    assert response.status_code == 200
+    assert len(provider.copilot_calls) == 1
+
+
+def test_invalid_response_does_not_trigger_timeout_retry(
+    copilot_context: tuple[TestClient, FakeProvider, Path],
+) -> None:
+    client, provider, _database_path = copilot_context
+    job, resume = _create_sources(client)
+    provider.copilot_responses = ['{"summary":"结构不完整"}']
+
+    response = client.post(
+        f"/api/v1/jobs/{job['id']}/copilot/match",
+        json={"resumeVersionId": resume["id"], "confirmExternalAi": True},
+    )
+
+    assert response.status_code == 200
+    assert len(provider.copilot_calls) == 2
+    assert provider.copilot_calls[1][2] is not None
+
+
+def test_invalid_response_after_timeout_retry_cannot_make_third_call(
+    copilot_context: tuple[TestClient, FakeProvider, Path],
+) -> None:
+    client, provider, _database_path = copilot_context
+    job, resume = _create_sources(client)
+    provider.copilot_failures = [AnalysisTimeoutError("private timeout"), None]
+    provider.copilot_responses = ['{"summary":"结构不完整"}']
+
+    response = client.post(
+        f"/api/v1/jobs/{job['id']}/copilot/match",
+        json={"resumeVersionId": resume["id"], "confirmExternalAi": True},
+    )
+
+    assert response.status_code == 502
+    assert response.json()["error"]["code"] == "AI_INVALID_RESPONSE"
+    assert len(provider.copilot_calls) == 2
+    assert all(call[2] is None for call in provider.copilot_calls)
+    assert "private" not in response.text
 
 
 def test_match_requires_current_analysis_resume_consent_and_provider(
