@@ -10,10 +10,10 @@ JobPilot 不替代招聘网站，不建设职位数据库，也不代表用户�
 项目已通过 **Phase 3 — Job & Application Domain Foundation**、**Phase 4 — BOSS Direct Job Capture**、**Phase 5 — Nowcoder Adapter & Shared Capture Contract**、**Phase 6 — JD Structured AI Analysis**、**Phase 8 — Interview Record & Feedback Loop** 与 **Phase 9 — Profile Vault & Safe Job Form Autofill**。Phase 9 已在真实中国移动校招表单完成 Scan → Preview → Confirm → Fill → 人工检查，填写 1/1 个确认字段且未触发 Submit/Continue。**Phase 10 — Local Resume Import** 已完成实现、自动化门禁和虚构文件隔离浏览器验收，当前等待项目负责人使用脱敏真实 DOCX/PDF 完成人工内容与合并验收，因此尚未标记 PASS。**Phase 7 — Resume Version & Evidence Map** 已实现，但真实语义质量验收仍为 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`。核心能力包括：
 
 **Phase 11 — AI Job Copilot** 的 P0 技术实现、V2 严格 grounding/单次结构修复和真实 20 条
-虚构评测已完成。V2 预检 3/3；正式评测中 Provider 完成 14/20，14 条有效响应最终全部
-通过 Schema/Evidence，但合并验收为 14/20，未达 19/20 门槛。2026-09-16，项目负责人完成
-V2 真实 BOSS/牛客六项人工验收，生成与内容审核均为 6/6 PASS；冻结 synthetic 门槛仍未达到，
-因此当前仍为 `PHASE 11 BLOCKED`。
+虚构评测已完成。V1 13/20、V2 14/20；分析 V2 失败后未发现可归因于产品代码的缺陷，
+保持冻结配置最终复跑为 18/20，Evidence 55/55；剩余两条 Match 在 60s 超时，仍未达
+19/20 门槛。2026-09-16，项目负责人完成 BOSS/牛客六项人工验收，生成与内容审核均为
+6/6 PASS；冻结 synthetic 门槛仍未达到，因此当前仍为 `PHASE 11 BLOCKED`。
 
 2026-09-16 起，岗位详情不再显示与 Copilot 重复的 Evidence Map 模块；历史记录、数据库结构和
 API 保持兼容，Phase 7 状态不变，用户统一使用 Copilot“匹配分析”。

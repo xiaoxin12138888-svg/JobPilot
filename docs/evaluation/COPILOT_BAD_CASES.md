@@ -171,3 +171,19 @@ Provider availability 失败使合并 final 只有 14/20，低于 19/20 门槛�
 共六项均生成成功，项目负责人内容审核 6/6 PASS；本次没有观察到新的真实岗位 Bad Case，因此不
 虚构新增编号。该结果满足真实岗位门槛，但不覆盖 BC-08/BC-09，也不能替代冻结 synthetic run 的
 19/20 门槛。Phase 11 保持 `BLOCKED`。
+
+---
+
+## Phase 11.2 最终复跑新增真实 Bad Case
+
+> V1 的 BC-01～07 与 V2 的 BC-08～10 均保留为历史事实。本节只记录 [`copilot/final-real-run.json`](copilot/final-real-run.json) 中实际观察到的两条新失败，不将未发生的结构或内容错误写成 Bad Case。
+
+## BC-11 — 两条 Match 请求越过冻结的 60s 窗口
+
+- **ID**：`copilot-006`、`copilot-007`。
+- **Input**：冻结 dataset v1 中两条虚构 Match 样本；Prompt V2、Schema V2、Provider、model、temperature 0 与 timeout 60s 未变。
+- **Observed**：两条分别在 60,403 ms、60,473 ms 返回脱敏 `AI_TIMEOUT`；均为一次请求、retry 0、无可验证 Provider 内容。最终 Schema 为 18/20，而其余 18 条均通过；Evidence 55/55。
+- **Expected**：两条应在 60s 产品窗口内返回可供严格结构和证据验证的结果，使冻结 20 条评测至少 19/20。
+- **Root Cause**：已观察到的直接原因是 Provider 请求超时。上游负载、网络或具体服务内部原因没有可验证记录；Parser、Schema、Validator 和结构修复均未被这两条触达，不能把超时归因于它们。
+- **Fix**：本轮没有可证实且在授权范围内的产品代码修复。不自动增加 timeout 或 transport retry，不更换 Provider，不单独复跑失败样本以挑选结果。后续如需改变这些冻结条件，须由负责人另行批准并重新定义可比较的评测。
+- **Regression**：产品 timeout 返回稳定脱敏 `AI_TIMEOUT`，不保存 raw response、不覆盖历史有效结果；Python 292/292、API client 70/70、Web 58/58、Extension 112/112 与静态/构建门禁 PASS。验收数字仍为 18/20，故 `PHASE 11 BLOCKED`。

@@ -117,6 +117,7 @@ write new output files rather than overwriting `v2-preflight.json` or `v2-real-r
   `copilot-001`/`009`/`017` gate reached first-pass and final Schema 3/3, evidence 10/10, zero safety or
   relevance violations and zero repair retries. The immutable record is
   `docs/evaluation/copilot/final-preflight.json`.
-- Final rerun: NOT RUN.
+- Final rerun: COMPLETE. The owner ran all 20 unchanged samples after the 3/3 preflight; 18/20 passed first and final schema, 55/55 evidence was grounded, and no structure repair was used. `copilot-006` and `copilot-007` Match timed out at 60,403 ms and 60,473 ms. The former six V2 failures did not reproduce; two different samples exceeded the same frozen Provider window. This shows variable availability, not a proven Prompt/Schema/Parser/Validator defect. The exact upstream cause remains unknown. Record: `docs/evaluation/copilot/final-real-run.json`.
+- Final product-code change: NONE; no evidence-backed fix within the frozen Provider/timeout/retry constraints. No cherry-picked rerun or threshold change.
 - Verdict: `PHASE 11 BLOCKED`.
 - Phase 12: NOT STARTED.

@@ -9,10 +9,10 @@
 > DOCX/PDF 人工内容与合并验收；此前不得标记 PASS。
 > Phase 7 Evidence Map 的独立 Web 面板已于 2026-09-16 隐藏，历史数据/API 兼容保留，Phase 7
 > 仍为 `IMPLEMENTED — SEMANTIC ACCEPTANCE PAUSED`；当前匹配入口统一为 Copilot。
-> Phase 11 — AI Job Copilot P0/V2 已完成技术实现、三样本预检和真实 20 条虚构集评测。Provider
-> 完成 14/20，收到的 14 条结果最终均通过 Schema/Evidence，但合并结果未达 19/20 门槛。V2
-> BOSS/牛客人工生成与内容验收已于 2026-09-16 达到 6/6 PASS；synthetic 门槛仍阻止 Phase 11
-> 标记 PASS 或进入 Phase 12。
+> Phase 11 — AI Job Copilot P0/V2 已完成技术实现、三样本预检和真实 20 条虚构集评测。历史
+> V2 为 14/20；冻结配置最终复跑为 18/20、Evidence 55/55，两条 Match 超过 60s Provider
+> 窗口，仍未达 19/20。BOSS/牛客人工生成与内容验收已于 2026-09-16 达到 6/6 PASS；
+> synthetic 门槛仍阻止 Phase 11 标记 PASS 或进入 Phase 12。
 
 ## 1. Global gates
 
@@ -159,7 +159,7 @@ Application、Evidence Map 和 Phase 9 Autofill 保持不变。
 
 ## 11. Phase 11 — AI Job Copilot
 
-状态：`IMPLEMENTED — PROVIDER EVALUATION AND HUMAN ACCEPTANCE REQUIRED`。
+状态：`IMPLEMENTED — PHASE 11 BLOCKED`。
 
 P0 只在 Job Detail 交付岗位匹配、简历准备与面试准备；岗位理解复用 JD Analysis。用户逐次确认
 后，系统才把当前任务需要的最小 Job/Resume/Interview 文本发送到其配置的 Phase 6 Provider，
@@ -170,8 +170,10 @@ P0 只在 Job Detail 交付岗位匹配、简历准备与面试准备；岗位�
 20 条 BOSS/牛客风格虚构数据已使用 `[K12]gemini-3.5-flash`、temperature 0 和 60s timeout
 完成 V1/V2 真实评测。V2 预检 3/3；正式 run 的 Provider availability 为 14/20，first-pass schema
 为 13/20，一条经结构修复后 final schema 为 14/20。有效结果 evidence 43/43，自动检出的 unsupported、
-错误 gap、虚构建议、过度确定和错误 AI category 均为 0。由于合并 final 未达 19/20 且 V2 真实
-BOSS/牛客验收待完成，Phase 11 继续 `BLOCKED`。
+错误 gap、虚构建议、过度确定和错误 AI category 均为 0。该 14/20 是历史 V2 结果。后续
+六项 BOSS/牛客真实岗位人工生成与内容验收已于 2026-09-16 达到 6/6 PASS；同配置最终复跑
+首轮/最终 Schema 为 18/20，Evidence 55/55，剩余两条 Match 在 60s 超时。由于 synthetic
+final 仍未达 19/20，Phase 11 继续 `BLOCKED`，Phase 12 不开始。
 
 Phase 11 不包含 P1 求职策略、Chat Agent、长期记忆、RAG/embedding/vector DB、评分/Offer 概率、
 自动改写简历、自动投递、自动消息或招聘网站操作。

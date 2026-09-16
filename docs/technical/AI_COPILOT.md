@@ -91,12 +91,14 @@ response、Provider URL 或 API Key。
 
 ## 当前验收状态
 
-20 条 BOSS/牛客风格虚构 dataset 与 real-output-only runner 已完成 V1/V2 真实运行。V2 三样本预检
-3/3 PASS；正式 run 的 Provider availability 为 14/20，first-pass schema 13/20，一条经修复后 final
-schema 14/20。收到的 14 条有效结果为 14/14 final schema、evidence 43/43，自动安全/相关性违规为 0。
-但合并 final 未达 19/20 验收门槛。2026-09-16，项目负责人完成 V2 真实 BOSS/牛客六项人工
-验收：六项均生成成功，内容审核 6/6 PASS。真实岗位门槛已满足，但不能替代 synthetic 门槛，
-因此当前仍为 `PHASE 11 BLOCKED`。不得为提高数字删除失败样本、重跑挑选结果或进入 Phase 12。
+20 条 BOSS/牛客风格虚构 dataset 与 real-output-only runner 已完成 V1、V2 和冻结配置最终复跑：
+V1 13/20，V2 14/20，最终 18/20。最终三样本预检 3/3 PASS；完整运行首轮/最终 Schema
+18/20、Evidence 55/55、修复 retry 0。剩余 `copilot-006` / `007` Match 均在冻结的 60s 窗口
+超时，未收到可供 Parser/Validator 检查的内容；具体上游原因未知。本轮未修改产品代码、Prompt、
+Schema、Provider、timeout 或 retry。自动安全/相关性违例为 0，但最终 synthetic 内容有用性人审
+仍是 NOT_RUN。2026-09-16，项目负责人完成原 BOSS/牛客六项人工验收：六项均生成成功，内容
+审核 6/6 PASS；因本轮无产品行为变更，该结果保持有效。最终 18/20 仍低于冻结 19/20 门槛，
+因此 `PHASE 11 BLOCKED`。不得删样本、择优复跑或进入 Phase 12。
 
 ## 前端入口收敛
 

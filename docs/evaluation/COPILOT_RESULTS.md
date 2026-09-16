@@ -5,9 +5,40 @@
 - Provider：`CONFIGURED`
 - Model：`[K12]gemini-3.5-flash`
 - Real Provider run：`COMPLETE`
-- Synthetic content review：`COMPLETE — NOT ACCEPTABLE`
+- Synthetic V1 content review：`COMPLETE — NOT ACCEPTABLE`；final-run 人工内容复核：`NOT_RUN`
 - Real BOSS / Nowcoder acceptance：`COMPLETE — PASS（6/6）`
 - Verdict：`PHASE 11 BLOCKED`
+
+---
+
+## Phase 11.2 final reliability closure（2026-09-16）
+
+演进链：V1 **13/20** → V2 reliability hardening **14/20** → 六项失败分析（无可证实的产品代码缺陷，故无代码修复）→ 冻结配置最终复跑 **18/20**。历史运行文件与失败记录均未覆盖。分析见 [COPILOT_V2_FAILURE_ANALYSIS.md](COPILOT_V2_FAILURE_ANALYSIS.md)，最终原始结构化记录见 [`copilot/final-real-run.json`](copilot/final-real-run.json)。
+
+配置保持 dataset v1 的 20 条虚构样本、Prompt V2 / Schema V2、`[K12]gemini-3.5-flash`、temperature 0、timeout 60s；只允许 `AI_INVALID_RESPONSE` 触发一次结构修复，timeout/transport 不重试。前置三功能预检 `001` / `009` / `017` 为 3/3 首轮与最终 Schema PASS、Evidence 10/10，详见 [`copilot/final-preflight.json`](copilot/final-preflight.json)。
+
+| 指标 | 最终复跑真实结果 |
+| --- | --- |
+| Samples / Provider first attempts | 20 / 20 |
+| First-pass Schema | 18/20（90%） |
+| Repair retry | 0 |
+| Final Schema / combined PASS | 18/20（90%） |
+| Final Schema / returned valid content | 18/18（100%） |
+| `AI_INVALID_RESPONSE` | 0 |
+| Evidence grounding | 55/55（100%） |
+| Unsupported claims / gap wording / interview certainty | 0 / 0 / 0 |
+| Unsafe suggestion / interview category relevance | 0 / 0 |
+| `AI_TIMEOUT` | 2：`copilot-006` Match 60,403 ms；`copilot-007` Match 60,473 ms |
+| `AI_PROVIDER_UNAVAILABLE` | 0 |
+| Latency（全部 20 条，含失败） | 均值 21,935.5 ms；中位数 16,181.5 ms；P95 nearest-rank 60,403 ms；最小 10,088 ms；最大 60,473 ms |
+
+两条失败都没有 Provider 内容进入 Parser/Schema/Validator，因而不能归因于 Prompt、Schema 或 grounding；只能确定请求越过了冻结的 60s 窗口，上游具体原因未知。未放宽 timeout、增加 transport retry 或单独重跑失败样本。自动 0 违规只代表已收到结果的确定性检查，**final-run synthetic 内容有用性人审仍为 NOT_RUN**，不能据此宣称内容全面通过。
+
+本轮未修改产品 Prompt/Schema/API/UI，原 BOSS 与牛客各三项真实岗位人工生成及内容验收 **6/6 PASS** 继续有效；无需重做六项。浏览器自动化此前因 request-header policy 无法执行，不记作 PASS。回归：Python 292/292、API client 70/70、Web 58/58、Extension 112/112 PASS；TypeScript typecheck、ESLint、Ruff lint/format、Prettier、API import、Web/Extension build 与 Extension artifact security PASS。初次 Python 测试受默认临时目录权限影响，改用明确可写的测试临时目录后完整 292/292 PASS；不是产品测试失败。
+
+安全复核：评测文件未发现邮箱、中国手机号、Provider URL 或 Key 形态；失败只记录脱敏错误码与耗时，无 raw Provider 响应。产品继续要求逐次确认，只发送任务所需的去电话/邮箱纯文本到用户配置的第三方 Provider；不上传原始文件或其他个人资料，失败不影响本地核心及历史结果。自动安全门禁未发现 Critical / Required 问题；不把尚未执行的浏览器自动化称为已通过。
+
+冻结门槛是 final **≥19/20**、grounding **≥98%** 且严重安全问题为 0。当前 18/20，即使证据与真实岗位门槛满足，仍为 **`PHASE 11 BLOCKED`**。不调整评分、不择优复跑、不进入 Phase 12。
 
 ---
 

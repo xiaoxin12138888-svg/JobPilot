@@ -12,15 +12,17 @@
 
 - [x] Run the frozen three-feature preflight to `final-preflight.json`; 2026-09-16 result is 3/3 first/final
   Schema, 10/10 evidence, zero safety/relevance violations and zero repair retries.
-- [ ] After preflight PASS, rerun the unchanged 20 samples to a new file without overwriting V2.
-- [ ] Record first/final schema, retry, evidence, safety, relevance and latency metrics.
-- [ ] Run final Python/API client/Web/Extension/type/lint/format/build/security review gates.
-- [ ] Update final evaluation docs and stop before Phase 12.
+- [x] After preflight PASS, rerun the unchanged 20 samples to `final-real-run.json` without overwriting V2.
+- [x] Record first/final schema, retry, evidence, safety, relevance and latency metrics.
+- [x] Run final Python/API client/Web/Extension/type/lint/format/build/security review gates.
+- [x] Update final evaluation docs and stop before Phase 12.
 
-Current gate (2026-09-16): analysis is complete. Five failures are `AI_PROVIDER_UNAVAILABLE`, one is
-`AI_TIMEOUT`, and none returned content to the structured-output pipeline. The project owner's configured
-PowerShell ran the real preflight successfully (3/3); the unchanged 20-sample final evaluation remains NOT RUN.
-Phase 11 stays BLOCKED and Phase 12 is not started.
+Final gate (2026-09-16): V2's six historical failures were five `AI_PROVIDER_UNAVAILABLE` and one
+`AI_TIMEOUT`, with no structured-output content. Final preflight passed 3/3; unchanged 20-sample rerun
+reached 18/20 first/final schema, 55/55 evidence and no retry. New Match `006`/`007` timed out at the
+frozen 60s window. Python 292/292, API client 70/70, Web 58/58, Extension 112/112 and static/build/
+security gates passed. The 6/6 real-job owner acceptance remains valid. Browser automation was unavailable
+under request-header policy, not a PASS. Since 18/20 < 19/20, Phase 11 stays BLOCKED and Phase 12 is not started.
 
 ---
 

@@ -40,6 +40,20 @@ then rerun a three-feature gate and the unchanged 20-sample evaluation against t
 - The Codex subprocess does not inherit the configured Provider variables, so the real gate awaits execution
   from the project owner's already configured PowerShell.
 
+## 2026-09-16 final outcome
+
+- The owner ran the fixed three-feature preflight with the frozen configuration: 3/3 first/final schema,
+  10/10 evidence, no retry or detected safety violation.
+- The unchanged 20-sample final run produced 18/20 first/final schema and 55/55 grounded evidence, with
+  zero repair retries and zero detected unsupported/safety/relevance violations. Two Match samples (`006`,
+  `007`) timed out at 60,403/60,473 ms; no model content reached validation for them. Synthetic content
+  usefulness review remains NOT_RUN. No product-code change was justified or made.
+- Full automated regression, static checks, builds and security artifact gate passed. The previous 6/6
+  BOSS/Nowcoder owner review remains valid because Prompt, Schema, API and UI behavior did not change.
+  Browser automation was unavailable under request-header policy and is not claimed as PASS.
+- Final 18/20 is below frozen >=19/20. Verdict: `PHASE 11 BLOCKED`; no sample selection, threshold
+  reduction or Phase 12 work.
+
 ---
 
 # Historical Implementation Plan: Phase 11.1 — Copilot Reliability Hardening

@@ -9,9 +9,10 @@
 > 2026-09-16 起 Web 不再挂载 Evidence Map 面板；相关表、Repository、Service、API 与旧记录继续
 > 保留兼容，不执行数据迁移或删除。Copilot“匹配分析”是岗位详情唯一的简历匹配入口。
 
-> Phase 11 AI Job Copilot P0/V2 已完成技术实现与真实虚构集评测；Provider 可用性使合并结果只有
-> 14/20。V2 BOSS/牛客人工生成与内容验收已于 2026-09-16 达到 6/6 PASS，但冻结 synthetic
-> 门槛仍未达到，当前仍为 `PHASE 11 BLOCKED`。
+> Phase 11 AI Job Copilot P0/V2 已完成技术实现与真实虚构集评测；历史 V2 为 14/20，
+> 冻结配置最终复跑为 18/20，余下两条 Match 在 60s Provider 窗口超时。BOSS/牛客人工
+> 生成与内容验收已于 2026-09-16 达到 6/6 PASS，但 synthetic 19/20 门槛仍未达到，
+> 当前仍为 `PHASE 11 BLOCKED`。
 
 ## 1. 运行时
 
